@@ -2020,12 +2020,26 @@ body {
 .contact-form-section {
   width: 100%;
   min-width: 0;
+  order: 1; /* Text fields on the left */
 }
 
 .dialer-pad-section {
   position: sticky;
   top: 2rem;
   height: fit-content;
+  width: 100%;
+  order: 2; /* Dialer on the right */
+}
+
+.dialer-grid-container {
+  width: 100%;
+}
+
+.dialer-display {
+  width: 100%;
+}
+
+.transfer-call-container {
   width: 100%;
 }
 
@@ -2111,27 +2125,85 @@ body {
   .dialer-pad-section {
     position: relative;
     top: 0;
+    order: 2; /* Dialer below on tablet */
+  }
+  
+  .contact-form-section {
+    order: 1; /* Form above on tablet */
   }
 }
 
 @media (max-width: 768px) {
   .dialer-layout {
     padding: 0 1rem;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .dialer-pad-section {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .dialer-pad-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  
+  .dialer-display {
+    order: 1; /* Phone number input at the top on mobile */
+    margin-bottom: 1rem;
+    width: 100%;
+  }
+  
+  .dialer-grid-container {
+    order: 2; /* Dialer pad next */
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .dialer-grid {
+    width: 65%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .dialer-actions {
+    width: 30%;
+    display: flex;
+    flex-direction: column;
+    margin-top: 0;
+    justify-content: space-between;
+    height: 100%;
+  }
+  
+  .dialer-actions .btn-circle {
+    margin-bottom: 0.5rem;
+  }
+  
+  .transfer-call-container {
+    margin-top: 1rem;
+    width: 100%;
+    order: 3;
+  }
+  
+  .contact-form-section {
+    order: 4; /* Form fields below on mobile */
+    margin-top: 1rem;
   }
 
   .contact-form-section .card-body,
   .dialer-pad-section .card-body {
     padding: 1rem;
   }
-
-  .dialer-pad-container {
-    padding: 0.5rem;
-  }
-
-  .dialer-grid {
-    gap: 0.5rem;
-  }
-
+  
   .dialer-key {
     font-size: 1rem !important;
     padding: 0.25rem !important;

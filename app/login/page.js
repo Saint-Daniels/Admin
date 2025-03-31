@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Container, Form, Button, Row, Col, Alert } from 'react-bootstrap';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 export default function Login() {
@@ -29,13 +28,6 @@ export default function Login() {
               <div className="login-bubble">
                 <div className="bubble-content">
                   <div className="text-center mb-4">
-                    <Image
-                      src="/logo.png"
-                      alt="Logo"
-                      width={80}
-                      height={80}
-                      className="header-logo"
-                    />
                     <h2>Welcome Back</h2>
                     <p className="text-muted">Sign in to continue to your office</p>
                   </div>
