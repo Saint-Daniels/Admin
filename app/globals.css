@@ -1114,6 +1114,8 @@ body {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 1.5rem;
   padding: 0 2rem;
+  max-width: 2000px;
+  margin: 0 auto;
 }
 
 /* Calendar Preview - First Column */
@@ -1144,12 +1146,213 @@ body {
 
 @media (max-width: 768px) {
   .dashboard-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     padding: 0 1rem;
   }
   
-  .dashboard-grid > .dashboard-card {
-    grid-column: 1;
+  /* Make stat cards display horizontally */
+  .dashboard-grid .row.g-4 {
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .dashboard-grid .row.g-4 > .col-md-3 {
+    min-width: 200px;
+    max-width: 250px;
+    flex: 0 0 auto;
+    padding: 0 0.5rem;
+  }
+  
+  /* Performance details horizontal layout */
+  .dashboard-grid .row.mt-4 {
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.5rem;
+  }
+  
+  .dashboard-grid .row.mt-4 > .col-md-6 {
+    min-width: 250px;
+    max-width: 300px;
+    flex: 0 0 auto;
+    padding: 0 0.5rem;
+  }
+  
+  .performance-detail-card {
+    margin-bottom: 1rem;
+    height: 100%;
+  }
+  
+  /* Settings page form fields in horizontal layout */
+  .dashboard-grid form .row {
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .dashboard-grid form .row > .col-md-6 {
+    min-width: 200px;
+    flex: 0 0 auto;
+    padding: 0 0.5rem;
+  }
+  
+  /* Licensing & contracting section */
+  .licensing-section {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .license-card, .contract-card {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+  }
+  
+  .license-details .row {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+  
+  .license-details .row > .col-md-6 {
+    min-width: 200px;
+    flex: 0 0 auto;
+  }
+  
+  /* Analytics page improvements */
+  .stat-card {
+    margin-bottom: 0.75rem;
+  }
+  
+  .g-4 {
+    gap: 0.75rem !important;
+  }
+  
+  /* Make tables responsive with horizontal scroll */
+  .table-responsive {
+    margin-bottom: 0;
+  }
+  
+  /* Settings page improvements */
+  .profile-picture-container {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Support grid for better layout */
+  .support-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .region-card {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Home page improvements */
+  .calendar-preview .calendar-grid {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .calendar-day {
+    min-width: 45px;
+    height: 45px;
+  }
+  
+  .preview-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  
+  .preview-item {
+    display: flex;
+    width: 100%;
+    padding: 0.75rem;
+  }
+  
+  .notes-grid {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+    gap: 1rem;
+  }
+  
+  .note-card {
+    min-width: 250px;
+    max-width: 300px;
+    flex-shrink: 0;
+  }
+}
+
+/* Enhanced mobile improvements for all tabs */
+@media (max-width: 576px) {
+  .workspace-nav {
+    margin: 0 0.5rem 1rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 0.5rem;
+  }
+  
+  .workspace-nav .nav-link {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .dashboard-card {
+    margin-bottom: 1rem;
+  }
+  
+  .dashboard-card .card-header {
+    padding: 1rem;
+  }
+  
+  .dashboard-card .card-body {
+    padding: 1rem;
+  }
+  
+  /* Analytics mobile improvements */
+  .stat-card {
+    padding: 0.75rem !important;
+  }
+  
+  .stat-card h3 {
+    font-size: 1.5rem;
+  }
+  
+  /* Row improvements */
+  .row {
+    margin-right: -0.5rem;
+    margin-left: -0.5rem;
+  }
+  
+  .col, .col-md-3, .col-md-4, .col-md-6, .col-md-12 {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+  }
+  
+  /* Horizontal scrolling cards for all tabs */
+  .performance-detail-card, .support-section, .license-card, .contract-card {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 0.75rem;
+  }
+  
+  /* Improve button layouts */
+  .dashboard-card .card-header .d-flex {
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 }
 
@@ -2708,4 +2911,67 @@ body {
     width: 100px;
     height: 100px;
   }
+}
+
+@media (max-width: 768px) {
+  /* ... existing code ... */
+  
+  /* Settings page improvements */
+  .profile-picture-container {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Settings page form fields in horizontal layout */
+  .dashboard-grid form .row {
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .dashboard-grid form .row > .col-md-6 {
+    min-width: 200px;
+    flex: 0 0 auto;
+    padding: 0 0.5rem;
+  }
+  
+  /* Licensing & contracting section */
+  .licensing-section {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .license-card, .contract-card {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+  }
+  
+  .license-details .row {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+  
+  .license-details .row > .col-md-6 {
+    min-width: 200px;
+    flex: 0 0 auto;
+  }
+  
+  /* Support grid for better layout */
+  .support-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .region-card {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Home page improvements */
+  /* ... existing code ... */
 }
