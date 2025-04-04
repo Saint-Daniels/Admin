@@ -13,7 +13,7 @@ import {
   FaSignOutAlt, FaBell, FaUserCircle, FaCamera, FaShieldAlt, FaKey, FaVolumeUp,
   FaDesktop, FaMobile, FaTablet, FaBellSlash, FaUserShield, FaUserCog,
   FaEdit, FaPalette, FaTrash, FaExchangeAlt, FaCheckCircle, FaSave, FaBackspace,
-  FaMicrophone, FaStop
+  FaMicrophone, FaStop, FaCheck
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -115,10 +115,10 @@ export default function Office() {
   // Add new state variables for spouse and children
   const [showSpouseFields, setShowSpouseFields] = useState(false);
   const [showChildrenFields, setShowChildrenFields] = useState(false);
-  const [children, setChildren] = useState([
-    { firstName: '', lastName: '', dob: '' },
-    { firstName: '', lastName: '', dob: '' }
-  ]);
+  const [children, setChildren] = useState([]);
+
+  // Add state for multiple insurance coverages
+  const [insuranceCoverages, setInsuranceCoverages] = useState([{}]);
 
   // Add new state variable for chat search
   const [chatSearchQuery, setChatSearchQuery] = useState('');
@@ -130,6 +130,52 @@ export default function Office() {
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [chatMessage, setChatMessage] = useState('');
+
+  // Add state for SSN validation
+  const [ssnValid, setSsnValid] = useState(false);
+  const [ssn, setSsn] = useState('');
+
+  // Add new state variables at the top
+  const [isTimedIn, setIsTimedIn] = useState(false);
+  const [timeInStart, setTimeInStart] = useState(null);
+  const [totalTimeToday, setTotalTimeToday] = useState(0);
+
+  // Add state for form completion tracking
+  const [formCompletion, setFormCompletion] = useState({
+    personalInfo: false,
+    contactInfo: false,
+    addressInfo: false,
+    spouseInfo: false,
+    childrenInfo: false,
+    insuranceInfo: false
+  });
+
+  // Add new state variables at the top with other state declarations
+  const [currentMeetingRoom, setCurrentMeetingRoom] = useState('Manager Room');
+  const [isInMeeting, setIsInMeeting] = useState(false);
+
+  // Add form validation function
+  const validateForm = (data) => {
+    const completion = {
+      personalInfo: !!(data.firstName && data.lastName && data.dateOfBirth),
+      contactInfo: !!(data.email && data.phone),
+      addressInfo: !!(data.address && data.city && data.state && data.zipCode),
+      spouseInfo: data.maritalStatus !== 'Married' || !!(data.spouseFirstName && data.spouseLastName),
+      childrenInfo: data.children.length === 0 || data.children.every(child => child.firstName && child.lastName),
+      insuranceInfo: !!(data.planName && data.deductible && data.premium)
+    };
+    setFormCompletion(completion);
+  };
+
+  // Modify handleInputChange to include validation
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      validateForm(newData);
+      return newData;
+    });
+  };
 
   useEffect(() => {
     setIsClient(true);
@@ -662,11 +708,27 @@ export default function Office() {
 
   // Add a function to update a child's information
   const updateChild = (index, field, value) => {
-    setChildren(prev =>
-      prev.map((child, i) =>
-        i === index ? { ...child, [field]: value } : child
-      )
-    );
+    const newChildren = [...children];
+    newChildren[index] = { ...newChildren[index], [field]: value };
+    setChildren(newChildren);
+  };
+
+  // Format SSN as user types (###-##-####)
+  const formatSSN = (value) => {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, '');
+    
+    // Check if SSN is valid (9 digits)
+    setSsnValid(digits.length === 9);
+    
+    // Add dashes after the 3rd and 5th digits
+    if (digits.length <= 3) {
+      return digits;
+    } else if (digits.length <= 5) {
+      return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    } else {
+      return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5, 9)}`;
+    }
   };
 
   // Add styles for chat container
@@ -835,6 +897,76 @@ export default function Office() {
             order: 2;
           }
         }
+
+        .form-control:not(:placeholder-shown) {
+          border-color: #3b82f6 !important;
+          box-shadow: 0 0 0 1px #3b82f6 !important;
+          background-color: #f8fafc !important;
+        }
+
+        .completion-indicator {
+          position: fixed;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 8px 16px;
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          color: #6b7280;
+          z-index: 1000;
+        }
+
+        .completion-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          margin-right: 4px;
+        }
+
+        .completion-dot.complete {
+          background-color: #3b82f6;
+        }
+
+        .completion-dot.incomplete {
+          background-color: #e5e7eb;
+        }
+
+        @keyframes pulse {
+          0% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+          100% {
+            opacity: 1;
+          }
+        }
+
+        .pulse {
+          animation: pulse 1.5s infinite;
+        }
+
+        .meeting-room-indicator {
+          background-color: #0dcaf0;
+          color: white;
+          transition: all 0.3s ease;
+        }
+
+        .meeting-room-indicator:hover {
+          background-color: #0bb5d8;
+        }
+
+        .meeting-room-indicator.active {
+          background-color: #0bb5d8;
+          box-shadow: 0 0 0 2px rgba(13, 202, 240, 0.25);
+        }
       `}</style>
       <Container fluid>
         <div className="workspace-header">
@@ -843,8 +975,25 @@ export default function Office() {
             <p className="text-muted">Welcome back! Here's your overview for today</p>
           </div>
           <div className="quick-actions">
+            {/* Meeting Room Status */}
             <div className="status-indicators d-flex align-items-center gap-2 me-3">
-              {/* Phone Status Indicator */}
+              {/* Meeting Room Status */}
+              <Button 
+                variant="info" 
+                size="sm"
+                className={`d-flex align-items-center gap-2 meeting-room-indicator ${isInMeeting ? 'active' : ''}`}
+                onClick={() => setIsInMeeting(!isInMeeting)}
+              >
+                <FaVideo className={isInMeeting ? "pulse" : ""} />
+                <span className="status-text">
+                  {currentMeetingRoom}
+                </span>
+                {isInMeeting && (
+                  <Badge bg="light" text="dark" className="ms-1 px-2">Live</Badge>
+                )}
+              </Button>
+
+              {/* Phone Status */}
               <Button 
                 variant={isDialing ? "danger" : "outline-secondary"} 
                 size="sm"
@@ -853,22 +1002,11 @@ export default function Office() {
               >
                 <FaPhone className={isDialing ? "pulse" : ""} />
                 <span className="status-text">
-                  {isDialing ? "On Call" : agentDisposition}
+                  {isDialing ? "On Call" : "Ready"}
                 </span>
                 {isDialing && (
                   <span className="call-duration">{formatDuration(callDuration)}</span>
                 )}
-              </Button>
-
-              {/* Proctoring Status Indicator */}
-              <Button 
-                variant="outline-secondary" 
-                size="sm"
-                className="d-flex align-items-center gap-2"
-                onClick={() => window.open('https://meet.google.com', '_blank')}
-              >
-                <FaVideo />
-                <span>Proctored</span>
               </Button>
             </div>
 
@@ -1034,14 +1172,14 @@ export default function Office() {
             <Card className="dashboard-card meetings-section mb-4">
               <Card.Header className="d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">
-                  <FaVideo className="me-2" /> Active & Upcoming Meetings
+                  <FaVideo className="me-2" /> Upcoming Schedule
                 </h5>
                 <Button 
                   variant="primary" 
                   size="sm"
-                  onClick={() => window.open('https://meet.google.com/new', '_blank')}
+                  onClick={() => window.open('https://meet.google.com/abc123', '_blank')}
                 >
-                  <FaPlus className="me-1" /> New Meeting
+                  <FaVideo className="me-1" /> Main Office
                 </Button>
               </Card.Header>
               <Card.Body>
@@ -1098,42 +1236,93 @@ export default function Office() {
               </Card.Body>
             </Card>
 
-            {/* Calendar Preview Section */}
+            {/* Calendar Section */}
             <Card className="dashboard-card calendar-preview mb-4">
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <div className="d-flex align-items-center">
-                <h5 className="mb-0">
-                  <FaCalendar className="me-2" /> Today's Schedule
-                </h5>
-                  <div className="analog-clock">
-                    <div className="clock-marking marking-12"></div>
-                    <div className="clock-marking marking-3"></div>
-                    <div className="clock-marking marking-6"></div>
-                    <div className="clock-marking marking-9"></div>
-                    <div 
-                      className="clock-hand hour-hand" 
-                      style={{ 
-                        transform: `rotate(${((currentTime.getHours() % 12) * 30) + (currentTime.getMinutes() * 0.5)}deg) translateX(-50%)`
+              <Card.Header>
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center gap-4">
+                    <h5 className="mb-0">
+                      <FaCalendar className="me-2" /> Calendar
+                    </h5>
+                    <div className="analog-clock" style={{ width: '40px', height: '40px', position: 'relative', border: '2px solid #3b82f6', borderRadius: '50%', backgroundColor: '#f0f7ff' }}>
+                      <div className="clock-marking marking-12" style={{ position: 'absolute', width: '2px', height: '8px', background: '#3b82f6', left: '50%', transform: 'translateX(-50%)', top: '2px' }}></div>
+                      <div className="clock-marking marking-3" style={{ position: 'absolute', width: '8px', height: '2px', background: '#3b82f6', right: '2px', top: '50%', transform: 'translateY(-50%)' }}></div>
+                      <div className="clock-marking marking-6" style={{ position: 'absolute', width: '2px', height: '8px', background: '#3b82f6', left: '50%', transform: 'translateX(-50%)', bottom: '2px' }}></div>
+                      <div className="clock-marking marking-9" style={{ position: 'absolute', width: '8px', height: '2px', background: '#3b82f6', left: '2px', top: '50%', transform: 'translateY(-50%)' }}></div>
+                      <div 
+                        className="clock-hand hour-hand" 
+                        style={{ 
+                          position: 'absolute',
+                          width: '2px',
+                          height: '12px',
+                          background: '#2563eb',
+                          bottom: '50%',
+                          left: '50%',
+                          transformOrigin: 'bottom',
+                          transform: `rotate(${((currentTime.getHours() % 12) * 30) + (currentTime.getMinutes() * 0.5)}deg) translateX(-50%)`
+                        }}
+                      ></div>
+                      <div 
+                        className="clock-hand minute-hand" 
+                        style={{ 
+                          position: 'absolute',
+                          width: '1.5px',
+                          height: '16px',
+                          background: '#3b82f6',
+                          bottom: '50%',
+                          left: '50%',
+                          transformOrigin: 'bottom',
+                          transform: `rotate(${currentTime.getMinutes() * 6}deg) translateX(-50%)`
+                        }}
+                      ></div>
+                      <div 
+                        className="clock-hand second-hand" 
+                        style={{ 
+                          position: 'absolute',
+                          width: '1px',
+                          height: '18px',
+                          background: '#60a5fa',
+                          bottom: '50%',
+                          left: '50%',
+                          transformOrigin: 'bottom',
+                          transform: `rotate(${currentTime.getSeconds() * 6}deg) translateX(-50%)`
+                        }}
+                      ></div>
+                      <div className="clock-center" style={{ position: 'absolute', width: '4px', height: '4px', background: '#2563eb', borderRadius: '50%', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <Button 
+                      variant={isTimedIn ? "success" : "outline-secondary"} 
+                      size="sm"
+                      className="d-flex align-items-center gap-2"
+                      onClick={() => {
+                        if (!isTimedIn) {
+                          setIsTimedIn(true);
+                          setTimeInStart(new Date());
+                        } else {
+                          setIsTimedIn(false);
+                          if (timeInStart) {
+                            const endTime = new Date();
+                            const duration = (endTime - timeInStart) / 1000;
+                            setTotalTimeToday(prev => prev + duration);
+                          }
+                          setTimeInStart(null);
+                        }
                       }}
-                    ></div>
-                    <div 
-                      className="clock-hand minute-hand" 
-                      style={{ 
-                        transform: `rotate(${currentTime.getMinutes() * 6}deg) translateX(-50%)`
-                      }}
-                    ></div>
-                    <div 
-                      className="clock-hand second-hand" 
-                      style={{ 
-                        transform: `rotate(${currentTime.getSeconds() * 6}deg) translateX(-50%)`
-                      }}
-                    ></div>
-                    <div className="clock-center"></div>
+                    >
+                      <FaClock className={isTimedIn ? "text-white" : ""} />
+                      <span className="status-text">
+                        {isTimedIn ? "Clock Out" : "Clock In"}
+                      </span>
+                      {isTimedIn && timeInStart && (
+                        <span className="time-duration">
+                          ({formatDuration(Math.floor((new Date() - timeInStart) / 1000))})
+                        </span>
+                      )}
+                    </Button>
                   </div>
                 </div>
-                <Button variant="link" onClick={() => router.push('/office/calendar')}>
-                  View Calendar
-                </Button>
               </Card.Header>
               <Card.Body>
                 <div className="calendar-view">
@@ -1224,7 +1413,7 @@ export default function Office() {
             <Card className="dashboard-card mb-4">
               <Card.Header className="d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">
-                  <FaEnvelope className="me-2" /> Recent Emails
+                  <FaEnvelope className="me-2" /> Email
                 </h5>
                 <Button variant="link" onClick={() => router.push('/office/email')}>
                   View All
@@ -1643,33 +1832,53 @@ export default function Office() {
                       <div className="section mb-4">
                         <h6 className="mb-3">Personal Information</h6>
                         <Row>
-                          <Col md={4}>
+                          <Col md={3}>
                             <Form.Group className="mb-3">
                               <Form.Label>First Name</Form.Label>
                               <Form.Control type="text" placeholder="Enter first name" />
                             </Form.Group>
                           </Col>
-                          <Col md={4}>
+                          <Col md={3}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Middle Name</Form.Label>
+                              <Form.Control type="text" placeholder="Enter middle name" />
+                            </Form.Group>
+                          </Col>
+                          <Col md={3}>
                             <Form.Group className="mb-3">
                               <Form.Label>Last Name</Form.Label>
                               <Form.Control type="text" placeholder="Enter last name" />
                             </Form.Group>
                           </Col>
+                          <Col md={3}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Suffix</Form.Label>
+                              <Form.Select>
+                                <option value="">Select suffix (if applicable)</option>
+                                <option value="jr">Jr.</option>
+                                <option value="sr">Sr.</option>
+                                <option value="ii">II</option>
+                                <option value="iii">III</option>
+                                <option value="iv">IV</option>
+                                <option value="v">V</option>
+                              </Form.Select>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row>
                           <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>Date of Birth</Form.Label>
                               <Form.Control type="date" />
                             </Form.Group>
                           </Col>
-                        </Row>
-                        <Row>
-                          <Col md={6}>
+                          <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>Email</Form.Label>
                               <Form.Control type="email" placeholder="Enter email" />
                             </Form.Group>
                           </Col>
-                          <Col md={6}>
+                          <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>Phone</Form.Label>
                               <Form.Control 
@@ -1956,59 +2165,127 @@ export default function Office() {
                         </Row>
                       </div>
 
+                      {/* Social Security Number */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Social Security Number</h6>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Social Security Number (SSN)</Form.Label>
+                              <div className="input-group">
+                                <div className="input-group-prepend">
+                                  <span className="input-group-text bg-light">SSN</span>
+                                </div>
+                                <Form.Control 
+                                  type="text" 
+                                  placeholder="Enter SSN (###-##-####)" 
+                                  maxLength={11}
+                                  value={ssn}
+                                  onChange={(e) => {
+                                    // Use the formatSSN function to format as the user types
+                                    const formatted = formatSSN(e.target.value);
+                                    setSsn(formatted);
+                                  }}
+                                />
+                                {ssnValid && (
+                                  <div className="input-group-append">
+                                    <span className="input-group-text bg-success text-white">
+                                      <FaCheck />
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              <Form.Text className="text-muted">
+                                <strong>Important:</strong> Verify the SSN is correct before submitting
+                              </Form.Text>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </div>
+
                       {/* Health Insurance Coverage */}
                       <div className="section mb-4">
-                        <h6 className="mb-3">Health Insurance Coverage</h6>
-                        <Row>
-                          <Col md={6}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Insurance Provider</Form.Label>
-                              <Form.Select>
-                                <option value="">Select insurance provider</option>
-                                <option value="united">UnitedHealthcare</option>
-                                <option value="cigna">Cigna</option>
-                                <option value="ambetter">Ambetter</option>
-                                <option value="oscar">Oscar</option>
-                                <option value="aetna">Aetna</option>
-                                <option value="anthem">Anthem Blue Cross</option>
-                                <option value="kaiser">Kaiser Permanente</option>
-                                <option value="humana">Humana</option>
-                                <option value="molina">Molina Healthcare</option>
-                              </Form.Select>
-                            </Form.Group>
-                          </Col>
-                          <Col md={6}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Plan Name</Form.Label>
-                              <Form.Control type="text" placeholder="Enter plan name" />
-                            </Form.Group>
-                          </Col>
-                        </Row>
-                        <Row>
-                          <Col md={4}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Deductible</Form.Label>
-                              <Form.Control type="number" placeholder="Enter deductible amount" />
-                            </Form.Group>
-                          </Col>
-                          <Col md={4}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Premium</Form.Label>
-                              <Form.Control type="number" placeholder="Enter premium amount" />
-                            </Form.Group>
-                          </Col>
-                          <Col md={4}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Coverage Type</Form.Label>
-                              <Form.Select>
-                                <option value="">Select coverage type</option>
-                                <option value="aca">ACA Health</option>
-                                <option value="dental">Dental</option>
-                                <option value="vision">Vision</option>
-                              </Form.Select>
-                            </Form.Group>
-                          </Col>
-                        </Row>
+                        <h6 className="mb-3 d-flex justify-content-between align-items-center">
+                          <span>Health Insurance Coverage</span>
+                          <Button 
+                            variant="outline-primary" 
+                            size="sm" 
+                            onClick={() => setInsuranceCoverages([...insuranceCoverages, {}])}
+                          >
+                            <FaPlus className="me-1" /> Add Coverage
+                          </Button>
+                        </h6>
+                        
+                        {insuranceCoverages.map((coverage, index) => (
+                          <div key={index} className="insurance-coverage-item mb-4 p-3 border rounded">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h6 className="mb-0">Coverage #{index + 1}</h6>
+                              {index > 0 && (
+                                <Button 
+                                  variant="outline-danger" 
+                                  size="sm"
+                                  onClick={() => {
+                                    const updatedCoverages = [...insuranceCoverages];
+                                    updatedCoverages.splice(index, 1);
+                                    setInsuranceCoverages(updatedCoverages);
+                                  }}
+                                >
+                                  <FaTrash className="me-1" /> Remove
+                                </Button>
+                              )}
+                            </div>
+                            <Row>
+                              <Col md={6}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Insurance Provider</Form.Label>
+                                  <Form.Select>
+                                    <option value="">Select insurance provider</option>
+                                    <option value="united">UnitedHealthcare</option>
+                                    <option value="cigna">Cigna</option>
+                                    <option value="ambetter">Ambetter</option>
+                                    <option value="oscar">Oscar</option>
+                                    <option value="aetna">Aetna</option>
+                                    <option value="anthem">Anthem Blue Cross</option>
+                                    <option value="kaiser">Kaiser Permanente</option>
+                                    <option value="humana">Humana</option>
+                                    <option value="molina">Molina Healthcare</option>
+                                  </Form.Select>
+                                </Form.Group>
+                              </Col>
+                              <Col md={6}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Plan Name</Form.Label>
+                                  <Form.Control type="text" placeholder="Enter plan name" />
+                                </Form.Group>
+                              </Col>
+                            </Row>
+                            <Row>
+                              <Col md={4}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Deductible</Form.Label>
+                                  <Form.Control type="number" placeholder="Enter deductible amount" />
+                                </Form.Group>
+                              </Col>
+                              <Col md={4}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Premium</Form.Label>
+                                  <Form.Control type="number" placeholder="Enter premium amount" />
+                                </Form.Group>
+                              </Col>
+                              <Col md={4}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Coverage Type</Form.Label>
+                                  <Form.Select>
+                                    <option value="">Select coverage type</option>
+                                    <option value="aca">ACA Health</option>
+                                    <option value="dental">Dental</option>
+                                    <option value="vision">Vision</option>
+                                  </Form.Select>
+                                </Form.Group>
+                              </Col>
+                            </Row>
+                          </div>
+                        ))}
                       </div>
 
                       {/* Recording Verification */}
@@ -2038,6 +2315,26 @@ export default function Office() {
                           label="I confirm that the enrollment conversation has been recorded and verified"
                           className="mb-3"
                         />
+                      </div>
+
+                      {/* Add this at the bottom of the form, just before the Action Buttons section */}
+                      <div className="completion-indicator">
+                        <div className="d-flex align-items-center">
+                          <span>Application Progress:</span>
+                          <div className="d-flex gap-1 ms-2">
+                            <div className={`completion-dot ${formCompletion.personalInfo ? 'complete' : 'incomplete'}`} title="Personal Information"></div>
+                            <div className={`completion-dot ${formCompletion.contactInfo ? 'complete' : 'incomplete'}`} title="Contact Information"></div>
+                            <div className={`completion-dot ${formCompletion.addressInfo ? 'complete' : 'incomplete'}`} title="Address Information"></div>
+                            <div className={`completion-dot ${formCompletion.spouseInfo ? 'complete' : 'incomplete'}`} title="Spouse Information"></div>
+                            <div className={`completion-dot ${formCompletion.childrenInfo ? 'complete' : 'incomplete'}`} title="Children Information"></div>
+                            <div className={`completion-dot ${formCompletion.insuranceInfo ? 'complete' : 'incomplete'}`} title="Insurance Information"></div>
+                          </div>
+                          <span className="ms-2 text-sm">
+                            {Object.values(formCompletion).every(v => v) ? 
+                              'Application Complete' : 
+                              'In Progress'}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Action Buttons */}
@@ -2099,20 +2396,18 @@ export default function Office() {
 
         {activeTab === 'analytics' && (
           <div className="dashboard-grid">
-            {/* Performance Overview Card */}
+            {/* Time Tracking Overview Card */}
             <Card className="dashboard-card mb-4">
               <Card.Header>
                 <div className="d-flex justify-content-between align-items-center">
                   <h5 className="mb-0">
-                    <FaChartBar className="me-2" /> Performance Overview
+                    <FaClock className="me-2" /> Time Tracking Overview
                   </h5>
                   <div className="d-flex gap-2">
                     <Form.Select size="sm" className="w-auto">
                       <option value="today">Today</option>
                       <option value="week">This Week</option>
                       <option value="month">This Month</option>
-                      <option value="quarter">This Quarter</option>
-                      <option value="year">This Year</option>
                     </Form.Select>
                     <Button variant="outline-primary" size="sm">
                       <FaDownload className="me-1" /> Export
@@ -2121,46 +2416,46 @@ export default function Office() {
                 </div>
               </Card.Header>
               <Card.Body>
-                <div className="performance-metrics-container" style={{ overflowX: 'auto' }}>
+                <div className="time-tracking-metrics" style={{ overflowX: 'auto' }}>
                   <div style={{ minWidth: '800px' }}>
                     <Row className="g-4">
                       <Col md={3}>
                         <div className="stat-card bg-primary bg-opacity-10 p-3 rounded h-100">
-                          <h6 className="text-primary">Total Calls</h6>
-                          <h3>124</h3>
+                          <h6 className="text-primary">Hours Today</h6>
+                          <h3>7:45</h3>
                           <div className="d-flex align-items-center">
-                            <small className="text-success me-2">+12% this week</small>
-                            <small className="text-muted">vs last week</small>
+                            <small className="text-success me-2">On Track</small>
+                            <small className="text-muted">15 min break</small>
                           </div>
                         </div>
                       </Col>
                       <Col md={3}>
                         <div className="stat-card bg-success bg-opacity-10 p-3 rounded h-100">
-                          <h6 className="text-success">Total Conversions</h6>
-                          <h3>84</h3>
+                          <h6 className="text-success">Weekly Hours</h6>
+                          <h3>32:15</h3>
                           <div className="d-flex align-items-center">
-                            <small className="text-success me-2">+8% this week</small>
-                            <small className="text-muted">vs last week</small>
+                            <small className="text-success me-2">+2hrs</small>
+                            <small className="text-muted">vs target</small>
                           </div>
                         </div>
                       </Col>
                       <Col md={3}>
                         <div className="stat-card bg-info bg-opacity-10 p-3 rounded h-100">
-                          <h6 className="text-info">Conversion Rate</h6>
-                          <h3>68%</h3>
+                          <h6 className="text-info">Productivity</h6>
+                          <h3>92%</h3>
                           <div className="d-flex align-items-center">
-                            <small className="text-success me-2">+5% this week</small>
+                            <small className="text-success me-2">+5%</small>
                             <small className="text-muted">vs last week</small>
                           </div>
                         </div>
                       </Col>
                       <Col md={3}>
                         <div className="stat-card bg-warning bg-opacity-10 p-3 rounded h-100">
-                          <h6 className="text-warning">Avg Call Duration</h6>
-                          <h3>8:30</h3>
+                          <h6 className="text-warning">Break Time</h6>
+                          <h3>45min</h3>
                           <div className="d-flex align-items-center">
-                            <small className="text-danger me-2">-2% this week</small>
-                            <small className="text-muted">vs last week</small>
+                            <small className="text-success me-2">Within limit</small>
+                            <small className="text-muted">15min left</small>
                           </div>
                         </div>
                       </Col>
@@ -2168,60 +2463,66 @@ export default function Office() {
                   </div>
                 </div>
 
-                <div className="performance-breakdown-container mt-4" style={{ overflowX: 'auto' }}>
-                  <div style={{ minWidth: '800px' }}>
-                    <Row>
-                      <Col md={6}>
-                        <div className="performance-detail-card p-3 border rounded h-100">
-                          <h6 className="mb-3">Conversion Breakdown</h6>
-                          <div className="d-flex justify-content-between mb-2">
-                            <span>Premium Package</span>
-                            <span className="text-success">45 conversions</span>
+                <div className="time-tracking-details mt-4">
+                  <Row>
+                    <Col md={6}>
+                      <div className="time-card p-3 border rounded h-100">
+                        <h6 className="mb-3">Daily Activity</h6>
+                        <div className="activity-timeline">
+                          <div className="activity-item d-flex justify-content-between mb-2">
+                            <span>Clock In</span>
+                            <span className="text-success">8:00 AM</span>
                           </div>
-                          <div className="d-flex justify-content-between mb-2">
-                            <span>Standard Package</span>
-                            <span className="text-success">28 conversions</span>
+                          <div className="activity-item d-flex justify-content-between mb-2">
+                            <span>Morning Break</span>
+                            <span className="text-warning">10:15 AM (15min)</span>
                           </div>
-                          <div className="d-flex justify-content-between">
-                            <span>Basic Package</span>
-                            <span className="text-success">11 conversions</span>
+                          <div className="activity-item d-flex justify-content-between mb-2">
+                            <span>Lunch Break</span>
+                            <span className="text-warning">12:30 PM (30min)</span>
                           </div>
-                        </div>
-                      </Col>
-                      <Col md={6}>
-                        <div className="performance-detail-card p-3 border rounded h-100">
-                          <h6 className="mb-3">Call Duration Distribution</h6>
-                          <div className="d-flex justify-content-between mb-2">
-                            <span>0-5 minutes</span>
-                            <span className="text-info">32%</span>
-                          </div>
-                          <div className="d-flex justify-content-between mb-2">
-                            <span>5-15 minutes</span>
-                            <span className="text-info">45%</span>
-                          </div>
-                          <div className="d-flex justify-content-between">
-                            <span>15+ minutes</span>
-                            <span className="text-info">23%</span>
+                          <div className="activity-item d-flex justify-content-between">
+                            <span>Current Status</span>
+                            <span className="text-primary">Active</span>
                           </div>
                         </div>
-                      </Col>
-                    </Row>
-                  </div>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div className="time-card p-3 border rounded h-100">
+                        <h6 className="mb-3">Weekly Hours Distribution</h6>
+                        <div className="hours-distribution">
+                          <div className="d-flex justify-content-between mb-2">
+                            <span>Active Work</span>
+                            <span className="text-success">35h 15m (88%)</span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span>Breaks</span>
+                            <span className="text-warning">3h 45m (9%)</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span>Training</span>
+                            <span className="text-info">1h 15m (3%)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
                 </div>
               </Card.Body>
             </Card>
 
-            {/* Call History Card */}
+            {/* Time Clock History Card */}
             <Card className="dashboard-card mb-4">
               <Card.Header>
                 <div className="d-flex justify-content-between align-items-center">
                   <h5 className="mb-0">
-                    <FaHistory className="me-2" /> Call History
+                    <FaHistory className="me-2" /> Time Clock History
                   </h5>
                   <div className="d-flex gap-2">
                     <Form.Control
                       type="search"
-                      placeholder="Search calls..."
+                      placeholder="Search history..."
                       className="form-control-sm"
                       style={{ width: '200px' }}
                     />
@@ -2235,42 +2536,231 @@ export default function Office() {
                 <Table responsive>
                   <thead>
                     <tr>
-                      <th>Date/Time</th>
-                      <th>Phone Number</th>
-                      <th>Duration</th>
-                      <th>Disposition</th>
+                      <th>Date</th>
+                      <th>Clock In</th>
+                      <th>Clock Out</th>
+                      <th>Total Hours</th>
+                      <th>Status</th>
                       <th>Notes</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td>2024-03-15 14:30</td>
-                      <td>(555) 123-4567</td>
-                      <td>8:45</td>
-                      <td><Badge bg="success">Sale</Badge></td>
-                      <td>Customer purchased premium package</td>
+                      <td>2024-03-15</td>
+                      <td>8:00 AM</td>
+                      <td>4:45 PM</td>
+                      <td>7:45</td>
+                      <td><Badge bg="success">Completed</Badge></td>
+                      <td>Regular shift</td>
                     </tr>
                     <tr>
-                      <td>2024-03-15 13:15</td>
-                      <td>(555) 987-6543</td>
-                      <td>12:30</td>
-                      <td><Badge bg="warning">Follow-up</Badge></td>
-                      <td>Customer requested additional information</td>
+                      <td>2024-03-14</td>
+                      <td>8:15 AM</td>
+                      <td>5:00 PM</td>
+                      <td>7:45</td>
+                      <td><Badge bg="success">Completed</Badge></td>
+                      <td>Regular shift</td>
                     </tr>
                     <tr>
-                      <td>2024-03-15 11:45</td>
-                      <td>(555) 456-7890</td>
-                      <td>5:15</td>
-                      <td><Badge bg="secondary">No Answer</Badge></td>
-                      <td>Left voicemail</td>
+                      <td>2024-03-13</td>
+                      <td>8:00 AM</td>
+                      <td>4:30 PM</td>
+                      <td>7:30</td>
+                      <td><Badge bg="warning">Early Leave</Badge></td>
+                      <td>Approved early departure</td>
                     </tr>
                   </tbody>
                 </Table>
               </Card.Body>
             </Card>
 
-            {/* Support & Help Card */}
+            {/* Productivity Analytics Card */}
             <Card className="dashboard-card">
+              <Card.Header>
+                <div className="d-flex justify-content-between align-items-center">
+                  <h5 className="mb-0">
+                    <FaChartLine className="me-2" /> Sales & Performance Analytics
+                  </h5>
+                  <Button variant="outline-primary" size="sm">
+                    <FaChartBar className="me-1" /> Detailed Report
+                  </Button>
+                </div>
+              </Card.Header>
+              <Card.Body>
+                <Row>
+                  <Col md={4}>
+                    <div className="productivity-card p-3 border rounded mb-3">
+                      <h6 className="mb-3">Sales Performance</h6>
+                      <div className="performance-stats">
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Conversion Rate</span>
+                          <span className="text-success">32%</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Avg Sale Value</span>
+                          <span className="text-primary">$450</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Cost per Acquisition</span>
+                          <span className="text-info">$125</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span>Revenue per Call</span>
+                          <span className="text-warning">$145</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                  <Col md={4}>
+                    <div className="productivity-card p-3 border rounded mb-3">
+                      <h6 className="mb-3">Time Metrics</h6>
+                      <div className="time-stats">
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Avg Call Duration</span>
+                          <span className="text-primary">8:30</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Time to Close</span>
+                          <span className="text-success">12:45</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>First Response</span>
+                          <span className="text-info">45s</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span>Talk-to-Listen Ratio</span>
+                          <span className="text-warning">40:60</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                  <Col md={4}>
+                    <div className="productivity-card p-3 border rounded mb-3">
+                      <h6 className="mb-3">Quality Metrics</h6>
+                      <div className="quality-stats">
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Customer Satisfaction</span>
+                          <span className="text-success">4.8/5</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Call Quality Score</span>
+                          <span className="text-primary">92%</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Script Compliance</span>
+                          <span className="text-info">95%</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span>Follow-up Rate</span>
+                          <span className="text-warning">88%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+
+                <Row className="mt-4">
+                  <Col md={6}>
+                    <div className="productivity-card p-3 border rounded mb-3">
+                      <h6 className="mb-3">Sales Funnel Analytics</h6>
+                      <div className="funnel-stats">
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Lead to Opportunity</span>
+                          <span className="text-primary">45%</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Opportunity to Quote</span>
+                          <span className="text-success">65%</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Quote to Close</span>
+                          <span className="text-info">48%</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span>Overall Pipeline Velocity</span>
+                          <span className="text-warning">3.2 days</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                  <Col md={6}>
+                    <div className="productivity-card p-3 border rounded mb-3">
+                      <h6 className="mb-3">Performance Trends</h6>
+                      <div className="trend-stats">
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Peak Performance Hours</span>
+                          <span className="text-success">10AM - 2PM</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Best Performing Day</span>
+                          <span className="text-primary">Wednesday</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                          <span>Avg Deals per Day</span>
+                          <span className="text-info">3.5</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span>Success Rate Trend</span>
+                          <span className="text-warning">↑ 12% MoM</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+
+                <Row className="mt-4">
+                  <Col md={12}>
+                    <div className="productivity-card p-3 border rounded">
+                      <h6 className="mb-3">Real-Time Activity Indicators</h6>
+                      <div className="activity-indicators">
+                        <div className="d-flex flex-wrap gap-3">
+                          <div className="indicator-item p-3 border rounded">
+                            <div className="d-flex align-items-center">
+                              <div className={`status-dot ${isTimedIn ? 'bg-success' : 'bg-secondary'} me-2`}></div>
+                              <div>
+                                <h6 className="mb-1">Time Clock Status</h6>
+                                <p className="mb-0 text-muted">
+                                  {isTimedIn ? `Active since ${timeInStart.toLocaleTimeString()}` : 'Not clocked in'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="indicator-item p-3 border rounded">
+                            <div className="d-flex align-items-center">
+                              <div className={`status-dot ${isDialing ? 'bg-danger' : 'bg-success'} me-2`}></div>
+                              <div>
+                                <h6 className="mb-1">Call Status</h6>
+                                <p className="mb-0 text-muted">
+                                  {isDialing ? `On call (${formatDuration(callDuration)})` : 'Available'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="indicator-item p-3 border rounded">
+                            <div className="d-flex align-items-center">
+                              <div className="status-dot bg-primary me-2"></div>
+                              <div>
+                                <h6 className="mb-1">Today's Progress</h6>
+                                <p className="mb-0 text-muted">
+                                  {`${totalTimeToday > 0 ? formatDuration(totalTimeToday) : '0:00'} / 8:00`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="dashboard-grid">
+            {/* Support & Help Card */}
+            <Card className="dashboard-card mb-4">
               <Card.Header>
                 <div className="d-flex justify-content-between align-items-center">
                   <h5 className="mb-0">
@@ -2358,46 +2848,6 @@ export default function Office() {
                     </div>
                   </div>
                 </div>
-              </Card.Body>
-            </Card>
-          </div>
-        )}
-
-        {activeTab === 'settings' && (
-          <div className="dashboard-grid">
-            {/* General Settings Card */}
-            <Card className="dashboard-card mb-4">
-              <Card.Header>
-                <h5 className="mb-0">
-                  <FaCog className="me-2" /> General Settings
-                </h5>
-              </Card.Header>
-              <Card.Body>
-                <Form>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Language</Form.Label>
-                    <Form.Select defaultValue="en">
-                      <option value="en">English</option>
-                      <option value="es">Spanish</option>
-                      <option value="fr">French</option>
-                    </Form.Select>
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Time Zone</Form.Label>
-                    <Form.Select defaultValue="utc">
-                      <option value="utc">UTC</option>
-                      <option value="est">Eastern Time</option>
-                      <option value="pst">Pacific Time</option>
-                    </Form.Select>
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Check 
-                      type="switch"
-                      id="darkMode"
-                      label="Dark Mode"
-                    />
-                  </Form.Group>
-                </Form>
               </Card.Body>
             </Card>
 
