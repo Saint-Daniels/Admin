@@ -12,9 +12,10 @@ import {
   FaFileExcel, FaFilePowerpoint, FaFilePdf, FaFileWord, FaUserFriends,
   FaSignOutAlt, FaBell, FaUserCircle, FaCamera, FaShieldAlt, FaKey, FaVolumeUp,
   FaDesktop, FaMobile, FaTablet, FaBellSlash, FaUserShield, FaUserCog,
-  FaEdit, FaPalette, FaTrash, FaExchangeAlt
+  FaEdit, FaPalette, FaTrash, FaExchangeAlt, FaCheckCircle, FaSave, FaBackspace
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
+import Chat from '@/components/Chat';
 
 export default function Office() {
   const router = useRouter();
@@ -41,6 +42,9 @@ export default function Office() {
     tablet: true
   });
   
+  // Add hasActivePolicy state
+  const [hasActivePolicy, setHasActivePolicy] = useState(false);
+  
   // Add state for active/focused input field
   const [activeInputField, setActiveInputField] = useState('phoneNumber');
   const [firstName, setFirstName] = useState('');
@@ -53,6 +57,59 @@ export default function Office() {
   const [stateProvince, setStateProvince] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [country, setCountry] = useState('');
+
+  // Add these to the existing state declarations at the top
+  const [messages, setMessages] = useState([]);
+  const [aiInput, setAiInput] = useState('');
+
+  // Add this state near the other state declarations
+  const [showEventsModal, setShowEventsModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDateEvents, setSelectedDateEvents] = useState([]);
+
+  // Add notes state
+  const [notes, setNotes] = useState([
+    {
+      date: '2024-03-15 14:30',
+      type: 'Call',
+      disposition: 'Follow-up Required',
+      agent: 'John Smith',
+      duration: '15 minutes',
+      notes: 'Client expressed interest in premium package. Requested follow-up with detailed pricing.'
+    },
+    {
+      date: '2024-03-15 11:45',
+      type: 'Meeting',
+      disposition: 'Completed',
+      agent: 'Sarah Johnson',
+      duration: '30 minutes',
+      notes: 'Reviewed policy options. Client leaning towards standard coverage.'
+    },
+    {
+      date: '2024-03-14 16:00',
+      type: 'Email',
+      disposition: 'Pending Response',
+      agent: 'Mike Brown',
+      duration: 'N/A',
+      notes: 'Sent follow-up email with requested documentation. Awaiting client response.'
+    }
+  ]);
+
+  // Add these state variables at the top with other state declarations
+  const [hasCoverage, setHasCoverage] = useState(false);
+  const [coverageType, setCoverageType] = useState('');
+  const [savingStatus, setSavingStatus] = useState('');
+
+  // Add these state variables at the top
+  const [isDialing, setIsDialing] = useState(false);
+  const [callStatus, setCallStatus] = useState('idle'); // 'idle', 'dialing', 'connected'
+
+  // Add new state variable for enrollment form phone
+  const [enrollmentPhone, setEnrollmentPhone] = useState('');
+
+  // Add new state variable for disposition
+  const [selectedDisposition, setSelectedDisposition] = useState('');
+  const [showDispositionModal, setShowDispositionModal] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -289,19 +346,22 @@ export default function Office() {
       title: 'Team Standup', 
       time: new Date(new Date().setHours(10, 0)), 
       participants: 5,
-      type: 'video'
-    },
-    { 
-      title: 'Client Meeting', 
-      time: new Date(new Date().setHours(14, 0)), 
-      participants: 3,
-      type: 'in-person'
+      type: 'video',
+      meetLink: 'https://meet.google.com/abc123'
     },
     { 
       title: 'Project Review', 
+      time: new Date(new Date().setHours(14, 0)), 
+      participants: 8,
+      type: 'video',
+      meetLink: 'https://meet.google.com/def456'
+    },
+    { 
+      title: 'Sales Floor', 
       time: new Date(new Date().setHours(16, 0)), 
       participants: 8,
-      type: 'video'
+      type: 'video',
+      meetLink: 'https://meet.google.com/def456'
     }
   ];
 
@@ -349,17 +409,29 @@ export default function Office() {
     { id: 'meeting', label: 'In Meeting', color: 'info', icon: <FaUsers /> }
   ];
 
-  const handleCall = (phoneNumber) => {
-    if (!phoneNumber) return;
-    setIsCallActive(true);
+  // Update the handleCall function
+  const handleCall = () => {
+    if (phoneNumber.length > 0) {
+      setIsDialing(true);
+      setCallStatus('dialing');
+      setCallDuration(0);
+      // Start call duration timer
     const interval = setInterval(() => {
       setCallDuration(prev => prev + 1);
     }, 1000);
+      return () => clearInterval(interval);
+    }
   };
 
+  // Update the handleEndCall function
   const handleEndCall = () => {
-    setIsCallActive(false);
+    if (isDialing) {
+      setShowDispositionModal(true);
+    } else {
+      setIsDialing(false);
+      setCallStatus('idle');
     setCallDuration(0);
+    }
   };
 
   const formatDuration = (seconds) => {
@@ -408,48 +480,27 @@ export default function Office() {
     setSearchQuery(e.target.value);
   };
 
-  // Function to handle input from dialer pad
-  const handleDialerInput = (value) => {
-    switch(activeInputField) {
-      case 'phoneNumber':
-        setPhoneNumber(prev => prev + value);
-        break;
-      case 'firstName':
-        setFirstName(prev => prev + value);
-        break;
-      case 'middleName':
-        setMiddleName(prev => prev + value);
-        break;
-      case 'lastName':
-        setLastName(prev => prev + value);
-        break;
-      case 'email':
-        setEmail(prev => prev + value);
-        break;
-      case 'streetAddress':
-        setStreetAddress(prev => prev + value);
-        break;
-      case 'apartment':
-        setApartment(prev => prev + value);
-        break;
-      case 'city':
-        setCity(prev => prev + value);
-        break;
-      case 'stateProvince':
-        setStateProvince(prev => prev + value);
-        break;
-      case 'zipCode':
-        setZipCode(prev => prev + value);
-        break;
-      case 'country':
-        setCountry(prev => prev + value);
-        break;
-      default:
-        setPhoneNumber(prev => prev + value);
+  // Add this function near the other helper functions
+  const formatPhoneNumber = (value) => {
+    if (!value) return value;
+    const phoneNumber = value.replace(/[^\d]/g, '');
+    const phoneNumberLength = phoneNumber.length;
+    if (phoneNumberLength < 4) return `(${phoneNumber}`;
+    if (phoneNumberLength < 7) return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+  };
+
+  // Update the handleDialerInput function
+  const handleDialerInput = (key) => {
+    if (phoneNumber.replace(/[^\d]/g, '').length < 10) {
+      setPhoneNumber(prev => {
+        const newValue = prev.replace(/[^\d]/g, '') + key;
+        return formatPhoneNumber(newValue);
+      });
     }
   };
-  
-  // Function to handle backspace from dialer pad
+
+  // Function to handle input from dialer pad
   const handleDialerBackspace = () => {
     switch(activeInputField) {
       case 'phoneNumber':
@@ -531,6 +582,54 @@ export default function Office() {
     }
   };
 
+  // Add this handler function before the return statement
+  const handleAiSubmit = () => {
+    if (!aiInput.trim()) return;
+    
+    // Add the user's message to the chat
+    setMessages(prev => [...prev, aiInput]);
+    
+    // Clear the input
+    setAiInput('');
+    
+    // Here you would typically make an API call to get the AI's response
+    // For now, we'll just add a mock response
+    setTimeout(() => {
+      setMessages(prev => [...prev, "I'm here to help! However, I'm currently in demo mode."]);
+    }, 1000);
+  };
+
+  const MeetingTime = ({ meeting, currentTime, timeUntil }) => {
+    return (
+      <p className="text-muted mb-1">
+        <FaClock className="me-1" />
+        {formatTime(meeting.time)} ({timeUntil <= 0 ? 'Started' : `in ${timeUntil} min`})
+      </p>
+    );
+  };
+
+  // Add this function before the return statement
+  const handleSave = async (type) => {
+    setSavingStatus('saving');
+    try {
+      // Here you would typically make an API call to save the data
+      // For now, we'll simulate a save
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update coverage status based on the form data
+      if (coverageType) {
+        setHasCoverage(true);
+      }
+      
+      setSavingStatus('saved');
+      setTimeout(() => setSavingStatus(''), 2000);
+    } catch (error) {
+      console.error('Error saving:', error);
+      setSavingStatus('error');
+      setTimeout(() => setSavingStatus(''), 2000);
+    }
+  };
+
   return (
     <div className="office-container">
       <Container fluid>
@@ -540,6 +639,114 @@ export default function Office() {
             <p className="text-muted">Welcome back! Here's your overview for today</p>
           </div>
           <div className="quick-actions">
+            <div className="status-indicators d-flex align-items-center gap-2 me-3">
+              {/* Phone Status Indicator */}
+              <Button 
+                variant={isDialing ? "danger" : "outline-secondary"} 
+                size="sm"
+                className="d-flex align-items-center gap-2"
+                onClick={() => setActiveTab('dialer')}
+              >
+                <FaPhone className={isDialing ? "pulse" : ""} />
+                <span className="status-text">
+                  {isDialing ? "On Call" : agentDisposition}
+                </span>
+                {isDialing && (
+                  <span className="call-duration">{formatDuration(callDuration)}</span>
+                )}
+              </Button>
+
+              {/* Proctoring Status Indicator */}
+              <Button 
+                variant="outline-secondary" 
+                size="sm"
+                className="d-flex align-items-center gap-2"
+                onClick={() => window.open('https://meet.google.com', '_blank')}
+              >
+                <FaVideo />
+                <span>Proctored</span>
+              </Button>
+            </div>
+
+            {/* Disposition Modal */}
+            <Modal show={showDispositionModal} onHide={() => setShowDispositionModal(false)}>
+              <Modal.Header closeButton>
+                <Modal.Title>Call Disposition Required</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                <Form>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Select Disposition</Form.Label>
+                    <Form.Select 
+                      value={selectedDisposition} 
+                      onChange={(e) => setSelectedDisposition(e.target.value)}
+                    >
+                      <option value="">Select a disposition</option>
+                      <option value="sold">Sold Enrollment</option>
+                      <option value="not_interested">Not Interested</option>
+                      <option value="has_plan">Already Has Plan</option>
+                      <option value="not_qualified">Does Not Qualify</option>
+                      <option value="angry">Angry/Unruly</option>
+                      <option value="thinking">Wants to Think About It</option>
+                      <option value="wrong_number">Wrong Number</option>
+                      <option value="bad_connection">Bad Connection</option>
+                    </Form.Select>
+                  </Form.Group>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Notes</Form.Label>
+                    <Form.Control 
+                      as="textarea" 
+                      rows={3} 
+                      placeholder="Add any additional notes about the call..."
+                      value={dispositionNotes}
+                      onChange={(e) => setDispositionNotes(e.target.value)}
+                    />
+                  </Form.Group>
+                </Form>
+                {selectedDisposition === 'sold' && (
+                  <div className="alert alert-success mt-3">
+                    <FaCheckCircle className="me-2" />
+                    Congratulations! Enrollment successfully recorded.
+                  </div>
+                )}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={() => setShowDispositionModal(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  variant="primary" 
+                  onClick={() => {
+                    if (selectedDisposition) {
+                      // Save the disposition
+                      setNotes(prev => [...prev, {
+                        date: new Date().toLocaleString(),
+                        type: 'Call',
+                        disposition: selectedDisposition,
+                        agent: 'John Doe',
+                        duration: formatDuration(callDuration),
+                        notes: dispositionNotes
+                      }]);
+                      
+                      // End the call and reset call state
+                      setIsDialing(false);
+                      setCallStatus('idle');
+                      setCallDuration(0);
+                      setPhoneNumber('');
+                      
+                      // Close the modal and reset form
+                      setShowDispositionModal(false);
+                      setSelectedDisposition('');
+                      setDispositionNotes('');
+                    }
+                  }}
+                  disabled={!selectedDisposition}
+                >
+                  End Call
+                </Button>
+              </Modal.Footer>
+            </Modal>
+
             <div className="profile-dropdown">
               <Button 
                 variant="outline-primary" 
@@ -610,16 +817,116 @@ export default function Office() {
               <FaCog className="me-2" /> Settings
             </Nav.Link>
           </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>
+              <FaComments className="me-2" /> Chat
+            </Nav.Link>
+          </Nav.Item>
         </Nav>
 
         {activeTab === 'home' && (
           <div className="dashboard-grid">
+            {/* Meetings Section */}
+            <Card className="dashboard-card meetings-section mb-4">
+              <Card.Header className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">
+                  <FaVideo className="me-2" /> Active & Upcoming Meetings
+                </h5>
+                <Button 
+                  variant="primary" 
+                  size="sm"
+                  onClick={() => window.open('https://meet.google.com/new', '_blank')}
+                >
+                  <FaPlus className="me-1" /> New Meeting
+                </Button>
+              </Card.Header>
+              <Card.Body>
+                <div className="meetings-container">
+                  <div className="meetings-list">
+                    {upcomingMeetings.map((meeting, index) => {
+                      const timeUntil = Math.round((meeting.time - currentTime) / (1000 * 60));
+                      const isStartingSoon = timeUntil <= 30 && timeUntil > 0;
+                      const isInProgress = timeUntil <= 0 && timeUntil > -meeting.duration;
+                      
+                      return (
+                        <div key={index} className={`meeting-item ${meeting.type} ${isStartingSoon ? 'starting-soon' : ''} ${isInProgress ? 'in-progress' : ''}`}>
+                          <div className="meeting-content">
+                            <div className="meeting-header">
+                              <h6>{meeting.title}</h6>
+                              {meeting.title !== "Team Standup" && meeting.title !== "Project Review" && meeting.title !== "Sales Floor" && meeting.type === 'video' && (
+                                <Badge bg="primary" className="meeting-type-badge">
+                                  VIDEO
+                                </Badge>
+                              )}
+                              {meeting.title !== "Client Meeting" && meeting.type === 'in-person' && (
+                                <Badge bg="success" className="meeting-type-badge">
+                                  IN-PERSON
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="meeting-details">
+                              <MeetingTime meeting={meeting} currentTime={currentTime} timeUntil={timeUntil} />
+                              <div className="meeting-participants">
+                                <FaUsers className="me-2" />
+                                {meeting.participants} participants
+                              </div>
+                            </div>
+                          </div>
+                          {meeting.title === "Team Standup" || meeting.title === "Project Review" || meeting.title === "Sales Floor" ? (
+                            <Button 
+                              variant="primary"
+                              size="sm"
+                              className="px-3"
+                              onClick={() => {
+                                if (meeting.meetLink) {
+                                  window.open(meeting.meetLink, '_blank');
+                                }
+                              }}
+                            >
+                              Join Now
+                            </Button>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
+
             {/* Calendar Preview Section */}
             <Card className="dashboard-card calendar-preview mb-4">
               <Card.Header className="d-flex justify-content-between align-items-center">
+                <div className="d-flex align-items-center">
                 <h5 className="mb-0">
                   <FaCalendar className="me-2" /> Today's Schedule
                 </h5>
+                  <div className="analog-clock">
+                    <div className="clock-marking marking-12"></div>
+                    <div className="clock-marking marking-3"></div>
+                    <div className="clock-marking marking-6"></div>
+                    <div className="clock-marking marking-9"></div>
+                    <div 
+                      className="clock-hand hour-hand" 
+                      style={{ 
+                        transform: `rotate(${((currentTime.getHours() % 12) * 30) + (currentTime.getMinutes() * 0.5)}deg) translateX(-50%)`
+                      }}
+                    ></div>
+                    <div 
+                      className="clock-hand minute-hand" 
+                      style={{ 
+                        transform: `rotate(${currentTime.getMinutes() * 6}deg) translateX(-50%)`
+                      }}
+                    ></div>
+                    <div 
+                      className="clock-hand second-hand" 
+                      style={{ 
+                        transform: `rotate(${currentTime.getSeconds() * 6}deg) translateX(-50%)`
+                      }}
+                    ></div>
+                    <div className="clock-center"></div>
+                  </div>
+                </div>
                 <Button variant="link" onClick={() => router.push('/office/calendar')}>
                   View Calendar
                 </Button>
@@ -645,52 +952,69 @@ export default function Office() {
                         <div 
                           key={day} 
                           className={`calendar-day ${isToday ? 'today' : ''} ${hasEvents ? 'has-events' : ''}`}
+                          onClick={() => {
+                            if (hasEvents) {
+                              setSelectedDate(day);
+                              setSelectedDateEvents([
+                                {
+                                  title: 'Team Training',
+                                  time: '10:00 AM',
+                                  type: 'Training',
+                                  participants: 12
+                                },
+                                {
+                                  title: 'Department Meeting',
+                                  time: '2:00 PM',
+                                  type: 'Meeting',
+                                  participants: 8
+                                }
+                              ]);
+                              setShowEventsModal(true);
+                            }
+                          }}
+                          style={{ cursor: hasEvents ? 'pointer' : 'default' }}
                         >
                           {day}
-                          {hasEvents && <FaCircle className="event-dot" />}
+                          {hasEvents && <div className="event-indicator"></div>}
                         </div>
                       );
                     })}
                   </div>
-                  <div className="upcoming-events mt-3">
-                    <h6 className="upcoming-title">Upcoming Events</h6>
-                    <div className="preview-list">
-                      {upcomingMeetings.map((meeting, index) => {
-                        const timeUntil = Math.round((meeting.time - currentTime) / (1000 * 60));
-                        const isStartingSoon = timeUntil <= 30 && timeUntil > 0;
-                        
-                        return (
-                          <div key={index} className={`preview-item meeting-item ${meeting.type} ${isStartingSoon ? 'starting-soon' : ''}`}>
-                            <div className="preview-content">
-                              <div className="meeting-header">
-                                <h6>{meeting.title}</h6>
-                                <Badge bg={meeting.type === 'video' ? 'primary' : 'success'}>
-                                  {meeting.type.toUpperCase()}
-                                </Badge>
                               </div>
-                              <p className="text-muted mb-1">
-                                {formatTime(meeting.time)} ({timeUntil <= 0 ? 'Started' : `in ${timeUntil} min`})
-                              </p>
-                              <div className="meeting-participants">
-                                <FaUsers className="me-2" />
-                                {meeting.participants} participants
-                              </div>
-                            </div>
-                            <Button 
-                              variant={isStartingSoon ? "primary" : "outline-primary"} 
-                              size="sm"
-                              className="px-3"
-                            >
-                              Join
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
               </Card.Body>
             </Card>
+
+            {/* Events Modal */}
+            <Modal
+              show={showEventsModal}
+              onHide={() => setShowEventsModal(false)}
+              centered
+            >
+              <Modal.Header closeButton>
+                <Modal.Title>Events for March {selectedDate}, 2025</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                <div className="events-list">
+                  {selectedDateEvents.map((event, index) => (
+                    <div key={index} className="event-item p-3 border rounded mb-2">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 className="mb-1">{event.title}</h6>
+                              <p className="text-muted mb-1">
+                            <FaClock className="me-1" /> {event.time}
+                          </p>
+                          <div className="d-flex align-items-center">
+                            <FaUsers className="me-1" />
+                            <span className="text-muted">{event.participants} participants</span>
+                              </div>
+                            </div>
+                        <Badge bg="info">{event.type}</Badge>
+                          </div>
+                    </div>
+                  ))}
+                  </div>
+              </Modal.Body>
+            </Modal>
 
             {/* Email Preview Section */}
             <Card className="dashboard-card mb-4">
@@ -734,7 +1058,7 @@ export default function Office() {
                     <div className="notes-grid">
                       <div className="note-card p-4 border-0 rounded-3 shadow-sm mb-4" style={{ backgroundColor: '#fff9e6' }}>
                         <div className="d-flex justify-content-between align-items-start mb-3">
-                          <h6 className="mb-0">Meeting Notes</h6>
+                          <h6 className="mb-0">Initial Greeting Script</h6>
                           <div className="note-actions">
                             <div className="dropdown">
                               <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
@@ -750,18 +1074,13 @@ export default function Office() {
                         </div>
                         <p className="text-muted small mb-3">Updated 2h ago</p>
                         <div className="note-content">
-                          <p className="mb-3">Key points from team meeting:</p>
-                          <ul className="mb-0">
-                            <li>Q4 goals review</li>
-                            <li>New product launch timeline</li>
-                            <li>Team training schedule</li>
-                          </ul>
+                          <p className="mb-3">"Hello, this is [Your Name] calling from [Company Name]. How are you today? I'm reaching out to discuss your current insurance coverage and explore how we might be able to help you save money while maintaining or improving your coverage."</p>
                         </div>
                       </div>
 
                       <div className="note-card p-3 border-0 rounded-3 shadow-sm mb-3" style={{ backgroundColor: '#e6f3ff' }}>
                         <div className="d-flex justify-content-between align-items-start mb-2">
-                          <h6 className="mb-0">Follow-up Tasks</h6>
+                          <h6 className="mb-0">Objection Handling Script</h6>
                           <div className="note-actions">
                             <div className="dropdown">
                               <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
@@ -777,24 +1096,13 @@ export default function Office() {
                         </div>
                         <p className="text-muted small mb-2">Updated 1d ago</p>
                         <div className="note-content">
-                          <div className="d-flex align-items-center mb-2">
-                            <Form.Check type="checkbox" id="task1" className="me-2" />
-                            <label htmlFor="task1">Review client proposal</label>
-                          </div>
-                          <div className="d-flex align-items-center mb-2">
-                            <Form.Check type="checkbox" id="task2" className="me-2" />
-                            <label htmlFor="task2">Schedule team training</label>
-                          </div>
-                          <div className="d-flex align-items-center">
-                            <Form.Check type="checkbox" id="task3" className="me-2" />
-                            <label htmlFor="task3">Update sales report</label>
-                          </div>
+                          <p className="mb-2">"I understand your concern about [specific objection]. Many of our clients had similar concerns before they saw how our solutions could help them. Would you be open to a brief conversation about how we've helped others in similar situations?"</p>
                         </div>
                       </div>
 
-                      <div className="note-card p-3 border-0 rounded-3 shadow-sm mb-3" style={{ backgroundColor: '#e6ffe6' }}>
+                      <div className="note-card p-3 border-0 rounded-3 shadow-sm" style={{ backgroundColor: '#e6ffe6' }}>
                         <div className="d-flex justify-content-between align-items-start mb-2">
-                          <h6 className="mb-0">Quick Ideas</h6>
+                          <h6 className="mb-0">Closing Script</h6>
                           <div className="note-actions">
                             <div className="dropdown">
                               <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
@@ -810,216 +1118,9 @@ export default function Office() {
                         </div>
                         <p className="text-muted small mb-2">Updated 3d ago</p>
                         <div className="note-content">
-                          <p className="mb-2">Potential improvements:</p>
-                          <ul className="mb-0">
-                            <li>Add client feedback feature</li>
-                            <li>Streamline onboarding process</li>
-                            <li>Create training documentation</li>
-                          </ul>
+                          <p className="mb-2">"Based on our conversation, I believe we can provide you with [specific benefit]. Would you like to proceed with setting up a time to review the details and get started? I can schedule a follow-up call for [specific time] to go over everything in detail."</p>
                         </div>
                       </div>
-
-                      <div className="note-card p-3 border-0 rounded-3 shadow-sm mb-3" style={{ backgroundColor: '#ffe6e6' }}>
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <h6 className="mb-0">Personal Goals</h6>
-                          <div className="note-actions">
-                            <div className="dropdown">
-                              <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
-                                <FaEllipsisV />
-                              </Button>
-                              <ul className="dropdown-menu">
-                                <li><a className="dropdown-item" href="#"><FaEdit className="me-2" /> Edit Note</a></li>
-                                <li><a className="dropdown-item" href="#"><FaPalette className="me-2" /> Change Color</a></li>
-                                <li><a className="dropdown-item" href="#"><FaTrash className="me-2" /> Delete Note</a></li>
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-muted small mb-2">Updated 1w ago</p>
-                        <div className="note-content">
-                          <p className="mb-2">Q1 Goals:</p>
-                          <ul className="mb-0">
-                            <li>Complete advanced training</li>
-                            <li>Increase client base by 20%</li>
-                            <li>Improve call conversion rate</li>
-                          </ul>
-                        </div>
-                      </div>
-
-                      <div className="note-card p-3 border-0 rounded-3 shadow-sm mb-3" style={{ backgroundColor: '#f3e6ff' }}>
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <h6 className="mb-0">Client Meeting Prep</h6>
-                          <div className="note-actions">
-                            <div className="dropdown">
-                              <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
-                                <FaEllipsisV />
-                              </Button>
-                              <ul className="dropdown-menu">
-                                <li><a className="dropdown-item" href="#"><FaEdit className="me-2" /> Edit Note</a></li>
-                                <li><a className="dropdown-item" href="#"><FaPalette className="me-2" /> Change Color</a></li>
-                                <li><a className="dropdown-item" href="#"><FaTrash className="me-2" /> Delete Note</a></li>
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-muted small mb-2">Updated 2d ago</p>
-                        <div className="note-content">
-                          <p className="mb-2">Meeting with Acme Corp:</p>
-                          <ul className="mb-0">
-                            <li>Review current policy coverage</li>
-                            <li>Discuss renewal options</li>
-                            <li>Address client concerns</li>
-                          </ul>
-                        </div>
-                      </div>
-
-                      <div className="note-card p-3 border-0 rounded-3 shadow-sm mb-3" style={{ backgroundColor: '#e6fff3' }}>
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <h6 className="mb-0">Training Notes</h6>
-                          <div className="note-actions">
-                            <div className="dropdown">
-                              <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
-                                <FaEllipsisV />
-                              </Button>
-                              <ul className="dropdown-menu">
-                                <li><a className="dropdown-item" href="#"><FaEdit className="me-2" /> Edit Note</a></li>
-                                <li><a className="dropdown-item" href="#"><FaPalette className="me-2" /> Change Color</a></li>
-                                <li><a className="dropdown-item" href="#"><FaTrash className="me-2" /> Delete Note</a></li>
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-muted small mb-2">Updated 4d ago</p>
-                        <div className="note-content">
-                          <p className="mb-2">New Product Training:</p>
-                          <ul className="mb-0">
-                            <li>Review product specifications</li>
-                            <li>Practice sales pitch</li>
-                            <li>Study competitor analysis</li>
-                          </ul>
-                        </div>
-                      </div>
-
-                      <div className="note-card p-3 border-0 rounded-3 shadow-sm" style={{ backgroundColor: '#fff3e6' }}>
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <h6 className="mb-0">Weekly Targets</h6>
-                          <div className="note-actions">
-                            <div className="dropdown">
-                              <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
-                                <FaEllipsisV />
-                              </Button>
-                              <ul className="dropdown-menu">
-                                <li><a className="dropdown-item" href="#"><FaEdit className="me-2" /> Edit Note</a></li>
-                                <li><a className="dropdown-item" href="#"><FaPalette className="me-2" /> Change Color</a></li>
-                                <li><a className="dropdown-item" href="#"><FaTrash className="me-2" /> Delete Note</a></li>
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-muted small mb-2">Updated 5d ago</p>
-                        <div className="note-content">
-                          <p className="mb-2">This Week's Goals:</p>
-                          <ul className="mb-0">
-                            <li>Make 50 outbound calls</li>
-                            <li>Close 5 new policies</li>
-                            <li>Schedule 10 follow-ups</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card.Body>
-            </Card>
-
-            {/* Team Chat Section */}
-            <Card className="dashboard-card mb-4">
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaComments className="me-2" /> Team Chat
-                  </h5>
-                  <Button variant="outline-primary" size="sm">
-                    <FaPlus className="me-1" /> New Chat
-                  </Button>
-                </div>
-              </Card.Header>
-              <Card.Body className="p-0">
-                <div className="chat-container">
-                  <div className="chat-sidebar border-end">
-                    <div className="chat-search p-2 border-bottom">
-                      <Form.Control
-                        type="search"
-                        placeholder="Search conversations..."
-                        className="form-control-sm"
-                      />
-                    </div>
-                    <div className="chat-channels p-2">
-                      <div className="d-flex align-items-center mb-2">
-                        <FaHashtag className="me-2 text-muted" />
-                        <span className="text-muted small">Channels</span>
-                      </div>
-                      <div className="chat-channel-list">
-                        {[
-                          { name: 'general', unread: 3 },
-                          { name: 'sales-team', unread: 0 },
-                          { name: 'support', unread: 5 },
-                          { name: 'announcements', unread: 0 }
-                        ].map((channel, index) => (
-                          <div key={index} className="chat-channel-item d-flex align-items-center p-2 rounded">
-                            <FaHashtag className="me-2 text-muted" />
-                            <span className="flex-grow-1">{channel.name}</span>
-                            {channel.unread > 0 && (
-                              <Badge bg="primary" className="rounded-pill">
-                                {channel.unread}
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="chat-main">
-                    <div className="chat-header p-3 border-bottom">
-                      <div className="d-flex align-items-center">
-                        <div className="user-avatar me-2">
-                          <div className="status-indicator online" />
-                        </div>
-                        <div>
-                          <h6 className="mb-0">John Smith</h6>
-                          <small className="text-muted">Online</small>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="chat-messages p-3">
-                      {[
-                        { sender: 'John Smith', message: 'Hey team! How\'s the Q4 report coming along?', time: '10:30 AM' },
-                        { sender: 'You', message: 'Just finished the initial draft. Would you like to review it?', time: '10:31 AM' },
-                        { sender: 'John Smith', message: 'Yes, please share it in the general channel.', time: '10:32 AM' }
-                      ].map((msg, index) => (
-                        <div key={index} className={`chat-message ${msg.sender === 'You' ? 'sent' : 'received'}`}>
-                          <div className="message-content">
-                            {msg.message}
-                          </div>
-                          <div className="message-time small text-muted">
-                            {msg.time}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="chat-input p-3 border-top">
-                      <Form>
-                        <div className="d-flex gap-2">
-                          <Form.Control
-                            type="text"
-                            placeholder="Type a message..."
-                            className="form-control-sm"
-                          />
-                          <Button variant="primary" size="sm">
-                            <FaPaperPlane />
-                          </Button>
-                        </div>
-                      </Form>
                     </div>
                   </div>
                 </div>
@@ -1029,22 +1130,54 @@ export default function Office() {
             {/* AI Assistant Section */}
             <Card className="dashboard-card mb-4">
               <Card.Header>
-                <h5 className="mb-0">
+                  <h5 className="mb-0">
                   <FaRobot className="me-2" /> AI Assistant
-                </h5>
+                  </h5>
               </Card.Header>
               <Card.Body>
                 <div className="ai-assistant-preview">
-                  <p>Ask me anything about your work or schedule</p>
-                  <Form>
-                    <Form.Group className="mb-0">
-                      <Form.Control 
-                        type="text" 
-                        placeholder="Type your question..." 
-                        className="shadow-sm"
-                      />
-                    </Form.Group>
-                  </Form>
+                  <p>Ask me anything about your workspace or get help with tasks</p>
+                  <div className="ai-chat-container">
+                    <div className="ai-message">
+                      <div className="ai-avatar">
+                        <FaRobot />
+                    </div>
+                      <div className="ai-message-content">
+                        Hello! I'm your AI assistant. How can I help you today?
+                      </div>
+                          </div>
+                    {messages.map((message, index) => (
+                      <div key={index} className="ai-message">
+                        <div className="ai-avatar">
+                          <FaRobot />
+                      </div>
+                        <div className="ai-message-content">
+                          {message}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  <div className="input-group">
+                    <input
+                            type="text"
+                      className="form-control"
+                      placeholder="Type your question here..."
+                      value={aiInput}
+                      onChange={(e) => setAiInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAiSubmit();
+                        }
+                      }}
+                    />
+                    <button 
+                      className="btn btn-primary" 
+                      type="button"
+                      onClick={handleAiSubmit}
+                    >
+                            <FaPaperPlane />
+                    </button>
+                        </div>
                 </div>
               </Card.Body>
             </Card>
@@ -1116,627 +1249,448 @@ export default function Office() {
         )}
 
         {activeTab === 'dialer' && (
-          <div className="dialer-layout">
-            {/* Contact Form Section - Now on left side for desktop */}
-            <Card className="dashboard-card contact-form-section">
+          <div className="dialer-page-container">
+            <div className="dialer-content-wrapper d-flex">
+              {/* Left side - Enrollment Application */}
+              <div className="enrollment-section flex-grow-1 me-4">
+                <Card>
               <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaPhone className="me-2" /> Contact Information & Call Details
-                  </h5>
-                  <div className="search-container" style={{ width: '300px' }}>
-                    <Form.Control
-                      type="search"
-                      placeholder="Search clients..."
-                      className="form-control-sm"
-                      value={searchQuery}
-                      onChange={handleSearch}
-                    />
-                  </div>
-                </div>
+                    <h5 className="mb-0">Enrollment Application</h5>
               </Card.Header>
               <Card.Body>
-                {searchQuery && (
-                  <div className="search-results mb-4">
-                    <h6 className="mb-3">Search Results</h6>
-                    <div className="list-group">
-                      {clients
-                        .filter(client => 
-                          client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          client.phone.includes(searchQuery) ||
-                          client.email.toLowerCase().includes(searchQuery.toLowerCase())
-                        )
-                        .map((client, index) => (
-                          <div 
-                            key={index} 
-                            className="list-group-item list-group-item-action"
-                            onClick={() => {
-                              setPhoneNumber(client.phone);
-                              setSelectedClient(client);
-                              setShowClientProfile(true);
-                              setSearchQuery(''); // Clear search after selection
-                            }}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            <div className="d-flex justify-content-between align-items-center">
-                              <div>
-                                <h6 className="mb-1">{client.name}</h6>
-                                <p className="mb-1 text-muted small">{client.company}</p>
-                                <p className="mb-0 text-muted small">{client.phone}</p>
-                              </div>
-                              <div className="text-end">
-                                <Badge bg="primary" className="mb-1">View Profile</Badge>
-                                <p className="mb-0 text-muted small">Click to load details</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-                <div className="contact-form-container">
                 <Form>
-                  <div className="call-actions-container mb-4">
-                    <div className="dialer-actions d-flex justify-content-center gap-2">
-                      <Button
-                        variant={isCallActive ? "danger" : "success"}
-                        className="call-button btn-sm"
-                        onClick={() => isCallActive ? handleEndCall() : handleCall(phoneNumber)}
-                      >
-                        {isCallActive ? (
-                          <>
-                            <FaPhone className="me-1" /> End Call ({formatDuration(callDuration)})
-                          </>
-                        ) : (
-                          <>
-                            <FaPhone className="me-1" /> Start Call
-                          </>
-                        )}
-                      </Button>
-                      <Button variant="primary" className="btn-sm">
-                        <FaSms className="me-1" /> SMS
-                      </Button>
-                      <Button variant="info" className="btn-sm">
-                        <FaEnvelope className="me-1" /> Email
-                      </Button>
-                      <Button variant="warning" className="btn-sm">
-                        <FaCalendar className="me-1" /> Follow-up
-                      </Button>
-                    </div>
-                    {isCallActive && (
-                      <div className="call-status text-center mt-2">
-                        <p className="text-success mb-0">Call in progress...</p>
-                        <small className="text-muted">Duration: {formatDuration(callDuration)}</small>
-                      </div>
-                    )}
-                  </div>
-                  <Row className="mb-4">
+                      {/* Personal Information */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Personal Information</h6>
+                        <Row>
                     <Col md={4}>
                       <Form.Group className="mb-3">
                         <Form.Label>First Name</Form.Label>
-                          <Form.Control 
-                            type="text" 
-                            placeholder="Enter first name" 
-                            className="form-control-lg"
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            onFocus={() => setActiveInputField('firstName')}
-                          />
+                              <Form.Control type="text" placeholder="Enter first name" />
                       </Form.Group>
           </Col>
                     <Col md={4}>
                       <Form.Group className="mb-3">
-                        <Form.Label>Middle Name</Form.Label>
-                          <Form.Control 
-                            type="text" 
-                            placeholder="Enter middle name" 
-                            className="form-control-lg"
-                            value={middleName}
-                            onChange={(e) => setMiddleName(e.target.value)}
-                            onFocus={() => setActiveInputField('middleName')}
-                          />
+                              <Form.Label>Last Name</Form.Label>
+                              <Form.Control type="text" placeholder="Enter last name" />
                       </Form.Group>
                     </Col>
                     <Col md={4}>
                       <Form.Group className="mb-3">
-                        <Form.Label>Last Name</Form.Label>
-                          <Form.Control 
-                            type="text" 
-                            placeholder="Enter last name" 
-                            className="form-control-lg"
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            onFocus={() => setActiveInputField('lastName')}
-                          />
+                              <Form.Label>Date of Birth</Form.Label>
+                              <Form.Control type="date" />
                       </Form.Group>
           </Col>
         </Row>
-                  <Row className="mb-4">
+                        <Row>
                     <Col md={6}>
                       <Form.Group className="mb-3">
-                        <Form.Label>Phone Number</Form.Label>
-                        <Form.Control 
-                          type="tel" 
-                          value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
-                          placeholder="Enter phone number"
-                          className="form-control-lg"
-                            onFocus={() => setActiveInputField('phoneNumber')}
-                        />
+                              <Form.Label>Email</Form.Label>
+                              <Form.Control type="email" placeholder="Enter email" />
                       </Form.Group>
                     </Col>
                     <Col md={6}>
                       <Form.Group className="mb-3">
-                        <Form.Label>Email</Form.Label>
+                              <Form.Label>Phone</Form.Label>
                           <Form.Control 
-                            type="email" 
-                            placeholder="Enter email" 
-                            className="form-control-lg"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            onFocus={() => setActiveInputField('email')}
+                                type="tel"
+                                value={enrollmentPhone}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/[^\d]/g, '');
+                                  if (value.length <= 11) {
+                                    setEnrollmentPhone(value);
+                                  }
+                                }}
+                                placeholder="Enter phone number"
                           />
                       </Form.Group>
                     </Col>
                   </Row>
-                  <Row className="mb-4">
-                    <Col md={12}>
-                      <h6 className="mb-3">Residential Address</h6>
+                      </div>
+
+                      {/* Address Information */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Address</h6>
         <Row>
                         <Col md={12}>
                           <Form.Group className="mb-3">
-                            <Form.Label>Street Number & Name</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="e.g., 123 Main Street" 
-                              className="form-control-lg"
-                                value={streetAddress}
-                                onChange={(e) => setStreetAddress(e.target.value)}
-                                onFocus={() => setActiveInputField('streetAddress')}
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Apartment/Suite/Unit</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="e.g., Apt 4B" 
-                              className="form-control-lg"
-                                value={apartment}
-                                onChange={(e) => setApartment(e.target.value)}
-                                onFocus={() => setActiveInputField('apartment')}
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>City</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="Enter city" 
-                              className="form-control-lg"
-                                value={city}
-                                onChange={(e) => setCity(e.target.value)}
-                                onFocus={() => setActiveInputField('city')}
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>State/Province</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="Enter state/province" 
-                              className="form-control-lg"
-                                value={stateProvince}
-                                onChange={(e) => setStateProvince(e.target.value)}
-                                onFocus={() => setActiveInputField('stateProvince')}
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>ZIP/Postal Code</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="Enter ZIP/postal code" 
-                              className="form-control-lg"
-                                value={zipCode}
-                                onChange={(e) => setZipCode(e.target.value)}
-                                onFocus={() => setActiveInputField('zipCode')}
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Country</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="Enter country" 
-                              className="form-control-lg"
-                                value={country}
-                                onChange={(e) => setCountry(e.target.value)}
-                                onFocus={() => setActiveInputField('country')}
-                            />
+                              <Form.Label>Street Address</Form.Label>
+                              <Form.Control type="text" placeholder="Enter street address" />
                           </Form.Group>
                         </Col>
                       </Row>
-                    </Col>
-                  </Row>
-
-                  <Row className="mb-4">
-                    <Col md={12}>
-                      <h6 className="mb-3">Mailing Address (if different from residential)</h6>
                       <Row>
-                        <Col md={12}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Street Number & Name</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="e.g., 123 Main Street" 
-                              className="form-control-lg"
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Apartment/Suite/Unit</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="e.g., Apt 4B" 
-                              className="form-control-lg"
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
+                          <Col md={4}>
                           <Form.Group className="mb-3">
                             <Form.Label>City</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="Enter city" 
-                              className="form-control-lg"
-                            />
+                              <Form.Control type="text" placeholder="Enter city" />
                           </Form.Group>
                         </Col>
                         <Col md={4}>
                           <Form.Group className="mb-3">
-                            <Form.Label>State/Province</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="Enter state/province" 
-                              className="form-control-lg"
-                            />
+                              <Form.Label>State</Form.Label>
+                              <Form.Select>
+                                <option value="">Select state</option>
+                                <option value="AL">Alabama</option>
+                                <option value="AK">Alaska</option>
+                                {/* Add other states */}
+                              </Form.Select>
                           </Form.Group>
                         </Col>
                         <Col md={4}>
                           <Form.Group className="mb-3">
-                            <Form.Label>ZIP/Postal Code</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="Enter ZIP/postal code" 
-                              className="form-control-lg"
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>Country</Form.Label>
-                            <Form.Control 
-                              type="text" 
-                              placeholder="Enter country" 
-                              className="form-control-lg"
-                            />
+                              <Form.Label>ZIP Code</Form.Label>
+                              <Form.Control type="text" placeholder="Enter ZIP code" />
                           </Form.Group>
                         </Col>
                       </Row>
-                    </Col>
-                  </Row>
+                      </div>
 
-                  <Row className="mb-4">
-                    <Col md={12}>
-                      <Form.Group className="mb-3">
-                        <Form.Check 
-                          type="checkbox"
-                          id="sameAsResidential"
-                          label="Mailing address is the same as residential address"
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-
-                  <Row className="mb-4">
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Occupation</Form.Label>
-                        <Form.Control type="text" placeholder="Enter occupation" className="form-control-lg" />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Annual Income</Form.Label>
-                        <Form.Control type="text" placeholder="Enter annual income" className="form-control-lg" />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-
-                  <Row className="mb-4">
-                    <Col md={12}>
-                      <div className="policy-status-section p-3 border rounded">
-                        <h6 className="mb-3">Policy Information</h6>
+                      {/* Coverage Information */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Coverage Details</h6>
                         <Row>
-                          <Col md={4}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Insurance Provider</Form.Label>
-                              <Form.Select className="form-select-lg">
-                                <option value="">Select Provider</option>
-                                <option value="united">United Healthcare</option>
-                                <option value="bcbs">Blue Cross Blue Shield</option>
-                                <option value="humana">Humana</option>
-                                <option value="aetna">Aetna</option>
+                    <Col md={6}>
+                      <Form.Group className="mb-3">
+                              <Form.Label>Insurance Carrier</Form.Label>
+                              <Form.Select>
+                                <option value="">Select insurance carrier</option>
+                                <option value="united">UnitedHealthcare</option>
                                 <option value="cigna">Cigna</option>
-                                <option value="other">Other</option>
+                                <option value="ambetter">Ambetter</option>
+                                <option value="oscar">Oscar</option>
+                                <option value="aetna">Aetna</option>
+                                <option value="anthem">Anthem Blue Cross</option>
+                                <option value="kaiser">Kaiser Permanente</option>
+                                <option value="humana">Humana</option>
+                                <option value="molina">Molina Healthcare</option>
                               </Form.Select>
-                            </Form.Group>
-                          </Col>
-                          <Col md={4}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Policy Status</Form.Label>
-                              <Form.Select className="form-select-lg">
-                                <option value="">Select Status</option>
-                                <option value="active">Active</option>
-                                <option value="pending">Pending</option>
-                                <option value="expired">Expired</option>
-                                <option value="cancelled">Cancelled</option>
-                                <option value="none">No Policy</option>
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group className="mb-3">
+                              <Form.Label>Plan Type</Form.Label>
+                              <Form.Select>
+                                <option value="">Select plan type</option>
+                                <option value="aca">ACA Health Plan</option>
+                                <option value="medicare">Medicare Plan</option>
                               </Form.Select>
-                            </Form.Group>
-                          </Col>
-                          <Col md={4}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Policy Type</Form.Label>
-                              <Form.Select className="form-select-lg">
-                                <option value="">Select Type</option>
-                                <option value="individual">Individual</option>
-                                <option value="family">Family</option>
-                                <option value="group">Group</option>
-                                <option value="medicare">Medicare</option>
-                                <option value="medicaid">Medicaid</option>
-                              </Form.Select>
-                            </Form.Group>
-                          </Col>
-                        </Row>
+                      </Form.Group>
+                    </Col>
+                  </Row>
                         <Row>
                           <Col md={6}>
                             <Form.Group className="mb-3">
-                              <Form.Label>Policy Number</Form.Label>
-                              <Form.Control 
-                                type="text" 
-                                placeholder="Enter policy number"
-                                className="form-control-lg"
-                              />
+                              <Form.Label>Coverage Type</Form.Label>
+                              <Form.Select>
+                                <option value="">Select coverage type</option>
+                                <option value="aca">ACA Health</option>
+                                <option value="dental">Dental</option>
+                                <option value="vision">Vision</option>
+                              </Form.Select>
                             </Form.Group>
                           </Col>
                           <Col md={6}>
                             <Form.Group className="mb-3">
                               <Form.Label>Effective Date</Form.Label>
-                              <Form.Control 
-                                type="date" 
-                                className="form-control-lg"
-                              />
+                              <Form.Control type="date" />
                             </Form.Group>
                           </Col>
                         </Row>
-                        <div className="policy-status-indicator mt-3">
-                          <div className="d-flex align-items-center">
-                            <div className="status-dot active me-2"></div>
-                            <span className="text-success">Active Policy</span>
-                            <span className="text-muted ms-2">•</span>
-                            <span className="text-muted ms-2">United Healthcare</span>
-                            <span className="text-muted ms-2">•</span>
-                            <span className="text-muted ms-2">Individual Plan</span>
-                          </div>
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
-
-                  <Row className="mb-4">
+                        <Row>
+                          <Col md={12}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Metal Tier</Form.Label>
+                              <div className="d-flex gap-3">
+                                <Form.Check
+                                  type="radio"
+                                  name="metalTier"
+                                  id="bronze"
+                                  label="Bronze"
+                                />
+                                <Form.Check
+                                  type="radio"
+                                  name="metalTier"
+                                  id="silver"
+                                  label="Silver"
+                                />
+                                <Form.Check
+                                  type="radio"
+                                  name="metalTier"
+                                  id="gold"
+                                  label="Gold"
+                                />
+                                <Form.Check
+                                  type="radio"
+                                  name="metalTier"
+                                  id="platinum"
+                                  label="Platinum"
+                                />
+                                <Form.Check
+                                  type="radio"
+                                  name="metalTier"
+                                  id="catastrophic"
+                                  label="Catastrophic"
+                                />
+                              </div>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row>
                     <Col md={12}>
                       <Form.Group className="mb-3">
-                        <Form.Label>Current Call Notes</Form.Label>
+                              <Form.Label>Additional Notes</Form.Label>
                         <Form.Control 
                           as="textarea" 
-                          rows={4}
-                          placeholder="Enter notes for current call..."
-                          className="form-control-lg"
+                                rows={3}
+                                placeholder="Enter any additional notes, health conditions, or special requirements"
                         />
                       </Form.Group>
                     </Col>
                   </Row>
+                      </div>
 
-                  <Row className="mb-4">
-                    <Col md={12}>
-                      <div className="notes-history-section">
-                        <h6 className="mb-3">Notes & Disposition History</h6>
-                        <div className="history-timeline">
-                          {[
-                            {
-                              date: '2024-03-15 14:30',
-                              agent: 'John Smith',
-                              type: 'Outbound Call',
-                              disposition: 'Follow-up Required',
-                              notes: 'Customer requested additional information about policy coverage. Scheduled follow-up for next week.',
-                              duration: '8:45'
-                            },
-                            {
-                              date: '2024-03-10 11:15',
-                              agent: 'Sarah Johnson',
-                              type: 'Inbound Call',
-                              disposition: 'Policy Updated',
-                              notes: 'Updated billing information and discussed policy renewal options.',
-                              duration: '12:30'
-                            },
-                            {
-                              date: '2024-03-05 09:45',
-                              agent: 'Mike Wilson',
-                              type: 'Outbound Call',
-                              disposition: 'Left Voicemail',
-                              notes: 'Attempted to reach customer regarding policy expiration. Left detailed voicemail.',
-                              duration: '2:15'
-                            }
-                          ].map((entry, index) => (
-                            <div key={index} className="history-entry">
-                              <div className="history-entry-header">
-                                <div className="history-entry-meta">
-                                  <span className="history-date">{entry.date}</span>
-                                  <Badge bg="info" className="ms-2">{entry.type}</Badge>
-                                  <Badge 
-                                    bg={
-                                      entry.disposition === 'Follow-up Required' ? 'warning' :
-                                      entry.disposition === 'Policy Updated' ? 'success' :
-                                      'secondary'
-                                    }
-                                    className="ms-2"
-                                  >
-                                    {entry.disposition}
+                      {/* Coverage Status Section */}
+                      <div className="coverage-status-section mb-4 p-3 border rounded">
+                        <h6 className="mb-3">Coverage Status</h6>
+                        <div className="d-flex align-items-center mb-3">
+                          {hasCoverage ? (
+                            <div className="coverage-indicator active">
+                              <Badge bg="success" className="px-3 py-2">
+                                <FaCheckCircle className="me-2" /> Active Coverage
                                   </Badge>
+                              <div className="mt-2 text-success">
+                                <small>Policy is active and in force</small>
                                 </div>
-                                <div className="history-entry-details">
-                                  <span className="agent-name">
-                                    <FaUser className="me-1" /> {entry.agent}
-                                  </span>
-                                  <span className="call-duration">
-                                    <FaClock className="me-1" /> {entry.duration}
-                                  </span>
                                 </div>
+                          ) : savingStatus === 'saving' ? (
+                            <div className="coverage-indicator pending">
+                              <Badge bg="warning" className="px-3 py-2">
+                                <FaClock className="me-2" /> Enrollment Pending
+                              </Badge>
+                              <div className="mt-2 text-warning">
+                                <small>Processing enrollment submission...</small>
                               </div>
-                              <div className="history-entry-notes">
-                                {entry.notes}
                               </div>
+                          ) : (
+                            <div className="coverage-indicator inactive">
+                              <Badge bg="secondary" className="px-3 py-2">
+                                <FaTimes className="me-2" /> No Active Coverage
+                              </Badge>
+                              <div className="mt-2 text-muted">
+                                <small>No current active policies</small>
                             </div>
-                          ))}
+                        </div>
+                          )}
+                      </div>
+                        {hasCoverage && (
+                          <div className="coverage-details">
+                            <div className="mb-2">
+                              <strong>Policy Number:</strong> {coverageType}-2024-{Math.random().toString().slice(2, 8)}
+                </div>
+                            <div className="mb-2">
+                              <strong>Effective Date:</strong> {new Date().toLocaleDateString()}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="d-flex justify-content-between align-items-center">
+                        <Button variant="outline-secondary">
+                          <FaHistory className="me-2" /> View History
+                        </Button>
+                        <div>
+                          <Button variant="secondary" className="me-2" onClick={() => handleSave('draft')}>
+                            <FaSave className="me-2" /> Save
+                          </Button>
+                          <Button variant="primary">
+                            <FaCheckCircle className="me-2" /> Submit Application
+                          </Button>
                         </div>
                       </div>
-                    </Col>
-                  </Row>
-                </Form>
-                </div>
+                    </Form>
               </Card.Body>
             </Card>
+              </div>
 
-            {/* Dialer Pad Section - Now on right side for desktop */}
-            <Card className="dashboard-card dialer-pad-section mb-4">
+              {/* Right side - Dialer Pad */}
+              <div className="dialer-pad-section" style={{ width: '400px' }}>
+                <Card>
               <Card.Header>
                 <div className="d-flex justify-content-between align-items-center">
                   <h5 className="mb-0">
                     <FaPhone className="me-2" /> Dialer Pad
                   </h5>
-                  <div className="disposition-status">
                     <Form.Select
                       value={agentDisposition}
                       onChange={(e) => setAgentDisposition(e.target.value)}
-                      className="form-select-sm disposition-select"
-                    >
-                      {dispositions.map((disp) => (
-                        <option key={disp.id} value={disp.id}>
-                          {disp.label}
-                        </option>
-                      ))}
+                        className="form-select-sm"
+                        style={{ width: '120px' }}
+                      >
+                        <option value="active">Active</option>
+                        <option value="break">On Break</option>
+                        <option value="meeting">In Meeting</option>
                     </Form.Select>
-                    {agentDisposition !== 'active' && (
-                      <Form.Control
-                        type="text"
-                        placeholder="Add notes about your status..."
-                        value={dispositionNotes}
-                        onChange={(e) => setDispositionNotes(e.target.value)}
-                        className="form-control-sm disposition-notes mt-2"
-                      />
-                    )}
-                  </div>
                 </div>
               </Card.Header>
               <Card.Body>
                 <div className="dialer-pad-container">
-                  <div className="dialer-display mb-4">
+                      {/* Dialer Display */}
                     <Form.Control
                       type="tel"
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="Enter phone number"
-                      className="text-center form-control-lg"
-                      onFocus={() => setActiveInputField('phoneNumber')}
-                    />
-                    <div className="active-field-indicator mt-2 text-center">
-                      <small className="text-muted">Typing into: {activeInputField.replace(/([A-Z])/g, ' $1').toLowerCase()}</small>
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^\d]/g, '');
+                          if (value.length <= 10) {
+                            setPhoneNumber(formatPhoneNumber(value));
+                          }
+                        }}
+                        onKeyPress={(e) => {
+                          if (!/[\d]/.test(e.key) || (phoneNumber.replace(/[^\d]/g, '').length >= 10)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        placeholder="(555) 555-5555"
+                        className="text-center form-control-lg mb-3"
+                      />
+                      
+                      {/* Call Status Display */}
+                      {callStatus !== 'idle' && (
+                        <div className="call-status-indicator text-center mb-3">
+                          {callStatus === 'dialing' && (
+                            <Badge bg="warning" className="px-3 py-2">
+                              <FaPhone className="me-2" /> Dialing...
+                            </Badge>
+                          )}
+                          {callStatus === 'connected' && (
+                            <Badge bg="success" className="px-3 py-2">
+                              <FaPhone className="me-2" /> Connected - {formatDuration(callDuration)}
+                            </Badge>
+                          )}
                     </div>
-                  </div>
-                  <div className="dialer-grid-container">
+                      )}
+
+                      {/* Dialer Grid */}
                     <div className="dialer-grid">
                       {[
-                        { num: '1', sub: '' },
-                        { num: '2', sub: 'ABC' },
-                        { num: '3', sub: 'DEF' },
-                        { num: '4', sub: 'GHI' },
-                        { num: '5', sub: 'JKL' },
-                        { num: '6', sub: 'MNO' },
-                        { num: '7', sub: 'PQRS' },
-                        { num: '8', sub: 'TUV' },
-                        { num: '9', sub: 'WXYZ' },
-                        { num: '*', sub: '' },
-                        { num: '0', sub: '+' },
-                        { num: '#', sub: '' }
+                          '1', '2', '3',
+                          '4', '5', '6',
+                          '7', '8', '9',
+                          '*', '0', '#'
                       ].map((key) => (
                         <Button
-                          key={key.num}
+                            key={key}
                           variant="light"
                           className="dialer-key"
-                          onClick={() => handleDialerInput(key.num)}
-                        >
-                          <span className="key-number">{key.num}</span>
-                          {key.sub && <span className="key-letters">{key.sub}</span>}
+                            onClick={() => !isDialing && handleDialerInput(key)}
+                            disabled={isDialing}
+                          >
+                            <div className="key-content">
+                              <span className="key-number">{key}</span>
+                              {key === '2' && <span className="key-letters">ABC</span>}
+                              {key === '3' && <span className="key-letters">DEF</span>}
+                              {key === '4' && <span className="key-letters">GHI</span>}
+                              {key === '5' && <span className="key-letters">JKL</span>}
+                              {key === '6' && <span className="key-letters">MNO</span>}
+                              {key === '7' && <span className="key-letters">PQRS</span>}
+                              {key === '8' && <span className="key-letters">TUV</span>}
+                              {key === '9' && <span className="key-letters">WXYZ</span>}
+                              {key === '0' && <span className="key-letters">+</span>}
+                            </div>
                         </Button>
                       ))}
                     </div>
-                    <div className="dialer-actions mt-4">
+
+                      {/* Call Action Buttons */}
+                      <div className="dialer-actions mt-3 d-flex justify-content-between">
+                        {!isDialing ? (
+                          <>
                       <Button
                         variant="danger"
-                        className="btn-circle"
-                        onClick={() => handleDialerBackspace()}
+                              className="action-button"
+                              onClick={handleDialerClear}
                       >
-                        <FaPhone className="rotate-135" />
+                              <FaTimes />
                       </Button>
                       <Button
                         variant="success"
-                        className="btn-circle"
-                        onClick={() => handleCall(phoneNumber)}
-                        disabled={!phoneNumber || isCallActive}
+                              className="action-button"
+                              onClick={handleCall}
+                              disabled={phoneNumber.length === 0}
                       >
                         <FaPhone />
                       </Button>
                       <Button
                         variant="secondary"
-                        className="btn-circle"
-                        onClick={() => handleDialerClear()}
+                              className="action-button"
+                              onClick={() => setPhoneNumber(prev => prev.slice(0, -1))}
+                              disabled={phoneNumber.length === 0}
                       >
-                        <FaTimes />
+                              <FaBackspace />
                       </Button>
+                          </>
+                        ) : (
+                          <Button 
+                            variant="danger" 
+                            className="action-button mx-auto"
+                            onClick={handleEndCall}
+                          >
+                            <FaPhone className="rotate-135" />
+                          </Button>
+                        )}
                     </div>
-                    {/* Add Transfer Call Button */}
-                    <div className="transfer-call-container mt-3">
+
+                      {/* Transfer Button */}
+                      {isDialing && (
                       <Button 
                         variant="info" 
-                        className="w-100"
-                        onClick={() => alert(`Transferring call to ${phoneNumber}`)}
-                        disabled={!isCallActive}
+                          className="w-100 mt-3 transfer-button"
+                          onClick={() => {/* Handle transfer */}}
                       >
                         <FaExchangeAlt className="me-2" /> Transfer Call
                       </Button>
+                      )}
                     </div>
+                  </Card.Body>
+                </Card>
                   </div>
-                </div>
-              </Card.Body>
-            </Card>
+            </div>
+
+            {/* Notes section below */}
+            <div className="notes-section mt-4">
+              <Card>
+                <Card.Header>
+                  <h5 className="mb-0">Notes & Disposition History</h5>
+                </Card.Header>
+                <Card.Body className="p-0">
+                  <div className="history-timeline" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    {notes.map((note, index) => (
+                      <div key={index} className="history-entry mb-3 p-3 border rounded">
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <div>
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="text-muted">{note.date}</span>
+                              <Badge bg="info">{note.type}</Badge>
+                              <Badge bg={note.disposition === 'Follow-up Required' ? 'warning' : 'secondary'}>
+                                {note.disposition}
+                              </Badge>
+                            </div>
+                            <div className="mt-1">
+                              <small className="text-muted">
+                                <FaUser className="me-1" /> {note.agent} • 
+                                <FaClock className="ms-2 me-1" /> {note.duration}
+                              </small>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="mb-0">{note.notes}</p>
+                      </div>
+                    ))}
+                  </div>
+                </Card.Body>
+              </Card>
+            </div>
           </div>
         )}
 
@@ -2267,6 +2221,20 @@ export default function Office() {
                 </div>
               </Card.Body>
             </Card>
+          </div>
+        )}
+        {activeTab === 'chat' && (
+          <div className="dashboard-card">
+            <Card.Header>
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">
+                  <FaComments className="me-2" /> Chat
+                </h5>
+              </div>
+            </Card.Header>
+            <Card.Body className="p-0">
+              <Chat />
+            </Card.Body>
           </div>
         )}
       </Container>
