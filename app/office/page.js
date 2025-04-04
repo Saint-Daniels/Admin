@@ -12,7 +12,8 @@ import {
   FaFileExcel, FaFilePowerpoint, FaFilePdf, FaFileWord, FaUserFriends,
   FaSignOutAlt, FaBell, FaUserCircle, FaCamera, FaShieldAlt, FaKey, FaVolumeUp,
   FaDesktop, FaMobile, FaTablet, FaBellSlash, FaUserShield, FaUserCog,
-  FaEdit, FaPalette, FaTrash, FaExchangeAlt, FaCheckCircle, FaSave, FaBackspace
+  FaEdit, FaPalette, FaTrash, FaExchangeAlt, FaCheckCircle, FaSave, FaBackspace,
+  FaMicrophone, FaStop
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -110,6 +111,25 @@ export default function Office() {
   // Add new state variable for disposition
   const [selectedDisposition, setSelectedDisposition] = useState('');
   const [showDispositionModal, setShowDispositionModal] = useState(false);
+
+  // Add new state variables for spouse and children
+  const [showSpouseFields, setShowSpouseFields] = useState(false);
+  const [showChildrenFields, setShowChildrenFields] = useState(false);
+  const [children, setChildren] = useState([
+    { firstName: '', lastName: '', dob: '' },
+    { firstName: '', lastName: '', dob: '' }
+  ]);
+
+  // Add new state variable for chat search
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+
+  // Add new state for search results dropdown
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [chatMessage, setChatMessage] = useState('');
 
   useEffect(() => {
     setIsClient(true);
@@ -630,8 +650,192 @@ export default function Office() {
     }
   };
 
+  // Add a function to add a new child
+  const addChild = () => {
+    setChildren(prev => [...prev, { firstName: '', lastName: '', dob: '' }]);
+  };
+
+  // Add a function to remove a child
+  const removeChild = (index) => {
+    setChildren(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Add a function to update a child's information
+  const updateChild = (index, field, value) => {
+    setChildren(prev =>
+      prev.map((child, i) =>
+        i === index ? { ...child, [field]: value } : child
+      )
+    );
+  };
+
+  // Add styles for chat container
+  const chatStyles = {
+    searchContainer: {
+      position: 'relative',
+      marginBottom: '1rem'
+    },
+    searchInput: {
+      paddingLeft: '40px',
+      borderLeft: 'none',
+      width: '100%'
+    },
+    searchIcon: {
+      position: 'absolute',
+      left: '15px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      zIndex: 4,
+      color: '#6c757d'
+    }
+  };
+
+  // Update the chat section with new search functionality
+  const renderChatSection = () => (
+    <div className="dashboard-card">
+      <Card.Header>
+        <div className="d-flex justify-content-between align-items-center">
+          <h5 className="mb-0">
+            <FaComments className="me-2" /> Chat
+          </h5>
+        </div>
+      </Card.Header>
+      <Card.Body className="p-0">
+        <div className="chat-container">
+          <div className="chat-search p-3 border-bottom" style={chatStyles.searchContainer}>
+            <FaSearch style={chatStyles.searchIcon} />
+            <div className="position-relative">
+              <Form.Control
+                type="search"
+                placeholder="Search contacts..."
+                style={chatStyles.searchInput}
+                value={chatSearchQuery}
+                onChange={(e) => {
+                  setChatSearchQuery(e.target.value);
+                  if (e.target.value.length > 0) {
+                    const results = clients.filter(client => 
+                      client.name.toLowerCase().includes(e.target.value.toLowerCase()) ||
+                      client.email.toLowerCase().includes(e.target.value.toLowerCase()) ||
+                      client.phone.includes(e.target.value)
+                    );
+                    setSearchResults(results);
+                    setShowSearchResults(true);
+                  } else {
+                    setShowSearchResults(false);
+                    setSearchResults([]);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay hiding the results to allow for clicking
+                  setTimeout(() => setShowSearchResults(false), 200);
+                }}
+                onFocus={() => {
+                  if (chatSearchQuery.length > 0) {
+                    setShowSearchResults(true);
+                  }
+                }}
+              />
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="search-results-dropdown position-absolute w-100 bg-white border rounded-bottom shadow-sm" 
+                     style={{ top: '100%', zIndex: 1000, maxHeight: '300px', overflowY: 'auto' }}>
+                  {searchResults.map((result, index) => (
+                    <div 
+                      key={index}
+                      className="search-result-item p-2 border-bottom hover-bg-light cursor-pointer"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        setSelectedClient(result);
+                        setShowClientProfile(true);
+                        setShowSearchResults(false);
+                        setChatSearchQuery('');
+                      }}
+                    >
+                      <div className="d-flex align-items-center">
+                        <div className="me-2">
+                          <FaUserCircle size={24} />
+                        </div>
+                        <div>
+                          <div className="fw-bold">{result.name}</div>
+                          <div className="text-muted small">{result.email}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="chat-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            {recentChats.map((chat, index) => (
+              <div 
+                key={index} 
+                className="chat-item p-3 border-bottom hover-bg-light cursor-pointer"
+                onClick={() => handleOpenChat(chat)}
+              >
+                <div className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center">
+                    <div className="chat-avatar me-3">
+                      <FaUserCircle size={32} />
+                    </div>
+                    <div>
+                      <h6 className="mb-1">{chat.name}</h6>
+                      <p className="text-muted small mb-0">{chat.lastMessage}</p>
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-center">
+                    <span className="text-muted small me-2">{chat.time}</span>
+                    {chat.unread && (
+                      <Badge bg="primary" className="me-2">New</Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card.Body>
+    </div>
+  );
+
+  const handleOpenChat = (chat) => {
+    setSelectedChat(chat);
+    setShowChatModal(true);
+  };
+
+  const handleSendMessage = () => {
+    if (chatMessage.trim() && selectedChat) {
+      // Here you would typically send the message to your backend
+      // For now, we'll just update the UI
+      setSelectedChat(prev => ({
+        ...prev,
+        messages: [...(prev.messages || []), {
+          text: chatMessage,
+          sender: 'me',
+          timestamp: new Date().toLocaleTimeString()
+        }]
+      }));
+      setChatMessage('');
+    }
+  };
+
   return (
     <div className="office-container">
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .dialer-content-wrapper {
+            flex-direction: column;
+          }
+          .dialer-pad-section {
+            order: 1;
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 1rem;
+          }
+          .enrollment-section {
+            order: 2;
+          }
+        }
+      `}</style>
       <Container fluid>
         <div className="workspace-header">
           <div className="welcome-section">
@@ -1250,49 +1454,225 @@ export default function Office() {
 
         {activeTab === 'dialer' && (
           <div className="dialer-page-container">
-            <div className="dialer-content-wrapper d-flex">
-              {/* Left side - Enrollment Application */}
-              <div className="enrollment-section flex-grow-1 me-4">
+            <div className="dialer-content-wrapper d-flex flex-column flex-md-row">
+              {/* Dialer Pad - Now first in mobile view */}
+              <div className="dialer-pad-section order-1 order-md-2" style={{ width: '100%', maxWidth: '400px' }}>
                 <Card>
-              <Card.Header>
+                  <Card.Header>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <h5 className="mb-0">
+                        <FaPhone className="me-2" /> Dialer Pad
+                      </h5>
+                      <Form.Select
+                        value={agentDisposition}
+                        onChange={(e) => setAgentDisposition(e.target.value)}
+                        className="form-select-sm"
+                        style={{ width: '120px' }}
+                      >
+                        <option value="active">Active</option>
+                        <option value="break">On Break</option>
+                        <option value="meeting">In Meeting</option>
+                      </Form.Select>
+                    </div>
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="dialer-pad-container">
+                          {/* Dialer Display */}
+                        <Form.Control
+                          type="tel"
+                          value={phoneNumber}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^\d]/g, '');
+                              if (value.length <= 10) {
+                                setPhoneNumber(formatPhoneNumber(value));
+                              }
+                            }}
+                            onKeyPress={(e) => {
+                              if (!/[\d]/.test(e.key) || (phoneNumber.replace(/[^\d]/g, '').length >= 10)) {
+                                e.preventDefault();
+                              }
+                            }}
+                            placeholder="(555) 555-5555"
+                            className="text-center form-control-lg mb-3"
+                          />
+                          
+                          {/* Call Status Display */}
+                          {callStatus !== 'idle' && (
+                            <div className="call-status-indicator text-center mb-3">
+                              {callStatus === 'dialing' && (
+                                <Badge bg="warning" className="px-3 py-2">
+                                  <FaPhone className="me-2" /> Dialing...
+                                </Badge>
+                              )}
+                              {callStatus === 'connected' && (
+                                <Badge bg="success" className="px-3 py-2">
+                                  <FaPhone className="me-2" /> Connected - {formatDuration(callDuration)}
+                                </Badge>
+                              )}
+                    </div>
+                          )}
+
+                          {/* Dialer Grid */}
+                        <div className="dialer-grid">
+                          {[
+                              '1', '2', '3',
+                              '4', '5', '6',
+                              '7', '8', '9',
+                              '*', '0', '#'
+                          ].map((key) => (
+                            <Button
+                                key={key}
+                              variant="light"
+                              className="dialer-key"
+                                onClick={() => !isDialing && handleDialerInput(key)}
+                                disabled={isDialing}
+                              >
+                                <div className="key-content">
+                                  <span className="key-number">{key}</span>
+                                  {key === '2' && <span className="key-letters">ABC</span>}
+                                  {key === '3' && <span className="key-letters">DEF</span>}
+                                  {key === '4' && <span className="key-letters">GHI</span>}
+                                  {key === '5' && <span className="key-letters">JKL</span>}
+                                  {key === '6' && <span className="key-letters">MNO</span>}
+                                  {key === '7' && <span className="key-letters">PQRS</span>}
+                                  {key === '8' && <span className="key-letters">TUV</span>}
+                                  {key === '9' && <span className="key-letters">WXYZ</span>}
+                                  {key === '0' && <span className="key-letters">+</span>}
+                                </div>
+                            </Button>
+                          ))}
+                        </div>
+
+                          {/* Call Action Buttons */}
+                          <div className="dialer-actions mt-3 d-flex justify-content-between">
+                            {!isDialing ? (
+                              <>
+                          <Button
+                            variant="danger"
+                                  className="action-button"
+                                  onClick={handleDialerClear}
+                          >
+                                  <FaTimes />
+                          </Button>
+                          <Button
+                            variant="success"
+                                  className="action-button"
+                                  onClick={handleCall}
+                                  disabled={phoneNumber.length === 0}
+                          >
+                            <FaPhone />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                                  className="action-button"
+                                  onClick={() => setPhoneNumber(prev => prev.slice(0, -1))}
+                                  disabled={phoneNumber.length === 0}
+                          >
+                                  <FaBackspace />
+                          </Button>
+                              </>
+                            ) : (
+                              <Button 
+                                variant="danger" 
+                                className="action-button mx-auto"
+                                onClick={handleEndCall}
+                              >
+                                <FaPhone className="rotate-135" />
+                              </Button>
+                            )}
+                        </div>
+
+                          {/* Transfer Button */}
+                          {isDialing && (
+                          <Button 
+                            variant="info" 
+                              className="w-100 mt-3 transfer-button"
+                              onClick={() => {/* Handle transfer */}}
+                          >
+                            <FaExchangeAlt className="me-2" /> Transfer Call
+                          </Button>
+                          )}
+                        </div>
+                      </Card.Body>
+                    </Card>
+                      </div>
+
+              {/* Enrollment Application - Now second in mobile view */}
+              <div className="enrollment-section order-2 order-md-1">
+                <Card>
+                  <Card.Header>
                     <h5 className="mb-0">Enrollment Application</h5>
-              </Card.Header>
-              <Card.Body>
-                <Form>
+                  </Card.Header>
+                  <Card.Body>
+                    {/* Search Bar */}
+                    <div className="mb-4">
+                      <Form.Group>
+                        <div className="input-group">
+                          <Form.Control
+                            type="text"
+                            placeholder="Search applicants by name, phone, or email..."
+                            className="form-control-lg"
+                          />
+                          <Button variant="primary">
+                            <FaSearch className="me-2" />
+                            Search
+                          </Button>
+                        </div>
+                      </Form.Group>
+                    </div>
+
+                    {/* Enrollment Form */}
+                    <Form>
+                      {/* Lead Source Indicator */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Lead Source</h6>
+                        <div className="lead-source-indicator p-3 border rounded">
+                          <div className="d-flex align-items-center">
+                            <div className="lead-source-icon me-3">
+                              <FaUserPlus size={24} className="text-primary" />
+                            </div>
+                            <div>
+                              <h6 className="mb-1">Direct Lead</h6>
+                              <p className="text-muted mb-0">Added through direct contact</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Personal Information */}
                       <div className="section mb-4">
                         <h6 className="mb-3">Personal Information</h6>
                         <Row>
-                    <Col md={4}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>First Name</Form.Label>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>First Name</Form.Label>
                               <Form.Control type="text" placeholder="Enter first name" />
-                      </Form.Group>
-          </Col>
-                    <Col md={4}>
-                      <Form.Group className="mb-3">
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
                               <Form.Label>Last Name</Form.Label>
                               <Form.Control type="text" placeholder="Enter last name" />
-                      </Form.Group>
-                    </Col>
-                    <Col md={4}>
-                      <Form.Group className="mb-3">
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
                               <Form.Label>Date of Birth</Form.Label>
                               <Form.Control type="date" />
-                      </Form.Group>
-          </Col>
-        </Row>
+                            </Form.Group>
+                          </Col>
+                        </Row>
                         <Row>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
                               <Form.Label>Email</Form.Label>
                               <Form.Control type="email" placeholder="Enter email" />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
                               <Form.Label>Phone</Form.Label>
-                          <Form.Control 
+                              <Form.Control 
                                 type="tel"
                                 value={enrollmentPhone}
                                 onChange={(e) => {
@@ -1302,59 +1682,289 @@ export default function Office() {
                                   }
                                 }}
                                 placeholder="Enter phone number"
-                          />
-                      </Form.Group>
-                    </Col>
-                  </Row>
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
                       </div>
 
-                      {/* Address Information */}
+                      {/* Tax Filing Status */}
                       <div className="section mb-4">
-                        <h6 className="mb-3">Address</h6>
-        <Row>
-                        <Col md={12}>
-                          <Form.Group className="mb-3">
+                        <h6 className="mb-3">Tax Filing Status</h6>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Tax Filing Status</Form.Label>
+                              <Form.Select>
+                                <option value="">Select filing status</option>
+                                <option value="single">Single</option>
+                                <option value="head_of_household">Head of Household</option>
+                                <option value="married_jointly">Married Filing Jointly</option>
+                                <option value="married_separately">Married Filing Separately</option>
+                              </Form.Select>
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Marital Status</Form.Label>
+                              <Form.Select>
+                                <option value="">Select marital status</option>
+                                <option value="single">Single</option>
+                                <option value="married">Married</option>
+                                <option value="divorced">Divorced</option>
+                                <option value="widowed">Widowed</option>
+                              </Form.Select>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </div>
+
+                      {/* Spouse Information */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Spouse Information</h6>
+                        <Form.Check
+                          type="checkbox"
+                          label="I have a spouse to include in the application"
+                          className="mb-3"
+                          onChange={(e) => setShowSpouseFields(e.target.checked)}
+                        />
+                        {showSpouseFields && (
+                          <div className="spouse-fields p-3 border rounded">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h6 className="mb-0">Spouse Details</h6>
+                              <Button 
+                                variant="outline-danger" 
+                                size="sm"
+                                onClick={() => setShowSpouseFields(false)}
+                              >
+                                <FaTrash className="me-2" /> Remove
+                              </Button>
+                            </div>
+                            <Row>
+                              <Col md={4}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Spouse First Name</Form.Label>
+                                  <Form.Control type="text" placeholder="Enter spouse's first name" />
+                                </Form.Group>
+                              </Col>
+                              <Col md={4}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Spouse Last Name</Form.Label>
+                                  <Form.Control type="text" placeholder="Enter spouse's last name" />
+                                </Form.Group>
+                              </Col>
+                              <Col md={4}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Spouse Date of Birth</Form.Label>
+                                  <Form.Control type="date" />
+                                </Form.Group>
+                              </Col>
+                            </Row>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Children Information */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Children Information</h6>
+                        <Form.Check
+                          type="checkbox"
+                          label="I have children to include in the application"
+                          className="mb-3"
+                          onChange={(e) => setShowChildrenFields(e.target.checked)}
+                        />
+                        {showChildrenFields && (
+                          <div className="children-fields p-3 border rounded">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h6 className="mb-0">Children Details</h6>
+                              <Button 
+                                variant="outline-danger" 
+                                size="sm"
+                                onClick={() => setShowChildrenFields(false)}
+                              >
+                                <FaTrash className="me-2" /> Remove
+                              </Button>
+                            </div>
+                            <div className="children-list">
+                              {children.map((child, index) => (
+                                <div key={index} className="child-entry p-3 border rounded mb-3">
+                                  <div className="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 className="mb-0">Child {index + 1}</h6>
+                                    <Button 
+                                      variant="outline-danger" 
+                                      size="sm"
+                                      onClick={() => removeChild(index)}
+                                    >
+                                      <FaTrash />
+                                    </Button>
+                                  </div>
+                                  <Row>
+                                    <Col md={4}>
+                                      <Form.Group className="mb-3">
+                                        <Form.Label>First Name</Form.Label>
+                                        <Form.Control 
+                                          type="text" 
+                                          placeholder="Enter child's first name"
+                                          value={child.firstName}
+                                          onChange={(e) => updateChild(index, 'firstName', e.target.value)}
+                                        />
+                                      </Form.Group>
+                                    </Col>
+                                    <Col md={4}>
+                                      <Form.Group className="mb-3">
+                                        <Form.Label>Last Name</Form.Label>
+                                        <Form.Control 
+                                          type="text" 
+                                          placeholder="Enter child's last name"
+                                          value={child.lastName}
+                                          onChange={(e) => updateChild(index, 'lastName', e.target.value)}
+                                        />
+                                      </Form.Group>
+                                    </Col>
+                                    <Col md={4}>
+                                      <Form.Group className="mb-3">
+                                        <Form.Label>Date of Birth</Form.Label>
+                                        <Form.Control 
+                                          type="date"
+                                          value={child.dob}
+                                          onChange={(e) => updateChild(index, 'dob', e.target.value)}
+                                        />
+                                      </Form.Group>
+                                    </Col>
+                                  </Row>
+                                </div>
+                              ))}
+                            </div>
+                            <Button 
+                              variant="outline-primary" 
+                              size="sm" 
+                              className="mt-2"
+                              onClick={addChild}
+                            >
+                              <FaPlus className="me-2" /> Add Child
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Residential Address */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Residential Address</h6>
+                        <Row>
+                          <Col md={12}>
+                            <Form.Group className="mb-3">
                               <Form.Label>Street Address</Form.Label>
                               <Form.Control type="text" placeholder="Enter street address" />
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      <Row>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row>
                           <Col md={4}>
-                          <Form.Group className="mb-3">
-                            <Form.Label>City</Form.Label>
+                            <Form.Group className="mb-3">
+                              <Form.Label>City</Form.Label>
                               <Form.Control type="text" placeholder="Enter city" />
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group className="mb-3">
-                              <Form.Label>State</Form.Label>
-                              <Form.Select>
-                                <option value="">Select state</option>
-                                <option value="AL">Alabama</option>
-                                <option value="AK">Alaska</option>
-                                {/* Add other states */}
-                              </Form.Select>
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group className="mb-3">
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>State/Province</Form.Label>
+                              <Form.Control type="text" placeholder="Enter state/province" />
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
                               <Form.Label>ZIP Code</Form.Label>
                               <Form.Control type="text" placeholder="Enter ZIP code" />
-                          </Form.Group>
-                        </Col>
-                      </Row>
+                            </Form.Group>
+                          </Col>
+                        </Row>
                       </div>
 
-                      {/* Coverage Information */}
+                      {/* Mailing Address */}
                       <div className="section mb-4">
-                        <h6 className="mb-3">Coverage Details</h6>
+                        <h6 className="mb-3">Mailing Address</h6>
+                        <Form.Check
+                          type="checkbox"
+                          label="Same as residential address"
+                          className="mb-3"
+                        />
                         <Row>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                              <Form.Label>Insurance Carrier</Form.Label>
+                          <Col md={12}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Street Address</Form.Label>
+                              <Form.Control type="text" placeholder="Enter mailing address" />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>City</Form.Label>
+                              <Form.Control type="text" placeholder="Enter city" />
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>State/Province</Form.Label>
+                              <Form.Control type="text" placeholder="Enter state/province" />
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>ZIP Code</Form.Label>
+                              <Form.Control type="text" placeholder="Enter ZIP code" />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </div>
+
+                      {/* Country of Origin */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Country of Origin</h6>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Country of Origin</Form.Label>
+                              <Form.Control type="text" placeholder="Enter country of origin" />
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>State/Province of Origin</Form.Label>
+                              <Form.Control type="text" placeholder="Enter state/province of origin" />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </div>
+
+                      {/* Employment Information */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Employment Information</h6>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Occupation</Form.Label>
+                              <Form.Control type="text" placeholder="Enter occupation" />
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Expected Annual Salary</Form.Label>
+                              <Form.Control type="number" placeholder="Enter expected annual salary" />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </div>
+
+                      {/* Health Insurance Coverage */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Health Insurance Coverage</h6>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Insurance Provider</Form.Label>
                               <Form.Select>
-                                <option value="">Select insurance carrier</option>
+                                <option value="">Select insurance provider</option>
                                 <option value="united">UnitedHealthcare</option>
                                 <option value="cigna">Cigna</option>
                                 <option value="ambetter">Ambetter</option>
@@ -1365,21 +1975,29 @@ export default function Office() {
                                 <option value="humana">Humana</option>
                                 <option value="molina">Molina Healthcare</option>
                               </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                              <Form.Label>Plan Type</Form.Label>
-                              <Form.Select>
-                                <option value="">Select plan type</option>
-                                <option value="aca">ACA Health Plan</option>
-                                <option value="medicare">Medicare Plan</option>
-                              </Form.Select>
-                      </Form.Group>
-                    </Col>
-                  </Row>
-                        <Row>
+                            </Form.Group>
+                          </Col>
                           <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Plan Name</Form.Label>
+                              <Form.Control type="text" placeholder="Enter plan name" />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Deductible</Form.Label>
+                              <Form.Control type="number" placeholder="Enter deductible amount" />
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Premium</Form.Label>
+                              <Form.Control type="number" placeholder="Enter premium amount" />
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>Coverage Type</Form.Label>
                               <Form.Select>
@@ -1390,109 +2008,36 @@ export default function Office() {
                               </Form.Select>
                             </Form.Group>
                           </Col>
-                          <Col md={6}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Effective Date</Form.Label>
-                              <Form.Control type="date" />
-                            </Form.Group>
-                          </Col>
                         </Row>
-                        <Row>
-                          <Col md={12}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Metal Tier</Form.Label>
-                              <div className="d-flex gap-3">
-                                <Form.Check
-                                  type="radio"
-                                  name="metalTier"
-                                  id="bronze"
-                                  label="Bronze"
-                                />
-                                <Form.Check
-                                  type="radio"
-                                  name="metalTier"
-                                  id="silver"
-                                  label="Silver"
-                                />
-                                <Form.Check
-                                  type="radio"
-                                  name="metalTier"
-                                  id="gold"
-                                  label="Gold"
-                                />
-                                <Form.Check
-                                  type="radio"
-                                  name="metalTier"
-                                  id="platinum"
-                                  label="Platinum"
-                                />
-                                <Form.Check
-                                  type="radio"
-                                  name="metalTier"
-                                  id="catastrophic"
-                                  label="Catastrophic"
-                                />
-                              </div>
-                            </Form.Group>
-                          </Col>
-                        </Row>
-                        <Row>
-                    <Col md={12}>
-                      <Form.Group className="mb-3">
-                              <Form.Label>Additional Notes</Form.Label>
-                        <Form.Control 
-                          as="textarea" 
-                                rows={3}
-                                placeholder="Enter any additional notes, health conditions, or special requirements"
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
                       </div>
 
-                      {/* Coverage Status Section */}
-                      <div className="coverage-status-section mb-4 p-3 border rounded">
-                        <h6 className="mb-3">Coverage Status</h6>
-                        <div className="d-flex align-items-center mb-3">
-                          {hasCoverage ? (
-                            <div className="coverage-indicator active">
-                              <Badge bg="success" className="px-3 py-2">
-                                <FaCheckCircle className="me-2" /> Active Coverage
-                                  </Badge>
-                              <div className="mt-2 text-success">
-                                <small>Policy is active and in force</small>
-                                </div>
-                                </div>
-                          ) : savingStatus === 'saving' ? (
-                            <div className="coverage-indicator pending">
-                              <Badge bg="warning" className="px-3 py-2">
-                                <FaClock className="me-2" /> Enrollment Pending
-                              </Badge>
-                              <div className="mt-2 text-warning">
-                                <small>Processing enrollment submission...</small>
-                              </div>
-                              </div>
-                          ) : (
-                            <div className="coverage-indicator inactive">
-                              <Badge bg="secondary" className="px-3 py-2">
-                                <FaTimes className="me-2" /> No Active Coverage
-                              </Badge>
-                              <div className="mt-2 text-muted">
-                                <small>No current active policies</small>
+                      {/* Recording Verification */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Recording Verification</h6>
+                        <div className="recording-status p-3 border rounded mb-3">
+                          <div className="d-flex align-items-center justify-content-between">
+                            <div>
+                              <h6 className="mb-1">Call Recording Status</h6>
+                              <p className="text-muted mb-0">Recording will be used for verification purposes</p>
                             </div>
-                        </div>
-                          )}
-                      </div>
-                        {hasCoverage && (
-                          <div className="coverage-details">
-                            <div className="mb-2">
-                              <strong>Policy Number:</strong> {coverageType}-2024-{Math.random().toString().slice(2, 8)}
-                </div>
-                            <div className="mb-2">
-                              <strong>Effective Date:</strong> {new Date().toLocaleDateString()}
+                            <div className="recording-controls">
+                              <Button variant="outline-primary" className="me-2">
+                                <FaMicrophone className="me-2" /> Start Recording
+                              </Button>
+                              <Button variant="outline-danger">
+                                <FaStop className="me-2" /> Stop Recording
+                              </Button>
                             </div>
                           </div>
-                        )}
+                          <div className="recording-timer mt-3">
+                            <span className="text-muted">Recording Duration: 00:00</span>
+                          </div>
+                        </div>
+                        <Form.Check
+                          type="checkbox"
+                          label="I confirm that the enrollment conversation has been recorded and verified"
+                          className="mb-3"
+                        />
                       </div>
 
                       {/* Action Buttons */}
@@ -1510,151 +2055,9 @@ export default function Office() {
                         </div>
                       </div>
                     </Form>
-              </Card.Body>
-            </Card>
-              </div>
-
-              {/* Right side - Dialer Pad */}
-              <div className="dialer-pad-section" style={{ width: '400px' }}>
-                <Card>
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaPhone className="me-2" /> Dialer Pad
-                  </h5>
-                    <Form.Select
-                      value={agentDisposition}
-                      onChange={(e) => setAgentDisposition(e.target.value)}
-                        className="form-select-sm"
-                        style={{ width: '120px' }}
-                      >
-                        <option value="active">Active</option>
-                        <option value="break">On Break</option>
-                        <option value="meeting">In Meeting</option>
-                    </Form.Select>
-                </div>
-              </Card.Header>
-              <Card.Body>
-                <div className="dialer-pad-container">
-                      {/* Dialer Display */}
-                    <Form.Control
-                      type="tel"
-                      value={phoneNumber}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^\d]/g, '');
-                          if (value.length <= 10) {
-                            setPhoneNumber(formatPhoneNumber(value));
-                          }
-                        }}
-                        onKeyPress={(e) => {
-                          if (!/[\d]/.test(e.key) || (phoneNumber.replace(/[^\d]/g, '').length >= 10)) {
-                            e.preventDefault();
-                          }
-                        }}
-                        placeholder="(555) 555-5555"
-                        className="text-center form-control-lg mb-3"
-                      />
-                      
-                      {/* Call Status Display */}
-                      {callStatus !== 'idle' && (
-                        <div className="call-status-indicator text-center mb-3">
-                          {callStatus === 'dialing' && (
-                            <Badge bg="warning" className="px-3 py-2">
-                              <FaPhone className="me-2" /> Dialing...
-                            </Badge>
-                          )}
-                          {callStatus === 'connected' && (
-                            <Badge bg="success" className="px-3 py-2">
-                              <FaPhone className="me-2" /> Connected - {formatDuration(callDuration)}
-                            </Badge>
-                          )}
-                    </div>
-                      )}
-
-                      {/* Dialer Grid */}
-                    <div className="dialer-grid">
-                      {[
-                          '1', '2', '3',
-                          '4', '5', '6',
-                          '7', '8', '9',
-                          '*', '0', '#'
-                      ].map((key) => (
-                        <Button
-                            key={key}
-                          variant="light"
-                          className="dialer-key"
-                            onClick={() => !isDialing && handleDialerInput(key)}
-                            disabled={isDialing}
-                          >
-                            <div className="key-content">
-                              <span className="key-number">{key}</span>
-                              {key === '2' && <span className="key-letters">ABC</span>}
-                              {key === '3' && <span className="key-letters">DEF</span>}
-                              {key === '4' && <span className="key-letters">GHI</span>}
-                              {key === '5' && <span className="key-letters">JKL</span>}
-                              {key === '6' && <span className="key-letters">MNO</span>}
-                              {key === '7' && <span className="key-letters">PQRS</span>}
-                              {key === '8' && <span className="key-letters">TUV</span>}
-                              {key === '9' && <span className="key-letters">WXYZ</span>}
-                              {key === '0' && <span className="key-letters">+</span>}
-                            </div>
-                        </Button>
-                      ))}
-                    </div>
-
-                      {/* Call Action Buttons */}
-                      <div className="dialer-actions mt-3 d-flex justify-content-between">
-                        {!isDialing ? (
-                          <>
-                      <Button
-                        variant="danger"
-                              className="action-button"
-                              onClick={handleDialerClear}
-                      >
-                              <FaTimes />
-                      </Button>
-                      <Button
-                        variant="success"
-                              className="action-button"
-                              onClick={handleCall}
-                              disabled={phoneNumber.length === 0}
-                      >
-                        <FaPhone />
-                      </Button>
-                      <Button
-                        variant="secondary"
-                              className="action-button"
-                              onClick={() => setPhoneNumber(prev => prev.slice(0, -1))}
-                              disabled={phoneNumber.length === 0}
-                      >
-                              <FaBackspace />
-                      </Button>
-                          </>
-                        ) : (
-                          <Button 
-                            variant="danger" 
-                            className="action-button mx-auto"
-                            onClick={handleEndCall}
-                          >
-                            <FaPhone className="rotate-135" />
-                          </Button>
-                        )}
-                    </div>
-
-                      {/* Transfer Button */}
-                      {isDialing && (
-                      <Button 
-                        variant="info" 
-                          className="w-100 mt-3 transfer-button"
-                          onClick={() => {/* Handle transfer */}}
-                      >
-                        <FaExchangeAlt className="me-2" /> Transfer Call
-                      </Button>
-                      )}
-                    </div>
                   </Card.Body>
                 </Card>
-                  </div>
+              </div>
             </div>
 
             {/* Notes section below */}
@@ -1718,85 +2121,93 @@ export default function Office() {
                 </div>
               </Card.Header>
               <Card.Body>
-                <Row className="g-4">
-                  <Col md={3}>
-                    <div className="stat-card bg-primary bg-opacity-10 p-3 rounded">
-                      <h6 className="text-primary">Total Calls</h6>
-                      <h3>124</h3>
-                      <div className="d-flex align-items-center">
-                        <small className="text-success me-2">+12% this week</small>
-                        <small className="text-muted">vs last week</small>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={3}>
-                    <div className="stat-card bg-success bg-opacity-10 p-3 rounded">
-                      <h6 className="text-success">Total Conversions</h6>
-                      <h3>84</h3>
-                      <div className="d-flex align-items-center">
-                        <small className="text-success me-2">+8% this week</small>
-                        <small className="text-muted">vs last week</small>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={3}>
-                    <div className="stat-card bg-info bg-opacity-10 p-3 rounded">
-                      <h6 className="text-info">Conversion Rate</h6>
-                      <h3>68%</h3>
-                      <div className="d-flex align-items-center">
-                        <small className="text-success me-2">+5% this week</small>
-                        <small className="text-muted">vs last week</small>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={3}>
-                    <div className="stat-card bg-warning bg-opacity-10 p-3 rounded">
-                      <h6 className="text-warning">Avg Call Duration</h6>
-                      <h3>8:30</h3>
-                      <div className="d-flex align-items-center">
-                        <small className="text-danger me-2">-2% this week</small>
-                        <small className="text-muted">vs last week</small>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
+                <div className="performance-metrics-container" style={{ overflowX: 'auto' }}>
+                  <div style={{ minWidth: '800px' }}>
+                    <Row className="g-4">
+                      <Col md={3}>
+                        <div className="stat-card bg-primary bg-opacity-10 p-3 rounded h-100">
+                          <h6 className="text-primary">Total Calls</h6>
+                          <h3>124</h3>
+                          <div className="d-flex align-items-center">
+                            <small className="text-success me-2">+12% this week</small>
+                            <small className="text-muted">vs last week</small>
+                          </div>
+                        </div>
+                      </Col>
+                      <Col md={3}>
+                        <div className="stat-card bg-success bg-opacity-10 p-3 rounded h-100">
+                          <h6 className="text-success">Total Conversions</h6>
+                          <h3>84</h3>
+                          <div className="d-flex align-items-center">
+                            <small className="text-success me-2">+8% this week</small>
+                            <small className="text-muted">vs last week</small>
+                          </div>
+                        </div>
+                      </Col>
+                      <Col md={3}>
+                        <div className="stat-card bg-info bg-opacity-10 p-3 rounded h-100">
+                          <h6 className="text-info">Conversion Rate</h6>
+                          <h3>68%</h3>
+                          <div className="d-flex align-items-center">
+                            <small className="text-success me-2">+5% this week</small>
+                            <small className="text-muted">vs last week</small>
+                          </div>
+                        </div>
+                      </Col>
+                      <Col md={3}>
+                        <div className="stat-card bg-warning bg-opacity-10 p-3 rounded h-100">
+                          <h6 className="text-warning">Avg Call Duration</h6>
+                          <h3>8:30</h3>
+                          <div className="d-flex align-items-center">
+                            <small className="text-danger me-2">-2% this week</small>
+                            <small className="text-muted">vs last week</small>
+                          </div>
+                        </div>
+                      </Col>
+                    </Row>
+                  </div>
+                </div>
 
-                <Row className="mt-4">
-                  <Col md={6}>
-                    <div className="performance-detail-card p-3 border rounded">
-                      <h6 className="mb-3">Conversion Breakdown</h6>
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>Premium Package</span>
-                        <span className="text-success">45 conversions</span>
-                      </div>
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>Standard Package</span>
-                        <span className="text-success">28 conversions</span>
-                      </div>
-                      <div className="d-flex justify-content-between">
-                        <span>Basic Package</span>
-                        <span className="text-success">11 conversions</span>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={6}>
-                    <div className="performance-detail-card p-3 border rounded">
-                      <h6 className="mb-3">Call Duration Distribution</h6>
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>0-5 minutes</span>
-                        <span className="text-info">32%</span>
-                      </div>
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>5-15 minutes</span>
-                        <span className="text-info">45%</span>
-                      </div>
-                      <div className="d-flex justify-content-between">
-                        <span>15+ minutes</span>
-                        <span className="text-info">23%</span>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
+                <div className="performance-breakdown-container mt-4" style={{ overflowX: 'auto' }}>
+                  <div style={{ minWidth: '800px' }}>
+                    <Row>
+                      <Col md={6}>
+                        <div className="performance-detail-card p-3 border rounded h-100">
+                          <h6 className="mb-3">Conversion Breakdown</h6>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span>Premium Package</span>
+                            <span className="text-success">45 conversions</span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span>Standard Package</span>
+                            <span className="text-success">28 conversions</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span>Basic Package</span>
+                            <span className="text-success">11 conversions</span>
+                          </div>
+                        </div>
+                      </Col>
+                      <Col md={6}>
+                        <div className="performance-detail-card p-3 border rounded h-100">
+                          <h6 className="mb-3">Call Duration Distribution</h6>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span>0-5 minutes</span>
+                            <span className="text-info">32%</span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span>5-15 minutes</span>
+                            <span className="text-info">45%</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span>15+ minutes</span>
+                            <span className="text-info">23%</span>
+                          </div>
+                        </div>
+                      </Col>
+                    </Row>
+                  </div>
+                </div>
               </Card.Body>
             </Card>
 
@@ -2223,20 +2634,7 @@ export default function Office() {
             </Card>
           </div>
         )}
-        {activeTab === 'chat' && (
-          <div className="dashboard-card">
-            <Card.Header>
-              <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">
-                  <FaComments className="me-2" /> Chat
-                </h5>
-              </div>
-            </Card.Header>
-            <Card.Body className="p-0">
-              <Chat />
-            </Card.Body>
-          </div>
-        )}
+        {activeTab === 'chat' && renderChatSection()}
       </Container>
 
       {/* Client Profile Modal */}
@@ -2340,12 +2738,12 @@ export default function Office() {
                       <div className="d-grid gap-2">
                         <Button variant="primary" onClick={() => setPhoneNumber(selectedClient.phone)}>
                           <FaPhone className="me-2" /> Call
-                    </Button>
+                        </Button>
                         <Button variant="info" onClick={() => handleSendEmail(selectedClient.email)}>
                           <FaEnvelope className="me-2" /> Email
                         </Button>
                         <Button variant="success" onClick={() => handleStartMeeting(selectedClient)}>
-                          <FaVideo className="me-2" /> Schedule Meeting
+                          <FaComments className="me-2" /> Message
                         </Button>
                       </div>
                     </Card.Body>
@@ -2407,6 +2805,58 @@ export default function Office() {
             Save Changes
           </Button>
         </Modal.Footer>
+      </Modal>
+      
+      {/* Chat Modal */}
+      <Modal
+        show={showChatModal}
+        onHide={() => setShowChatModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <div className="d-flex align-items-center">
+              <div className="chat-avatar me-3">
+                <FaUserCircle size={32} />
+              </div>
+              {selectedChat?.name}
+            </div>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="chat-messages" style={{ height: '400px', overflowY: 'auto' }}>
+            {selectedChat?.messages?.map((message, index) => (
+              <div 
+                key={index} 
+                className={`message ${message.sender === 'me' ? 'sent' : 'received'} mb-3`}
+              >
+                <div className="message-content p-2 rounded">
+                  <p className="mb-0">{message.text}</p>
+                  <small className="text-muted">{message.timestamp}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="chat-input mt-3">
+            <div className="input-group">
+              <Form.Control
+                type="text"
+                placeholder="Type a message..."
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSendMessage();
+                  }
+                }}
+              />
+              <Button variant="primary" onClick={handleSendMessage}>
+                <FaPaperPlane />
+              </Button>
+            </div>
+          </div>
+        </Modal.Body>
       </Modal>
     </div>
   );
