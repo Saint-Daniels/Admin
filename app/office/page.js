@@ -2398,33 +2398,13 @@ export default function Office() {
                       </div>
 
                       {/* Add this at the bottom of the form, just before the Action Buttons section */}
-                      <div className="completion-indicator">
-                        <div className="d-flex align-items-center">
-                          <span>Application Progress:</span>
-                          <div className="d-flex gap-1 ms-2">
-                            <div className={`completion-dot ${formCompletion.personalInfo ? 'complete' : 'incomplete'}`} title="Personal Information"></div>
-                            <div className={`completion-dot ${formCompletion.contactInfo ? 'complete' : 'incomplete'}`} title="Contact Information"></div>
-                            <div className={`completion-dot ${formCompletion.addressInfo ? 'complete' : 'incomplete'}`} title="Address Information"></div>
-                            <div className={`completion-dot ${formCompletion.spouseInfo ? 'complete' : 'incomplete'}`} title="Spouse Information"></div>
-                            <div className={`completion-dot ${formCompletion.childrenInfo ? 'complete' : 'incomplete'}`} title="Children Information"></div>
-                            <div className={`completion-dot ${formCompletion.insuranceInfo ? 'complete' : 'incomplete'}`} title="Insurance Information"></div>
-                          </div>
-                          <span className="ms-2 text-sm">
-                            {Object.values(formCompletion).every(v => v) ? 
-                              'Application Complete' : 
-                              'In Progress'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
                       <div className="d-flex justify-content-between align-items-center mt-4">
                         <Button variant="outline-secondary" onClick={() => setShowHistoryModal(true)}>
                           <FaHistory className="me-2" /> View History
                         </Button>
                         <div>
                           <Button variant="secondary" className="me-2" onClick={() => handleSave('draft')}>
-                            <FaSave className="me-2" /> Save
+                            <FaSave className="me-2" /> Save Draft
                           </Button>
                           <Button variant="primary">
                             <FaCheckCircle className="me-2" /> Submit Application
