@@ -13,7 +13,7 @@ import {
   FaSignOutAlt, FaBell, FaUserCircle, FaCamera, FaShieldAlt, FaKey, FaVolumeUp,
   FaDesktop, FaMobile, FaTablet, FaBellSlash, FaUserShield, FaUserCog,
   FaEdit, FaPalette, FaTrash, FaExchangeAlt, FaCheckCircle, FaSave, FaBackspace,
-  FaMicrophone, FaStop, FaCheck
+  FaMicrophone, FaStop, FaCheck, FaMicrophoneSlash, FaInfoCircle
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -153,6 +153,25 @@ export default function Office() {
   // Add new state variables at the top with other state declarations
   const [currentMeetingRoom, setCurrentMeetingRoom] = useState('Manager Room');
   const [isInMeeting, setIsInMeeting] = useState(false);
+
+  // Add state for history modal
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // Add state variables for active coverage
+  const [activeCoverage, setActiveCoverage] = useState({
+    isActive: false,
+    enrollmentDate: null,
+    coverageType: '',
+    provider: ''
+  });
+
+  // Add state for admin mode
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Add these state variables near the other state declarations
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSaved, setRecordingSaved] = useState(false);
 
   // Add form validation function
   const validateForm = (data) => {
@@ -2203,6 +2222,96 @@ export default function Office() {
                         </Row>
                       </div>
 
+                      {/* Recording Verification */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3 d-flex justify-content-between align-items-center">
+                          <span>Recording Verification</span>
+                          <div className="d-flex gap-2">
+                            <Button 
+                              variant="primary" 
+                              size="sm"
+                              onClick={() => setShowVerificationModal(true)}
+                              disabled={isRecording}
+                            >
+                              <FaMicrophone className="me-2" /> Start New Recording
+                            </Button>
+                          </div>
+                        </h6>
+                        <div className="recording-status p-3 border rounded">
+                          <div className="d-flex align-items-center">
+                            <div className="recording-icon me-3">
+                              {isRecording ? (
+                                <FaMicrophone size={24} className="text-danger pulse" />
+                              ) : recordingSaved ? (
+                                <FaCheckCircle size={24} className="text-success" />
+                              ) : (
+                                <FaMicrophoneSlash size={24} className="text-secondary" />
+                              )}
+                            </div>
+                            <div>
+                              <h6 className="mb-1">
+                                {isRecording ? 'Recording in Progress' : 
+                                 recordingSaved ? 'Recording Saved' : 
+                                 'No Recording'}
+                              </h6>
+                              <p className="text-muted mb-0">
+                                {isRecording ? 'Recording verification script...' : 
+                                 recordingSaved ? 'Verification completed successfully' : 
+                                 'Click "Start New Recording" to begin verification'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Active Coverage Indicator */}
+                      <div className="section mb-4">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h6 className="mb-0">Active Coverage Status</h6>
+                          {isAdmin && (
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              onClick={() => {
+                                // This would typically open a modal or form to update coverage status
+                                setActiveCoverage(prev => ({
+                                  ...prev,
+                                  isActive: !prev.isActive,
+                                  enrollmentDate: prev.isActive ? null : new Date()
+                                }));
+                              }}
+                            >
+                              <FaEdit className="me-1" /> Update Status
+                            </Button>
+                          )}
+                        </div>
+                        <div className="coverage-status-indicator p-3 border rounded">
+                          <div className="d-flex align-items-center gap-3">
+                            <div className={`status-dot ${activeCoverage.isActive ? 'bg-success' : 'bg-secondary'}`} 
+                                 style={{ width: '12px', height: '12px', borderRadius: '50%' }}>
+                            </div>
+                            <div>
+                              <div className="d-flex align-items-center gap-2">
+                                <span className={`fw-semibold ${activeCoverage.isActive ? 'text-success' : 'text-secondary'}`}>
+                                  {activeCoverage.isActive ? 'Active Coverage' : 'No Active Coverage'}
+                                </span>
+                                {activeCoverage.isActive && (
+                                  <Badge bg="success" className="rounded-pill">Verified</Badge>
+                                )}
+                              </div>
+                              {activeCoverage.isActive && activeCoverage.enrollmentDate && (
+                                <small className="text-muted d-block">
+                                  Enrolled: {new Date(activeCoverage.enrollmentDate).toLocaleDateString('en-US', { 
+                                    month: 'long',
+                                    year: 'numeric'
+                                  })}
+                                </small>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Health Insurance Coverage */}
                       <div className="section mb-4">
                         <h6 className="mb-3 d-flex justify-content-between align-items-center">
@@ -2288,35 +2397,6 @@ export default function Office() {
                         ))}
                       </div>
 
-                      {/* Recording Verification */}
-                      <div className="section mb-4">
-                        <h6 className="mb-3">Recording Verification</h6>
-                        <div className="recording-status p-3 border rounded mb-3">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <div>
-                              <h6 className="mb-1">Call Recording Status</h6>
-                              <p className="text-muted mb-0">Recording will be used for verification purposes</p>
-                            </div>
-                            <div className="recording-controls">
-                              <Button variant="outline-primary" className="me-2">
-                                <FaMicrophone className="me-2" /> Start Recording
-                              </Button>
-                              <Button variant="outline-danger">
-                                <FaStop className="me-2" /> Stop Recording
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="recording-timer mt-3">
-                            <span className="text-muted">Recording Duration: 00:00</span>
-                          </div>
-                        </div>
-                        <Form.Check
-                          type="checkbox"
-                          label="I confirm that the enrollment conversation has been recorded and verified"
-                          className="mb-3"
-                        />
-                      </div>
-
                       {/* Add this at the bottom of the form, just before the Action Buttons section */}
                       <div className="completion-indicator">
                         <div className="d-flex align-items-center">
@@ -2338,8 +2418,8 @@ export default function Office() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="d-flex justify-content-between align-items-center">
-                        <Button variant="outline-secondary">
+                      <div className="d-flex justify-content-between align-items-center mt-4">
+                        <Button variant="outline-secondary" onClick={() => setShowHistoryModal(true)}>
                           <FaHistory className="me-2" /> View History
                         </Button>
                         <div>
@@ -2356,71 +2436,130 @@ export default function Office() {
                 </Card>
               </div>
             </div>
-
-            {/* Notes section below */}
-            <div className="notes-section mt-4">
-              <Card>
-                <Card.Header>
-                  <h5 className="mb-0">Notes & Disposition History</h5>
-                </Card.Header>
-                <Card.Body className="p-0">
-                  <div className="history-timeline" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                    {notes.map((note, index) => (
-                      <div key={index} className="history-entry mb-3 p-3 border rounded">
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <div>
-                            <div className="d-flex align-items-center gap-2">
-                              <span className="text-muted">{note.date}</span>
-                              <Badge bg="info">{note.type}</Badge>
-                              <Badge bg={note.disposition === 'Follow-up Required' ? 'warning' : 'secondary'}>
-                                {note.disposition}
-                              </Badge>
-                            </div>
-                            <div className="mt-1">
-                              <small className="text-muted">
-                                <FaUser className="me-1" /> {note.agent} • 
-                                <FaClock className="ms-2 me-1" /> {note.duration}
-                              </small>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="mb-0">{note.notes}</p>
-                      </div>
-                    ))}
-                  </div>
-                </Card.Body>
-              </Card>
-            </div>
           </div>
         )}
 
         {activeTab === 'analytics' && (
-          <div className="dashboard-grid">
-            {/* Time Tracking Overview Card */}
-            <Card className="dashboard-card mb-4">
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaClock className="me-2" /> Time Tracking Overview
-                  </h5>
-                  <div className="d-flex gap-2">
-                    <Form.Select size="sm" className="w-auto">
-                      <option value="today">Today</option>
-                      <option value="week">This Week</option>
-                      <option value="month">This Month</option>
-                    </Form.Select>
-                    <Button variant="outline-primary" size="sm">
-                      <FaDownload className="me-1" /> Export
-                    </Button>
+          <div className="analytics-container">
+            <div className="analytics-sidebar">
+              {/* Sales Performance Analytics */}
+              <div className="analytics-section">
+                <h6 className="mb-3">Sales Performance</h6>
+                <div className="performance-stats">
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Conversion Rate</span>
+                    <span className="text-success">32%</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Avg Sale Value</span>
+                    <span className="text-primary">$450</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Cost per Acquisition</span>
+                    <span className="text-info">$125</span>
+                  </div>
+                  <div className="d-flex justify-content-between">
+                    <span>Revenue per Call</span>
+                    <span className="text-warning">$145</span>
                   </div>
                 </div>
-              </Card.Header>
-              <Card.Body>
-                <div className="time-tracking-metrics" style={{ overflowX: 'auto' }}>
-                  <div style={{ minWidth: '800px' }}>
+              </div>
+
+              {/* Time Metrics */}
+              <div className="analytics-section">
+                <h6 className="mb-3">Time Metrics</h6>
+                <div className="time-stats">
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Avg Call Duration</span>
+                    <span className="text-primary">8:30</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Time to Close</span>
+                    <span className="text-success">12:45</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>First Response</span>
+                    <span className="text-info">45s</span>
+                  </div>
+                  <div className="d-flex justify-content-between">
+                    <span>Talk-to-Listen Ratio</span>
+                    <span className="text-warning">40:60</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sales Funnel Analytics */}
+              <div className="analytics-section">
+                <h6 className="mb-3">Sales Funnel Analytics</h6>
+                <div className="funnel-stats">
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Lead to Opportunity</span>
+                    <span className="text-primary">45%</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Opportunity to Quote</span>
+                    <span className="text-success">65%</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Quote to Close</span>
+                    <span className="text-info">48%</span>
+                  </div>
+                  <div className="d-flex justify-content-between">
+                    <span>Overall Pipeline Velocity</span>
+                    <span className="text-warning">3.2 days</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance Trends */}
+              <div className="analytics-section">
+                <h6 className="mb-3">Performance Trends</h6>
+                <div className="trend-stats">
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Peak Performance Hours</span>
+                    <span className="text-success">10AM - 2PM</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Best Performing Day</span>
+                    <span className="text-primary">Wednesday</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-2">
+                    <span>Avg Deals per Day</span>
+                    <span className="text-info">3.5</span>
+                  </div>
+                  <div className="d-flex justify-content-between">
+                    <span>Success Rate Trend</span>
+                    <span className="text-warning">↑ 12% MoM</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="analytics-main">
+              {/* Time Tracking Overview Card */}
+              <Card className="dashboard-card mb-4">
+                <Card.Header>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <h5 className="mb-0">
+                      <FaClock className="me-2" /> Time Tracking Overview
+                    </h5>
+                    <div className="d-flex gap-2">
+                      <Form.Select size="sm" className="w-auto">
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                      </Form.Select>
+                      <Button variant="outline-primary" size="sm">
+                        <FaDownload className="me-1" /> Export
+                      </Button>
+                    </div>
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  <div className="time-tracking-metrics">
                     <Row className="g-4">
                       <Col md={3}>
-                        <div className="stat-card bg-primary bg-opacity-10 p-3 rounded h-100">
+                        <div className="stat-card bg-primary bg-opacity-10 p-3 rounded">
                           <h6 className="text-primary">Hours Today</h6>
                           <h3>7:45</h3>
                           <div className="d-flex align-items-center">
@@ -2430,7 +2569,7 @@ export default function Office() {
                         </div>
                       </Col>
                       <Col md={3}>
-                        <div className="stat-card bg-success bg-opacity-10 p-3 rounded h-100">
+                        <div className="stat-card bg-success bg-opacity-10 p-3 rounded">
                           <h6 className="text-success">Weekly Hours</h6>
                           <h3>32:15</h3>
                           <div className="d-flex align-items-center">
@@ -2440,7 +2579,7 @@ export default function Office() {
                         </div>
                       </Col>
                       <Col md={3}>
-                        <div className="stat-card bg-info bg-opacity-10 p-3 rounded h-100">
+                        <div className="stat-card bg-info bg-opacity-10 p-3 rounded">
                           <h6 className="text-info">Productivity</h6>
                           <h3>92%</h3>
                           <div className="d-flex align-items-center">
@@ -2450,7 +2589,7 @@ export default function Office() {
                         </div>
                       </Col>
                       <Col md={3}>
-                        <div className="stat-card bg-warning bg-opacity-10 p-3 rounded h-100">
+                        <div className="stat-card bg-warning bg-opacity-10 p-3 rounded">
                           <h6 className="text-warning">Break Time</h6>
                           <h3>45min</h3>
                           <div className="d-flex align-items-center">
@@ -2461,299 +2600,98 @@ export default function Office() {
                       </Col>
                     </Row>
                   </div>
-                </div>
 
-                <div className="time-tracking-details mt-4">
-                  <Row>
-                    <Col md={6}>
-                      <div className="time-card p-3 border rounded h-100">
-                        <h6 className="mb-3">Daily Activity</h6>
-                        <div className="activity-timeline">
-                          <div className="activity-item d-flex justify-content-between mb-2">
-                            <span>Clock In</span>
-                            <span className="text-success">8:00 AM</span>
-                          </div>
-                          <div className="activity-item d-flex justify-content-between mb-2">
-                            <span>Morning Break</span>
-                            <span className="text-warning">10:15 AM (15min)</span>
-                          </div>
-                          <div className="activity-item d-flex justify-content-between mb-2">
-                            <span>Lunch Break</span>
-                            <span className="text-warning">12:30 PM (30min)</span>
-                          </div>
-                          <div className="activity-item d-flex justify-content-between">
-                            <span>Current Status</span>
-                            <span className="text-primary">Active</span>
+                  <div className="time-tracking-details mt-4">
+                    <Row>
+                      <Col md={6}>
+                        <div className="time-card p-3 border rounded">
+                          <h6 className="mb-3">Daily Activity</h6>
+                          <div className="activity-timeline">
+                            <div className="activity-item d-flex justify-content-between mb-2">
+                              <span>Clock In</span>
+                              <span className="text-success">8:00 AM</span>
+                            </div>
+                            <div className="activity-item d-flex justify-content-between mb-2">
+                              <span>Morning Break</span>
+                              <span className="text-warning">10:15 AM (15min)</span>
+                            </div>
+                            <div className="activity-item d-flex justify-content-between mb-2">
+                              <span>Lunch Break</span>
+                              <span className="text-warning">12:30 PM (30min)</span>
+                            </div>
+                            <div className="activity-item d-flex justify-content-between">
+                              <span>Current Status</span>
+                              <span className="text-primary">Active</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Col>
-                    <Col md={6}>
-                      <div className="time-card p-3 border rounded h-100">
-                        <h6 className="mb-3">Weekly Hours Distribution</h6>
-                        <div className="hours-distribution">
-                          <div className="d-flex justify-content-between mb-2">
-                            <span>Active Work</span>
-                            <span className="text-success">35h 15m (88%)</span>
-                          </div>
-                          <div className="d-flex justify-content-between mb-2">
-                            <span>Breaks</span>
-                            <span className="text-warning">3h 45m (9%)</span>
-                          </div>
-                          <div className="d-flex justify-content-between">
-                            <span>Training</span>
-                            <span className="text-info">1h 15m (3%)</span>
+                      </Col>
+                      <Col md={6}>
+                        <div className="time-card weekly-hours p-3 border rounded">
+                          <h6 className="mb-3">Weekly Hours Distribution</h6>
+                          <div className="hours-distribution">
+                            <div className="d-flex justify-content-between mb-2">
+                              <span>Active Work</span>
+                              <span className="text-success">35h 15m (88%)</span>
+                            </div>
+                            <div className="d-flex justify-content-between mb-2">
+                              <span>Breaks</span>
+                              <span className="text-warning">3h 45m (9%)</span>
+                            </div>
+                            <div className="d-flex justify-content-between">
+                              <span>Training</span>
+                              <span className="text-info">1h 15m (3%)</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Col>
-                  </Row>
-                </div>
-              </Card.Body>
-            </Card>
+                      </Col>
+                    </Row>
+                  </div>
+                </Card.Body>
+              </Card>
 
-            {/* Time Clock History Card */}
-            <Card className="dashboard-card mb-4">
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaHistory className="me-2" /> Time Clock History
-                  </h5>
-                  <div className="d-flex gap-2">
-                    <Form.Control
-                      type="search"
-                      placeholder="Search history..."
-                      className="form-control-sm"
-                      style={{ width: '200px' }}
-                    />
-                    <Button variant="outline-primary" size="sm">
-                      <FaDownload className="me-1" /> Export
-                    </Button>
+              {/* Real-time Activity Indicators */}
+              <div className="real-time-activity">
+                <h6 className="mb-3">Real-Time Activity Indicators</h6>
+                <div className="activity-indicators">
+                  <div className="d-flex flex-wrap gap-3">
+                    <div className="indicator-item p-3 border rounded">
+                      <div className="d-flex align-items-center">
+                        <div className={`status-dot ${isTimedIn ? 'bg-success' : 'bg-secondary'} me-2`}></div>
+                        <div>
+                          <h6 className="mb-1">Time Clock Status</h6>
+                          <p className="mb-0 text-muted">
+                            {isTimedIn ? `Active since ${timeInStart.toLocaleTimeString()}` : 'Not clocked in'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="indicator-item p-3 border rounded">
+                      <div className="d-flex align-items-center">
+                        <div className={`status-dot ${isDialing ? 'bg-danger' : 'bg-success'} me-2`}></div>
+                        <div>
+                          <h6 className="mb-1">Call Status</h6>
+                          <p className="mb-0 text-muted">
+                            {isDialing ? `On call (${formatDuration(callDuration)})` : 'Available'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="indicator-item p-3 border rounded">
+                      <div className="d-flex align-items-center">
+                        <div className="status-dot bg-primary me-2"></div>
+                        <div>
+                          <h6 className="mb-1">Today's Progress</h6>
+                          <p className="mb-0 text-muted">
+                            {`${totalTimeToday > 0 ? formatDuration(totalTimeToday) : '0:00'} / 8:00`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </Card.Header>
-              <Card.Body>
-                <Table responsive>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Clock In</th>
-                      <th>Clock Out</th>
-                      <th>Total Hours</th>
-                      <th>Status</th>
-                      <th>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>2024-03-15</td>
-                      <td>8:00 AM</td>
-                      <td>4:45 PM</td>
-                      <td>7:45</td>
-                      <td><Badge bg="success">Completed</Badge></td>
-                      <td>Regular shift</td>
-                    </tr>
-                    <tr>
-                      <td>2024-03-14</td>
-                      <td>8:15 AM</td>
-                      <td>5:00 PM</td>
-                      <td>7:45</td>
-                      <td><Badge bg="success">Completed</Badge></td>
-                      <td>Regular shift</td>
-                    </tr>
-                    <tr>
-                      <td>2024-03-13</td>
-                      <td>8:00 AM</td>
-                      <td>4:30 PM</td>
-                      <td>7:30</td>
-                      <td><Badge bg="warning">Early Leave</Badge></td>
-                      <td>Approved early departure</td>
-                    </tr>
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
-
-            {/* Productivity Analytics Card */}
-            <Card className="dashboard-card">
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaChartLine className="me-2" /> Sales & Performance Analytics
-                  </h5>
-                  <Button variant="outline-primary" size="sm">
-                    <FaChartBar className="me-1" /> Detailed Report
-                  </Button>
-                </div>
-              </Card.Header>
-              <Card.Body>
-                <Row>
-                  <Col md={4}>
-                    <div className="productivity-card p-3 border rounded mb-3">
-                      <h6 className="mb-3">Sales Performance</h6>
-                      <div className="performance-stats">
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Conversion Rate</span>
-                          <span className="text-success">32%</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Avg Sale Value</span>
-                          <span className="text-primary">$450</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Cost per Acquisition</span>
-                          <span className="text-info">$125</span>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                          <span>Revenue per Call</span>
-                          <span className="text-warning">$145</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={4}>
-                    <div className="productivity-card p-3 border rounded mb-3">
-                      <h6 className="mb-3">Time Metrics</h6>
-                      <div className="time-stats">
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Avg Call Duration</span>
-                          <span className="text-primary">8:30</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Time to Close</span>
-                          <span className="text-success">12:45</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>First Response</span>
-                          <span className="text-info">45s</span>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                          <span>Talk-to-Listen Ratio</span>
-                          <span className="text-warning">40:60</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={4}>
-                    <div className="productivity-card p-3 border rounded mb-3">
-                      <h6 className="mb-3">Quality Metrics</h6>
-                      <div className="quality-stats">
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Customer Satisfaction</span>
-                          <span className="text-success">4.8/5</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Call Quality Score</span>
-                          <span className="text-primary">92%</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Script Compliance</span>
-                          <span className="text-info">95%</span>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                          <span>Follow-up Rate</span>
-                          <span className="text-warning">88%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-
-                <Row className="mt-4">
-                  <Col md={6}>
-                    <div className="productivity-card p-3 border rounded mb-3">
-                      <h6 className="mb-3">Sales Funnel Analytics</h6>
-                      <div className="funnel-stats">
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Lead to Opportunity</span>
-                          <span className="text-primary">45%</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Opportunity to Quote</span>
-                          <span className="text-success">65%</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Quote to Close</span>
-                          <span className="text-info">48%</span>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                          <span>Overall Pipeline Velocity</span>
-                          <span className="text-warning">3.2 days</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                  <Col md={6}>
-                    <div className="productivity-card p-3 border rounded mb-3">
-                      <h6 className="mb-3">Performance Trends</h6>
-                      <div className="trend-stats">
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Peak Performance Hours</span>
-                          <span className="text-success">10AM - 2PM</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Best Performing Day</span>
-                          <span className="text-primary">Wednesday</span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>Avg Deals per Day</span>
-                          <span className="text-info">3.5</span>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                          <span>Success Rate Trend</span>
-                          <span className="text-warning">↑ 12% MoM</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-
-                <Row className="mt-4">
-                  <Col md={12}>
-                    <div className="productivity-card p-3 border rounded">
-                      <h6 className="mb-3">Real-Time Activity Indicators</h6>
-                      <div className="activity-indicators">
-                        <div className="d-flex flex-wrap gap-3">
-                          <div className="indicator-item p-3 border rounded">
-                            <div className="d-flex align-items-center">
-                              <div className={`status-dot ${isTimedIn ? 'bg-success' : 'bg-secondary'} me-2`}></div>
-                              <div>
-                                <h6 className="mb-1">Time Clock Status</h6>
-                                <p className="mb-0 text-muted">
-                                  {isTimedIn ? `Active since ${timeInStart.toLocaleTimeString()}` : 'Not clocked in'}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="indicator-item p-3 border rounded">
-                            <div className="d-flex align-items-center">
-                              <div className={`status-dot ${isDialing ? 'bg-danger' : 'bg-success'} me-2`}></div>
-                              <div>
-                                <h6 className="mb-1">Call Status</h6>
-                                <p className="mb-0 text-muted">
-                                  {isDialing ? `On call (${formatDuration(callDuration)})` : 'Available'}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="indicator-item p-3 border rounded">
-                            <div className="d-flex align-items-center">
-                              <div className="status-dot bg-primary me-2"></div>
-                              <div>
-                                <h6 className="mb-1">Today's Progress</h6>
-                                <p className="mb-0 text-muted">
-                                  {`${totalTimeToday > 0 ? formatDuration(totalTimeToday) : '0:00'} / 8:00`}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-              </Card.Body>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
@@ -3307,6 +3245,169 @@ export default function Office() {
             </div>
           </div>
         </Modal.Body>
+      </Modal>
+
+      {/* History Modal */}
+      <Modal 
+        show={showHistoryModal} 
+        onHide={() => setShowHistoryModal(false)}
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Application History</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-4">
+            <h6 className="mb-3">Application Progress</h6>
+            <div className="completion-indicator">
+              <div className="d-flex align-items-center">
+                <div className="d-flex gap-1">
+                  <div className={`completion-dot ${formCompletion.personalInfo ? 'complete' : 'incomplete'}`} title="Personal Information"></div>
+                  <div className={`completion-dot ${formCompletion.contactInfo ? 'complete' : 'incomplete'}`} title="Contact Information"></div>
+                  <div className={`completion-dot ${formCompletion.addressInfo ? 'complete' : 'incomplete'}`} title="Address Information"></div>
+                  <div className={`completion-dot ${formCompletion.spouseInfo ? 'complete' : 'incomplete'}`} title="Spouse Information"></div>
+                  <div className={`completion-dot ${formCompletion.childrenInfo ? 'complete' : 'incomplete'}`} title="Children Information"></div>
+                  <div className={`completion-dot ${formCompletion.insuranceInfo ? 'complete' : 'incomplete'}`} title="Insurance Information"></div>
+                </div>
+                <span className="ms-2 text-sm">
+                  {Object.values(formCompletion).every(v => v) ? 
+                    'Application Complete' : 
+                    'In Progress'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="history-timeline">
+            <h6 className="mb-3">Notes & Disposition History</h6>
+            {notes.map((note, index) => (
+              <div key={index} className="history-entry mb-3">
+                <div className="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="text-muted">{note.date}</span>
+                      <Badge bg="info">{note.type}</Badge>
+                      <Badge bg={note.disposition === 'Follow-up Required' ? 'warning' : 'secondary'}>
+                        {note.disposition}
+                      </Badge>
+                    </div>
+                    <div className="mt-1">
+                      <small className="text-muted">
+                        <FaUser className="me-1" /> {note.agent} • 
+                        <FaClock className="ms-2 me-1" /> {note.duration}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+                <p className="mb-0">{note.notes}</p>
+              </div>
+            ))}
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowHistoryModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Add the Verification Script Modal */}
+      <Modal 
+        show={showVerificationModal} 
+        onHide={() => {
+          if (!isRecording) {
+            setShowVerificationModal(false);
+          }
+        }}
+        size="lg"
+        centered
+        backdrop={isRecording ? 'static' : true}
+        keyboard={!isRecording}
+      >
+        <Modal.Header closeButton={!isRecording}>
+          <Modal.Title>Verification Script</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="verification-script p-4 bg-light rounded mb-4">
+            <h6 className="text-primary mb-4">Please read the following script to obtain legal consent:</h6>
+            <div className="script-content">
+              <p className="mb-4 lead">
+                "Hello, I am recording this call to verify your consent for health insurance enrollment. 
+                Today's date is {new Date().toLocaleDateString()}."
+              </p>
+              <p className="mb-4 lead">
+                "Could you please state your full name and confirm that you authorize our office to assist you with your health insurance enrollment?"
+              </p>
+              <p className="mb-4 lead">
+                "Do you understand that by providing this consent, you are allowing us to:
+                <br/>1. Access and handle your personal information for enrollment purposes
+                <br/>2. Submit applications on your behalf to health insurance providers
+                <br/>3. Communicate with insurance companies regarding your coverage"
+              </p>
+              <p className="lead">
+                "Please respond with 'Yes, I understand and consent' if you agree."
+              </p>
+            </div>
+          </div>
+          <div className="recording-status text-center">
+            {isRecording ? (
+              <div className="alert alert-danger">
+                <FaMicrophone className="me-2 pulse" />
+                Recording in progress... Please read the entire script
+              </div>
+            ) : recordingSaved ? (
+              <div className="alert alert-success">
+                <FaCheckCircle className="me-2" />
+                Recording saved successfully
+              </div>
+            ) : (
+              <div className="alert alert-info">
+                <FaInfoCircle className="me-2" />
+                Click "Start Recording" when ready to read the script
+              </div>
+            )}
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="d-flex justify-content-between">
+          {!isRecording && !recordingSaved && (
+            <Button 
+              variant="secondary" 
+              onClick={() => setShowVerificationModal(false)}
+            >
+              Cancel
+            </Button>
+          )}
+          <Button 
+            variant={isRecording ? "danger" : recordingSaved ? "success" : "primary"}
+            onClick={() => {
+              if (!isRecording && !recordingSaved) {
+                setIsRecording(true);
+              } else if (isRecording) {
+                setIsRecording(false);
+                setRecordingSaved(true);
+                setTimeout(() => {
+                  setShowVerificationModal(false);
+                  setRecordingSaved(false);
+                }, 2000);
+              }
+            }}
+            className="d-flex align-items-center"
+          >
+            {isRecording ? (
+              <>
+                <FaStop className="me-2" /> Stop Recording & Save
+              </>
+            ) : recordingSaved ? (
+              <>
+                <FaCheck className="me-2" /> Recording Verified
+              </>
+            ) : (
+              <>
+                <FaMicrophone className="me-2" /> Start Recording
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );

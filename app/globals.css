@@ -2545,3 +2545,185 @@ body {
   border-radius: 4px;
   margin-left: 0.5rem;
 }
+
+/* Time Tracking and Analytics Styles */
+.time-tracking-details .time-card.weekly-hours {
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4285F4 #f0f0f0;
+}
+
+.time-tracking-details .time-card.weekly-hours::-webkit-scrollbar {
+  width: 8px;
+}
+
+.time-tracking-details .time-card.weekly-hours::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.time-tracking-details .time-card.weekly-hours::-webkit-scrollbar-thumb {
+  background: #4285F4;
+  border-radius: 4px;
+}
+
+/* Analytics Sidebar Layout */
+.analytics-container {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.analytics-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 1rem;
+  height: calc(100vh - 200px);
+  overflow-y: auto;
+  position: sticky;
+  top: 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: #4285F4 #f0f0f0;
+}
+
+.analytics-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.analytics-sidebar::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.analytics-sidebar::-webkit-scrollbar-thumb {
+  background: #4285F4;
+  border-radius: 4px;
+}
+
+.analytics-main {
+  flex: 1;
+}
+
+.analytics-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Real-time Activity Section */
+.real-time-activity {
+  position: sticky;
+  top: 1rem;
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 1200px) {
+  .analytics-container {
+    flex-direction: column;
+  }
+  
+  .analytics-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+  }
+  
+  .real-time-activity {
+    position: static;
+  }
+}
+
+/* Coverage Status Indicator Styles */
+.coverage-status-indicator {
+  background-color: #fff;
+  transition: all 0.3s ease;
+}
+
+.coverage-status-indicator .status-dot {
+  transition: background-color 0.3s ease;
+}
+
+.coverage-status-indicator .status-dot.bg-success {
+  box-shadow: 0 0 0 4px rgba(25, 135, 84, 0.2);
+}
+
+.coverage-status-indicator .status-dot.bg-secondary {
+  box-shadow: 0 0 0 4px rgba(108, 117, 125, 0.2);
+}
+
+/* Admin Controls */
+.admin-controls {
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.admin-controls:hover {
+  opacity: 1;
+}
+
+/* Verification Script Modal Styles */
+.verification-script {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  border-left: 4px solid #3b82f6;
+}
+
+.verification-script h6 {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.verification-script .lead {
+  font-size: 1.1rem;
+  color: #1e293b;
+}
+
+.script-content {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.recording-status {
+  transition: all 0.3s ease;
+}
+
+.recording-icon {
+  transition: all 0.3s ease;
+}
+
+.modal-footer .btn {
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pulse {
+  animation: pulse 1.5s infinite;
+}
