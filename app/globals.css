@@ -2272,8 +2272,45 @@ body {
 
 .transfer-button {
   border-radius: 30px;
-  padding: 12px;
+  padding: 12px 24px;
   font-size: 1rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  border: none;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+}
+
+.transfer-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+}
+
+.transfer-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.2);
+}
+
+.transfer-button:disabled {
+  background: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.transfer-button .icon {
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
+}
+
+.transfer-button:hover .icon {
+  transform: scale(1.1);
 }
 
 /* Form Section Styles */
@@ -2428,9 +2465,46 @@ body {
 
 .transfer-button {
   border-radius: 30px;
-  padding: 12px;
-    font-size: 1rem;
-  }
+  padding: 12px 24px;
+  font-size: 1rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  border: none;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+}
+
+.transfer-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.3);
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+}
+
+.transfer-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.2);
+}
+
+.transfer-button:disabled {
+  background: #94a3b8;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.transfer-button .icon {
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
+}
+
+.transfer-button:hover .icon {
+  transform: scale(1.1);
+}
 
 /* Responsive Fixes */
 @media (max-width: 1200px) {
@@ -3316,4 +3390,87 @@ body {
 .form-check-input:focus {
   border-color: #86b7fe;
   box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Points Status Styles */
+.points-status-indicator {
+  background-color: #fff;
+  transition: all 0.3s ease;
+}
+
+.points-status-indicator:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.points-status-indicator h4 {
+  color: #0d6efd;
+  font-size: 1.75rem;
+}
+
+.points-category {
+  padding: 0.75rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.points-category:hover {
+  background-color: #e9ecef;
+  transform: translateY(-2px);
+}
+
+.points-category small {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.points-category .fw-semibold {
+  color: #198754;
+  font-size: 1.1rem;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .points-category {
+    margin-bottom: 1rem;
+  }
+  
+  .points-status-indicator h4 {
+    font-size: 1.5rem;
+  }
+  
+  .points-breakdown .row {
+    margin: -0.5rem;
+  }
+  
+  .points-breakdown .col-md-3 {
+    padding: 0.5rem;
+  }
+}
+
+.points-history {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.points-history-item {
+  transition: background-color 0.2s ease;
+}
+
+.points-history-item:hover {
+  background-color: #f8f9fa;
+}
+
+.points-history-item h6 {
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.points-history-item small {
+  color: #64748b;
+}
+
+.points-history-item .text-success {
+  font-size: 1.1rem;
 }

@@ -36,7 +36,7 @@ import {
   FaPhoneSlash, FaSignInAlt, FaPhoneAlt,
   
   // Integration icons
-  FaGoogle, FaHistory, FaSpinner
+  FaGoogle, FaHistory, FaSpinner, FaSync
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -1335,6 +1335,21 @@ export default function Office() {
 
   const [dispositionCompleted, setDispositionCompleted] = useState(false);
 
+  // Add points state
+  const [applicantPoints, setApplicantPoints] = useState({
+    totalPoints: 2500,
+    lastUpdated: new Date(),
+    breakdown: {
+      referrals: 500,
+      healthyLifestyle: 750,
+      preventiveCare: 750,
+      loyaltyBonus: 500
+    }
+  });
+
+  // Add state for points history modal
+  const [showPointsHistoryModal, setShowPointsHistoryModal] = useState(false);
+
   return (
     <div className="office-container">
       <style jsx>{`
@@ -2411,7 +2426,42 @@ export default function Office() {
               <div className="enrollment-section order-2 order-md-1">
                 <Card>
                   <Card.Header>
-                    <h5 className="mb-0">Enrollment Application</h5>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <h5 className="mb-0">Enrollment Application</h5>
+                      <Button 
+                        variant="outline-secondary" 
+                        size="sm"
+                        onClick={() => {
+                          // Reset form data
+                          setFormData({
+                            firstName: '',
+                            middleName: '',
+                            lastName: '',
+                            email: '',
+                            phone: '',
+                            streetAddress: '',
+                            apartment: '',
+                            city: '',
+                            stateProvince: '',
+                            zipCode: '',
+                            country: '',
+                            occupation: '',
+                            employer: '',
+                            income: '',
+                            coverageType: '',
+                            healthConditions: [],
+                            medications: []
+                          });
+                          // Reset other form-related states
+                          setShowSpouseFields(false);
+                          setShowChildrenFields(false);
+                          setChildren([]);
+                          setValidationErrors({});
+                        }}
+                      >
+                        <FaSync className="me-1" /> Reset Form
+                      </Button>
+                    </div>
                   </Card.Header>
                   <Card.Body>
                     {/* Search Bar */}
@@ -3063,6 +3113,80 @@ export default function Office() {
                                 </small>
                                 )}
                               </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Points Status Section */}
+                      <div className="section mb-4">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h6 className="mb-0">Rewards Points Status</h6>
+                          {isAdmin && (
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              onClick={() => {
+                                // Admin functionality to update points
+                                // This would typically open a modal for point adjustment
+                              }}
+                            >
+                              <FaEdit className="me-1" /> Adjust Points
+                            </Button>
+                          )}
+                        </div>
+                        <div className="points-status-indicator p-3 border rounded">
+                          <div className="d-flex justify-content-between align-items-center mb-3">
+                            <div className="d-flex align-items-center gap-2">
+                              <FaStar className="text-warning" size={24} />
+                              <div>
+                                <h4 className="mb-0 fw-bold text-primary">{applicantPoints.totalPoints.toLocaleString()} Points</h4>
+                                <small className="text-muted">Last Updated: {new Date(applicantPoints.lastUpdated).toLocaleDateString()}</small>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              onClick={() => setShowPointsHistoryModal(true)}
+                            >
+                              <FaHistory className="me-1" /> View History
+                            </Button>
+                          </div>
+                          <Button
+                            variant="info"
+                            className="transfer-button w-100 mt-2"
+                            onClick={() => window.location.href = 'tel:+18005555555'}
+                            disabled={!isCallActive}
+                          >
+                            <FaExchangeAlt className="icon" /> Transfer to Support
+                          </Button>
+                          <div className="points-breakdown mt-3 pt-3 border-top">
+                            <h6 className="mb-3">Points Breakdown</h6>
+                            <Row>
+                              <Col md={3}>
+                                <div className="points-category">
+                                  <small className="text-muted d-block">Referrals</small>
+                                  <span className="fw-semibold">{applicantPoints.breakdown.referrals.toLocaleString()} pts</span>
+                                </div>
+                              </Col>
+                              <Col md={3}>
+                                <div className="points-category">
+                                  <small className="text-muted d-block">Healthy Lifestyle</small>
+                                  <span className="fw-semibold">{applicantPoints.breakdown.healthyLifestyle.toLocaleString()} pts</span>
+                                </div>
+                              </Col>
+                              <Col md={3}>
+                                <div className="points-category">
+                                  <small className="text-muted d-block">Preventive Care</small>
+                                  <span className="fw-semibold">{applicantPoints.breakdown.preventiveCare.toLocaleString()} pts</span>
+                                </div>
+                              </Col>
+                              <Col md={3}>
+                                <div className="points-category">
+                                  <small className="text-muted d-block">Loyalty Bonus</small>
+                                  <span className="fw-semibold">{applicantPoints.breakdown.loyaltyBonus.toLocaleString()} pts</span>
+                                </div>
+                              </Col>
+                            </Row>
                           </div>
                         </div>
                       </div>
@@ -4297,6 +4421,50 @@ export default function Office() {
         <Modal.Footer>
           <Button variant="primary" onClick={() => setShowValidationModal(false)}>
             OK
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Points History Modal */}
+      <Modal
+        show={showPointsHistoryModal}
+        onHide={() => setShowPointsHistoryModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <FaStar className="text-warning me-2" /> Points History
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="points-history">
+            <div className="points-history-item d-flex justify-content-between align-items-center p-3 border-bottom">
+              <div>
+                <h6 className="mb-1">Referral Bonus</h6>
+                <small className="text-muted">July 15, 2023</small>
+              </div>
+              <span className="text-success fw-bold">+500 points</span>
+            </div>
+            <div className="points-history-item d-flex justify-content-between align-items-center p-3 border-bottom">
+              <div>
+                <h6 className="mb-1">Health Assessment Completion</h6>
+                <small className="text-muted">June 30, 2023</small>
+              </div>
+              <span className="text-success fw-bold">+200 points</span>
+            </div>
+            <div className="points-history-item d-flex justify-content-between align-items-center p-3">
+              <div>
+                <h6 className="mb-1">Annual Check-up</h6>
+                <small className="text-muted">June 15, 2023</small>
+              </div>
+              <span className="text-success fw-bold">+300 points</span>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPointsHistoryModal(false)}>
+            Close
           </Button>
         </Modal.Footer>
       </Modal>

@@ -1,5 +1,6 @@
 import './globals.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
+import './admin/admin.css'
 import { Inter } from 'next/font/google'
 import BootstrapClient from './components/BootstrapClient'
 
