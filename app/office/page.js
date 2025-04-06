@@ -197,17 +197,18 @@ export default function Office() {
   const [recordingSaved, setRecordingSaved] = useState(false);
 
   // Add these state variables near the other state declarations
-  const [agentStatus, setAgentStatus] = useState('available');
+  const [agentStatus, setAgentStatus] = useState('not_connected');
   const [dispositionCategory, setDispositionCategory] = useState('lead_contact');
 
   // Add status code options
   const agentStatusCodes = [
+    { value: 'not_connected', label: 'Not Connected', color: 'secondary' },
     { value: 'available', label: 'Available / Ready', color: 'success' },
     { value: 'on_call', label: 'On Call', color: 'danger' },
     { value: 'wrap_up', label: 'Wrap-Up / After Call Work (ACW)', color: 'warning' },
-    { value: 'break', label: 'Break', color: 'info' },
-    { value: 'lunch', label: 'Lunch', color: 'info' },
-    { value: 'meeting', label: 'Meeting', color: 'primary' },
+    { value: 'break', label: 'On Break', color: 'info' },
+    { value: 'lunch', label: 'Lunch Break', color: 'info' },
+    { value: 'meeting', label: 'In Meeting', color: 'primary' },
     { value: 'training', label: 'Training', color: 'primary' },
     { value: 'admin', label: 'Admin Work', color: 'secondary' },
     { value: 'technical_issue', label: 'Technical Issue / System Down', color: 'danger' },
@@ -278,7 +279,9 @@ export default function Office() {
     spouseFirstName: '',
     spouseLastName: '',
     spouseDateOfBirth: '',
-    hasVoiceRecording: false
+    hasVoiceRecording: false,
+    effectiveDate: '',
+    policyStatus: ''
   });
 
   // Add these state variables at the top
@@ -720,9 +723,9 @@ export default function Office() {
 
   // Add effect to sync agent status across tabs
   useEffect(() => {
-    // Update agent status when tab changes
-    if (activeTab === 'dialer' && !isDialing) {
-      setAgentStatus('available');
+    // Only update status for active calls
+    if (activeTab === 'dialer' && isDialing) {
+      setAgentStatus('on_call');
     }
   }, [activeTab]);
 
@@ -741,16 +744,16 @@ export default function Office() {
       try {
         // Reset disposition completed flag when starting new call
         setDispositionCompleted(false);
-        setIsDialing(true);
+      setIsDialing(true);
         setCallStatus('connected');
         setIsCallActive(true);
         
-        // Start call duration timer
+      // Start call duration timer
         const startTime = Date.now();
         const timer = setInterval(() => {
           const duration = Math.floor((Date.now() - startTime) / 1000);
           setCallDuration(duration);
-        }, 1000);
+    }, 1000);
         
         // Store the timer reference
         setCallTimer(timer);
@@ -1252,12 +1255,14 @@ export default function Office() {
       setIsConnected(true);
       setConnectionStatus('connected');
       setReconnectAttempts(0);
+      // Status will remain as not_connected until explicitly changed
       
       // Initialize session monitoring
       startSessionMonitoring();
     } catch (error) {
       console.error('Connection failed:', error);
       setConnectionStatus('disconnected');
+      setAgentStatus('not_connected');  // Set status to not_connected on failure
       handleConnectionError(error);
     }
   };
@@ -1273,6 +1278,7 @@ export default function Office() {
       setIsConnected(false);
       setConnectionStatus('disconnected');
       setReconnectAttempts(0);
+      setAgentStatus('not_connected');  // Set status to not_connected when disconnected
     } catch (error) {
       console.error('Disconnect failed:', error);
     }
@@ -1451,18 +1457,19 @@ export default function Office() {
                   agentStatus === 'training' ? "primary" :
                   agentStatus === 'admin' || agentStatus === 'personal' ? "secondary" :
                   agentStatus === 'technical_issue' ? "danger" :
+                  agentStatus === 'not_connected' ? "secondary" :
                   agentStatus.startsWith('wrap_up') ? "warning" : 
                   "success"
                 } 
                 size="sm"
                 className="d-flex align-items-center gap-2"
                 onClick={() => {
-                  if (!isDialing && agentStatus !== 'on_call') {
+                  if (!isDialing && agentStatus !== 'on_call' && isConnected) {
                     setActiveTab('dialer');
                     setAgentStatus('available');
                   }
                 }}
-                disabled={isDialing}
+                disabled={isDialing || !isConnected}
                 data-status={agentStatus}
               >
                 {agentStatus === 'on_call' ? <FaPhone className="pulse" /> :
@@ -1471,6 +1478,7 @@ export default function Office() {
                  agentStatus === 'training' ? <FaGraduationCap /> :
                  agentStatus === 'admin' ? <FaCog /> :
                  agentStatus === 'technical_issue' ? <FaExclamationTriangle /> :
+                 agentStatus === 'not_connected' ? <FaPhoneSlash /> :
                  agentStatus === 'personal' ? <FaUser /> :
                  <FaPhone />}
                 <span className="status-text">
@@ -1481,6 +1489,7 @@ export default function Office() {
                    agentStatus === 'training' ? "Training" :
                    agentStatus === 'admin' ? "Admin Work" :
                    agentStatus === 'technical_issue' ? "System Down" :
+                   agentStatus === 'not_connected' ? "Not Connected" :
                    agentStatus === 'personal' ? "Personal Time" :
                    agentStatus.startsWith('wrap_up') ? selectedDisposition ? 
                      getStatusFromDisposition(dispositionCategory, selectedDisposition).label : 
@@ -1532,6 +1541,49 @@ export default function Office() {
                     </Form.Select>
                   </Form.Group>
 
+                  {selectedDisposition && selectedDisposition.startsWith('sale_') && (
+                    <div className="policy-details border rounded p-3 mb-3 bg-light">
+                      <h6 className="mb-3">Policy Details</h6>
+                      {/* TODO: Replace with actual policy data from the sold policy */}
+                      <div className="row">
+                        <div className="col-md-6">
+                          <Form.Group className="mb-2">
+                            <Form.Label className="fw-bold">Plan Name</Form.Label>
+                            <p className="mb-1">{formData.planName || '[Placeholder] Standard Coverage Plan'}</p>
+                          </Form.Group>
+                          <Form.Group className="mb-2">
+                            <Form.Label className="fw-bold">Coverage Type</Form.Label>
+                            <p className="mb-1">{formData.coverageType || '[Placeholder] Individual'}</p>
+                          </Form.Group>
+                          <Form.Group className="mb-2">
+                            <Form.Label className="fw-bold">Deductible</Form.Label>
+                            <p className="mb-1">${formData.deductible || '[Placeholder] 1,000'}</p>
+                          </Form.Group>
+                        </div>
+                        <div className="col-md-6">
+                          <Form.Group className="mb-2">
+                            <Form.Label className="fw-bold">Monthly Premium</Form.Label>
+                            <p className="mb-1">${formData.premium || '[Placeholder] 250'}</p>
+                          </Form.Group>
+                          <Form.Group className="mb-2">
+                            <Form.Label className="fw-bold">Effective Date</Form.Label>
+                            <p className="mb-1">{formData.effectiveDate || '[Placeholder] ' + new Date().toLocaleDateString()}</p>
+                          </Form.Group>
+                          <Form.Group className="mb-2">
+                            <Form.Label className="fw-bold">Policy Status</Form.Label>
+                            <p className="mb-1">
+                              <Badge bg="success">{formData.policyStatus || '[Placeholder] Active'}</Badge>
+                            </p>
+                          </Form.Group>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-muted small">
+                        <FaInfoCircle className="me-1" />
+                        Note: These are placeholder values. Actual policy details will be populated when integrated with the policy management system.
+                      </div>
+                    </div>
+                  )}
+
                   <Form.Group className="mb-3">
                     <Form.Label>Notes</Form.Label>
                     <Form.Control 
@@ -1547,7 +1599,7 @@ export default function Office() {
                 {selectedDisposition && selectedDisposition.startsWith('sale_') && (
                   <div className="alert alert-success mt-3">
                     <FaCheckCircle className="me-2" />
-                    Sale recorded! Please complete the enrollment process.
+                    Sale recorded! Policy details have been saved.
                   </div>
                 )}
               </Modal.Body>
@@ -1568,15 +1620,38 @@ export default function Office() {
                       // Get status from disposition
                       const newStatus = getStatusFromDisposition(dispositionCategory, selectedDisposition);
                       
-                      // Save the disposition
+                      // Prepare policy details if it's a sale
+                      const policyDetails = selectedDisposition.startsWith('sale_') ? {
+                        // TODO: Replace with actual policy data from the policy management system
+                        planName: formData.planName || '[Placeholder] Standard Coverage Plan',
+                        coverageType: formData.coverageType || '[Placeholder] Individual',
+                        deductible: formData.deductible || '[Placeholder] 1,000',
+                        premium: formData.premium || '[Placeholder] 250',
+                        effectiveDate: formData.effectiveDate || '[Placeholder] ' + new Date().toLocaleDateString(),
+                        status: formData.policyStatus || '[Placeholder] Active'
+                      } : null;
+                      
+                      // Save the disposition with policy details if applicable
                       setNotes(prev => [...prev, {
                         date: new Date().toLocaleString(),
                         type: 'Status Change',
                         disposition: dispositionCodes[dispositionCategory]?.find(code => code.value === selectedDisposition)?.label || selectedDisposition,
                         agent: 'John Doe',
                         duration: agentStatus === 'on_call' ? formatDuration(callDuration) : 'N/A',
-                        notes: dispositionNotes
+                        notes: dispositionNotes,
+                        policyDetails: policyDetails
                       }]);
+                      
+                      // Update active coverage if it's a sale
+                      if (selectedDisposition.startsWith('sale_')) {
+                        setActiveCoverage({
+                          isActive: true,
+                          enrollmentDate: new Date(),
+                          coverageType: formData.coverageType || 'Individual',
+                          provider: 'Insurance Provider'
+                        });
+                        setHasActivePolicy(true);
+                      }
                       
                       // Now we can end the call since disposition is complete
                       if (callTimer) {
@@ -2174,12 +2249,17 @@ export default function Office() {
                         <FaPhone className="me-2" /> Dialer Pad
                       </h5>
                       <Form.Select
-                        value={agentStatus}
-                        onChange={(e) => setAgentStatus(e.target.value)}
+                        value={isConnected ? agentStatus : 'not_connected'}
+                        onChange={(e) => {
+                          if (isConnected || e.target.value === 'not_connected') {
+                            setAgentStatus(e.target.value);
+                          }
+                        }}
                         className="form-select-sm"
-                        style={{ width: '120px' }}
+                        style={{ width: '140px' }}
+                        disabled={!isConnected}
                       >
-                        {agentStatusCodes.map((status) => (
+                        {agentStatusCodes.filter(status => isConnected || status.value === 'not_connected').map((status) => (
                           <option key={status.value} value={status.value}>
                             {status.label}
                           </option>
@@ -2211,10 +2291,10 @@ export default function Office() {
                           {/* Call Status Display */}
                           {isCallActive && (
                             <div className="call-status-indicator text-center mb-3">
-                              <Badge bg="success" className="px-3 py-2">
-                                <FaPhone className="me-2" /> Connected - {formatDuration(callDuration)}
-                              </Badge>
-                            </div>
+                                <Badge bg="success" className="px-3 py-2">
+                                  <FaPhone className="me-2" /> Connected - {formatDuration(callDuration)}
+                                </Badge>
+                    </div>
                           )}
 
                           {/* Dialer Grid */}
@@ -2252,43 +2332,43 @@ export default function Office() {
                           <div className="dialer-actions mt-3">
                             {!isCallActive ? (
                               <div className="d-flex justify-content-between w-100">
-                                <Button
-                                  variant="danger"
+                          <Button
+                            variant="danger"
                                   className="action-button"
                                   onClick={handleDialerClear}
-                                >
+                          >
                                   <FaTimes />
-                                </Button>
-                                <Button
-                                  variant="success"
+                          </Button>
+                          <Button
+                            variant="success"
                                   className="action-button"
                                   onClick={handleCall}
                                   disabled={phoneNumber.length === 0 || !isConnected}
-                                >
-                                  <FaPhone />
-                                </Button>
-                                <Button
-                                  variant="secondary"
+                          >
+                            <FaPhone />
+                          </Button>
+                          <Button
+                            variant="secondary"
                                   className="action-button"
                                   onClick={() => setPhoneNumber(prev => prev.slice(0, -1))}
                                   disabled={phoneNumber.length === 0}
-                                >
+                          >
                                   <FaBackspace />
-                                </Button>
+                          </Button>
                               </div>
                             ) : (
                               <div className="w-100 d-flex justify-content-center">
-                                <Button 
-                                  variant="danger" 
+                              <Button 
+                                variant="danger" 
                                   size="lg"
                                   className="action-button"
-                                  onClick={handleEndCall}
-                                >
-                                  <FaPhone className="rotate-135" />
-                                </Button>
+                                onClick={handleEndCall}
+                              >
+                                <FaPhone className="rotate-135" />
+                              </Button>
                               </div>
                             )}
-                          </div>
+                        </div>
 
                           {/* RingCentral Authentication Button */}
                           <div className="mt-3">
@@ -2310,17 +2390,17 @@ export default function Office() {
                                 </>
                               )}
                             </Button>
-                          </div>
+                        </div>
 
                           {/* Transfer Button */}
                           {isDialing && (
-                            <Button 
-                              variant="info" 
+                          <Button 
+                            variant="info" 
                               className="w-100 mt-3 transfer-button"
                               onClick={() => {/* Handle transfer */}}
-                            >
-                              <FaExchangeAlt className="me-2" /> Transfer Call
-                            </Button>
+                          >
+                            <FaExchangeAlt className="me-2" /> Transfer Call
+                          </Button>
                           )}
                         </div>
                       </Card.Body>
@@ -4038,7 +4118,10 @@ export default function Office() {
                     <div className="d-flex align-items-center gap-2">
                       <span className="text-muted">{note.date}</span>
                       <Badge bg="info">{note.type}</Badge>
-                      <Badge bg={note.disposition === 'Follow-up Required' ? 'warning' : 'secondary'}>
+                      <Badge bg={
+                        note.disposition?.toLowerCase().includes('sale') ? 'success' :
+                        note.disposition === 'Follow-up Required' ? 'warning' : 'secondary'
+                      }>
                         {note.disposition}
                       </Badge>
                     </div>
@@ -4050,7 +4133,42 @@ export default function Office() {
                     </div>
                   </div>
                 </div>
-                <p className="mb-0">{note.notes}</p>
+                <p className="mb-2">{note.notes}</p>
+                
+                {note.policyDetails && (
+                  <div className="policy-details-history mt-3 border-top pt-3">
+                    <h6 className="mb-2">
+                      <FaFileAlt className="me-2" />
+                      Policy Details
+                    </h6>
+                    <div className="row g-3">
+                      <div className="col-md-4">
+                        <small className="text-muted d-block">Plan Name</small>
+                        <span>{note.policyDetails.planName}</span>
+                      </div>
+                      <div className="col-md-4">
+                        <small className="text-muted d-block">Coverage Type</small>
+                        <span>{note.policyDetails.coverageType}</span>
+                      </div>
+                      <div className="col-md-4">
+                        <small className="text-muted d-block">Deductible</small>
+                        <span>${note.policyDetails.deductible}</span>
+                      </div>
+                      <div className="col-md-4">
+                        <small className="text-muted d-block">Monthly Premium</small>
+                        <span>${note.policyDetails.premium}</span>
+                      </div>
+                      <div className="col-md-4">
+                        <small className="text-muted d-block">Effective Date</small>
+                        <span>{note.policyDetails.effectiveDate}</span>
+                      </div>
+                      <div className="col-md-4">
+                        <small className="text-muted d-block">Status</small>
+                        <Badge bg="success">{note.policyDetails.status}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
