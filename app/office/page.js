@@ -1,19 +1,42 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Card, Button, Form, Table, Nav, Tab, Badge, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Form, Table, Nav, Tab, Badge, Modal, Spinner } from 'react-bootstrap';
 import { 
+  // Navigation and UI icons
   FaPhone, FaUser, FaEnvelope, FaCalendar, FaChartLine, FaUsers, 
-  FaBuilding, FaBriefcase, FaTasks, FaComments, FaFileAlt, 
-  FaUserPlus, FaSearch, FaFilter, FaDownload, FaUpload, FaVideo,
-  FaSms, FaGoogle, FaHistory, FaClock, FaMapMarkerAlt, FaLink, FaHome, FaRobot,
-  FaCloud, FaCog, FaChartBar, FaCircle, FaPlus, FaTimes, FaCoffee, FaRestroom, FaUtensils, FaGraduationCap,
+  FaSearch, FaClock, FaBell, FaCog, FaComments, FaHome, FaRobot,
+  FaBuilding, FaBriefcase, FaTasks, FaFileAlt,
+  
+  // Communication icons
+  FaSms, FaVideo, FaMapMarkerAlt, FaLink,
+  
+  // Status and action icons
+  FaCloud, FaChartBar, FaCircle, FaPlus, FaTimes, 
+  FaCoffee, FaRestroom, FaUtensils, FaGraduationCap,
+  
+  // File and document icons
   FaGoogleDrive, FaFolder, FaStar, FaEllipsisV, FaHashtag, FaPaperPlane,
-  FaFileExcel, FaFilePowerpoint, FaFilePdf, FaFileWord, FaUserFriends,
-  FaSignOutAlt, FaBell, FaUserCircle, FaCamera, FaShieldAlt, FaKey, FaVolumeUp,
-  FaDesktop, FaMobile, FaTablet, FaBellSlash, FaUserShield, FaUserCog,
-  FaEdit, FaPalette, FaTrash, FaExchangeAlt, FaCheckCircle, FaSave, FaBackspace,
-  FaMicrophone, FaStop, FaCheck, FaMicrophoneSlash, FaInfoCircle
+  FaFileExcel, FaFilePowerpoint, FaFilePdf, FaFileWord, FaFilter,
+  FaDownload, FaUpload,
+  
+  // User related icons
+  FaUserCircle, FaUserFriends, FaSignOutAlt, FaCamera, FaShieldAlt,
+  FaKey, FaVolumeUp, FaUserShield, FaUserCog, FaUserPlus,
+  
+  // Device and notification icons
+  FaDesktop, FaMobile, FaTablet, FaBellSlash,
+  
+  // Action and state icons
+  FaEdit, FaPalette, FaTrash, FaExchangeAlt, FaCheckCircle, 
+  FaSave, FaBackspace, FaMicrophone, FaStop, FaCheck,
+  
+  // Call and connection icons
+  FaMicrophoneSlash, FaInfoCircle, FaExclamationTriangle,
+  FaPhoneSlash, FaSignInAlt, FaPhoneAlt,
+  
+  // Integration icons
+  FaGoogle, FaHistory, FaSpinner
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -173,27 +196,228 @@ export default function Office() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSaved, setRecordingSaved] = useState(false);
 
-  // Add form validation function
-  const validateForm = (data) => {
-    const completion = {
-      personalInfo: !!(data.firstName && data.lastName && data.dateOfBirth),
-      contactInfo: !!(data.email && data.phone),
-      addressInfo: !!(data.address && data.city && data.state && data.zipCode),
-      spouseInfo: data.maritalStatus !== 'Married' || !!(data.spouseFirstName && data.spouseLastName),
-      childrenInfo: data.children.length === 0 || data.children.every(child => child.firstName && child.lastName),
-      insuranceInfo: !!(data.planName && data.deductible && data.premium)
-    };
-    setFormCompletion(completion);
+  // Add these state variables near the other state declarations
+  const [agentStatus, setAgentStatus] = useState('available');
+  const [dispositionCategory, setDispositionCategory] = useState('lead_contact');
+
+  // Add status code options
+  const agentStatusCodes = [
+    { value: 'available', label: 'Available / Ready', color: 'success' },
+    { value: 'on_call', label: 'On Call', color: 'danger' },
+    { value: 'wrap_up', label: 'Wrap-Up / After Call Work (ACW)', color: 'warning' },
+    { value: 'break', label: 'Break', color: 'info' },
+    { value: 'lunch', label: 'Lunch', color: 'info' },
+    { value: 'meeting', label: 'Meeting', color: 'primary' },
+    { value: 'training', label: 'Training', color: 'primary' },
+    { value: 'admin', label: 'Admin Work', color: 'secondary' },
+    { value: 'technical_issue', label: 'Technical Issue / System Down', color: 'danger' },
+    { value: 'personal', label: 'Personal / Aux (Auxiliary time)', color: 'secondary' }
+  ];
+
+  // Add disposition code options
+  const dispositionCodes = {
+    lead_contact: [
+      { value: 'interested_quote', label: 'Interested – Send Quote' },
+      { value: 'interested_transfer', label: 'Interested – Transferred to Licensed Agent' },
+      { value: 'not_interested', label: 'Not Interested' },
+      { value: 'do_not_call', label: 'Do Not Call' },
+      { value: 'callback', label: 'Call Back Later' },
+      { value: 'voicemail', label: 'Left Voicemail' },
+      { value: 'no_answer', label: 'No Answer' },
+      { value: 'wrong_number', label: 'Disconnected / Wrong Number' }
+    ],
+    qualification: [
+      { value: 'qualified_docs', label: 'Qualified – Awaiting Documents' },
+      { value: 'qualified_submitted', label: 'Qualified – Application Submitted' },
+      { value: 'not_qualified_age', label: 'Not Qualified – Age' },
+      { value: 'not_qualified_income', label: 'Not Qualified – Income' },
+      { value: 'has_insurance', label: 'Already Has Insurance' },
+      { value: 'needs_spouse', label: 'Needs Spouse Approval' },
+      { value: 'out_of_area', label: 'Out of Service Area' },
+      { value: 'medicare_only', label: 'Medicare Only / Not ACA Eligible' }
+    ],
+    sales: [
+      { value: 'sale_bound', label: 'Sale – Policy Bound' },
+      { value: 'sale_pending', label: 'Sale – Payment Pending' },
+      { value: 'sale_emailed', label: 'Sale – Policy Emailed' },
+      { value: 'sale_followup', label: 'Sale – Follow-up Required' },
+      { value: 'no_sale_declined', label: 'No Sale – Declined' },
+      { value: 'no_sale_bad_info', label: 'No Sale – Bad Info' },
+      { value: 'no_sale_competitor', label: 'No Sale – Lost to Competitor' }
+    ]
   };
 
-  // Modify handleInputChange to include validation
+  // Add these state variables at the top with other state declarations
+  const [isDraftSaving, setIsDraftSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    dateOfBirth: '',
+    email: '',
+    phone: '',
+    taxFilingStatus: '',
+    maritalStatus: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    mailingAddress: '',
+    mailingCity: '',
+    mailingState: '',
+    mailingZipCode: '',
+    countryOfOrigin: '',
+    stateOfOrigin: '',
+    occupation: '',
+    annualSalary: '',
+    planName: '',
+    deductible: '',
+    premium: '',
+    coverageType: '',
+    spouseFirstName: '',
+    spouseLastName: '',
+    spouseDateOfBirth: '',
+    hasVoiceRecording: false
+  });
+
+  // Add these state variables at the top
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [isMailingSameAsResidential, setIsMailingSameAsResidential] = useState(false);
+
+  // Update validateForm function
+  const validateForm = () => {
+    const errors = {};
+    
+    // Required fields by section
+    const requiredFields = {
+      personalInfo: {
+        firstName: 'First Name',
+        middleName: 'Middle Name',
+        lastName: 'Last Name',
+        dateOfBirth: 'Date of Birth',
+        email: 'Email',
+        phone: 'Phone Number',
+        taxFilingStatus: 'Tax Filing Status',
+        maritalStatus: 'Marital Status'
+      },
+      addressInfo: {
+        address: 'Street Address',
+        city: 'City',
+        state: 'State',
+        zipCode: 'ZIP Code'
+      },
+      mailingAddress: !isMailingSameAsResidential ? {
+        mailingAddress: 'Mailing Street Address',
+        mailingCity: 'Mailing City',
+        mailingState: 'Mailing State',
+        mailingZipCode: 'Mailing ZIP Code'
+      } : {},
+      originInfo: {
+        countryOfOrigin: 'Country of Origin',
+        stateOfOrigin: 'State/Province of Origin'
+      },
+      employmentInfo: {
+        occupation: 'Occupation',
+        annualSalary: 'Expected Annual Salary'
+      },
+      insuranceInfo: {
+        planName: 'Plan Name',
+        deductible: 'Deductible',
+        premium: 'Premium',
+        coverageType: 'Coverage Type'
+      }
+    };
+
+    // Check each required field
+    Object.entries(requiredFields).forEach(([section, fields]) => {
+      Object.entries(fields).forEach(([field, label]) => {
+        if (!formData[field] || formData[field].toString().trim() === '') {
+          errors[field] = `${label} is required`;
+        }
+      });
+    });
+
+    // Special validation for email format
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    // Special validation for phone number format (assuming US format)
+    if (formData.phone && !/^\(\d{3}\) \d{3}-\d{4}$/.test(formData.phone)) {
+      errors.phone = 'Please enter a valid phone number in (XXX) XXX-XXXX format';
+    }
+
+    // Special handling for spouse information if married
+    if (formData.maritalStatus === 'married') {
+      if (!formData.spouseFirstName?.trim()) errors.spouseFirstName = 'Spouse First Name is required';
+      if (!formData.spouseLastName?.trim()) errors.spouseLastName = 'Spouse Last Name is required';
+      if (!formData.spouseDateOfBirth?.trim()) errors.spouseDateOfBirth = 'Spouse Date of Birth is required';
+    }
+
+    // Check for voice recording
+    if (!formData.hasVoiceRecording) {
+      errors.voiceRecording = 'Voice recording verification is required';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Update handleInputChange to use the new formData state
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => {
-      const newData = { ...prev, [name]: value };
-      validateForm(newData);
-      return newData;
-    });
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Update handleSave function to include validation
+  const handleSave = async (type) => {
+    if (type === 'submit') {
+      if (!validateForm()) {
+        setShowValidationModal(true);
+        // If voice recording is missing, show the recording modal after a short delay
+        if (!formData.hasVoiceRecording) {
+          setTimeout(() => {
+            setShowValidationModal(false);
+            setShowVerificationModal(true);
+          }, 2000);
+        }
+        return;
+      }
+      setIsSubmitting(true);
+    } else {
+      setIsDraftSaving(true);
+    }
+    
+    setSavingStatus('saving');
+    try {
+      // Simulate save operation
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Update coverage status based on the form data
+      if (formData.coverageType) {
+        setHasCoverage(true);
+      }
+      
+      setSavingStatus(type === 'draft' ? 'draft-saved' : 'submitted');
+      
+      // Reset status after 3 seconds
+      setTimeout(() => {
+        setSavingStatus('');
+        setIsDraftSaving(false);
+        setIsSubmitting(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Error saving:', error);
+      setSavingStatus('error');
+      setIsDraftSaving(false);
+      setIsSubmitting(false);
+      setTimeout(() => setSavingStatus(''), 3000);
+    }
   };
 
   useEffect(() => {
@@ -494,28 +718,59 @@ export default function Office() {
     { id: 'meeting', label: 'In Meeting', color: 'info', icon: <FaUsers /> }
   ];
 
-  // Update the handleCall function
-  const handleCall = () => {
+  // Add effect to sync agent status across tabs
+  useEffect(() => {
+    // Update agent status when tab changes
+    if (activeTab === 'dialer' && !isDialing) {
+      setAgentStatus('available');
+    }
+  }, [activeTab]);
+
+  // Add callTimer state
+  const [callTimer, setCallTimer] = useState(null);
+
+  // Update handleCall function
+  const handleCall = async () => {
+    // Check connection first
+    if (!isConnected) {
+      console.error('Cannot place call: Not connected to phone service');
+      return;
+    }
+
     if (phoneNumber.length > 0) {
-      setIsDialing(true);
-      setCallStatus('dialing');
-      setCallDuration(0);
-      // Start call duration timer
-    const interval = setInterval(() => {
-      setCallDuration(prev => prev + 1);
-    }, 1000);
-      return () => clearInterval(interval);
+      try {
+        // Reset disposition completed flag when starting new call
+        setDispositionCompleted(false);
+        setIsDialing(true);
+        setCallStatus('connected');
+        setIsCallActive(true);
+        
+        // Start call duration timer
+        const startTime = Date.now();
+        const timer = setInterval(() => {
+          const duration = Math.floor((Date.now() - startTime) / 1000);
+          setCallDuration(duration);
+        }, 1000);
+        
+        // Store the timer reference
+        setCallTimer(timer);
+        
+        // Update agent status
+        setAgentStatus('on_call');
+      } catch (error) {
+        console.error('Call failed:', error);
+        handleEndCall();
+      }
     }
   };
 
-  // Update the handleEndCall function
-  const handleEndCall = () => {
-    if (isDialing) {
+  // Update handleEndCall function
+  const handleEndCall = async () => {
+    try {
+      // Show disposition modal
       setShowDispositionModal(true);
-    } else {
-      setIsDialing(false);
-      setCallStatus('idle');
-    setCallDuration(0);
+    } catch (error) {
+      console.error('Error ending call:', error);
     }
   };
 
@@ -691,28 +946,6 @@ export default function Office() {
         {formatTime(meeting.time)} ({timeUntil <= 0 ? 'Started' : `in ${timeUntil} min`})
       </p>
     );
-  };
-
-  // Add this function before the return statement
-  const handleSave = async (type) => {
-    setSavingStatus('saving');
-    try {
-      // Here you would typically make an API call to save the data
-      // For now, we'll simulate a save
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update coverage status based on the form data
-      if (coverageType) {
-        setHasCoverage(true);
-      }
-      
-      setSavingStatus('saved');
-      setTimeout(() => setSavingStatus(''), 2000);
-    } catch (error) {
-      console.error('Error saving:', error);
-      setSavingStatus('error');
-      setTimeout(() => setSavingStatus(''), 2000);
-    }
   };
 
   // Add a function to add a new child
@@ -899,6 +1132,203 @@ export default function Office() {
     }
   };
 
+  // Add function to get status color and label based on disposition
+  const getStatusFromDisposition = (category, disposition) => {
+    // Handle non-call dispositions first
+    switch (disposition) {
+      case 'break':
+        return { status: 'break', label: 'On Break', variant: 'warning' };
+      case 'lunch':
+        return { status: 'lunch', label: 'Lunch Break', variant: 'warning' };
+      case 'meeting':
+        return { status: 'meeting', label: 'In Meeting', variant: 'info' };
+      case 'training':
+        return { status: 'training', label: 'Training', variant: 'primary' };
+      case 'admin':
+        return { status: 'admin', label: 'Admin Work', variant: 'secondary' };
+      case 'technical_issue':
+        return { status: 'technical_issue', label: 'System Down', variant: 'danger' };
+      case 'personal':
+        return { status: 'personal', label: 'Personal Time', variant: 'secondary' };
+    }
+
+    // Lead Contact Results status mapping
+    if (category === 'lead_contact') {
+      switch (disposition) {
+        case 'interested_quote':
+        case 'interested_transfer':
+          return { status: 'wrap_up-quote', label: 'Wrap-Up - Quote', variant: 'info' };
+        case 'callback':
+          return { status: 'wrap_up-callback', label: 'Wrap-Up - Callback', variant: 'purple' };
+        case 'not_interested':
+        case 'do_not_call':
+          return { status: 'wrap_up-dnc', label: 'Wrap-Up - DNC', variant: 'danger' };
+        case 'voicemail':
+        case 'no_answer':
+        case 'wrong_number':
+          return { status: 'wrap_up-no-contact', label: 'Wrap-Up - No Contact', variant: 'secondary' };
+        default:
+          return { status: 'wrap_up', label: 'Wrap-Up', variant: 'warning' };
+      }
+    }
+    // Qualification status mapping
+    else if (category === 'qualification') {
+      switch (disposition) {
+        case 'qualified_docs':
+        case 'qualified_submitted':
+          return { status: 'wrap_up-qualified', label: 'Wrap-Up - Qualified', variant: 'success' };
+        case 'not_qualified_age':
+        case 'not_qualified_income':
+          return { status: 'wrap_up-not-qualified', label: 'Wrap-Up - Not Qualified', variant: 'danger' };
+        case 'has_insurance':
+        case 'needs_spouse':
+        case 'out_of_area':
+        case 'medicare_only':
+          return { status: 'wrap_up-not-eligible', label: 'Wrap-Up - Not Eligible', variant: 'warning' };
+        default:
+          return { status: 'wrap_up', label: 'Wrap-Up', variant: 'info' };
+      }
+    }
+    // Sales status mapping
+    else if (category === 'sales') {
+      switch (disposition) {
+        case 'sale_bound':
+        case 'sale_pending':
+        case 'sale_emailed':
+          return { status: 'wrap_up-sale', label: 'Wrap-Up - Sale', variant: 'success' };
+        case 'sale_followup':
+          return { status: 'wrap_up-follow-up', label: 'Wrap-Up - Follow Up', variant: 'info' };
+        case 'no_sale_declined':
+        case 'no_sale_bad_info':
+        case 'no_sale_competitor':
+          return { status: 'wrap_up-no-sale', label: 'Wrap-Up - No Sale', variant: 'danger' };
+        default:
+          return { status: 'wrap_up', label: 'Wrap-Up', variant: 'warning' };
+      }
+    }
+    return { status: 'wrap_up', label: 'Wrap-Up', variant: 'info' };
+  };
+
+  // WebRTC and Connection States
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected'); // 'disconnected', 'connecting', 'connected'
+  const [webrtcSession, setWebrtcSession] = useState(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const MAX_RECONNECT_ATTEMPTS = 3;
+
+  // Connection monitoring
+  useEffect(() => {
+    let heartbeatInterval;
+
+    if (isConnected) {
+      heartbeatInterval = setInterval(() => {
+        checkConnection();
+      }, 5000); // Check connection every 5 seconds
+    }
+
+    return () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+    };
+  }, [isConnected]);
+
+  // Connection status monitoring
+  useEffect(() => {
+    if (connectionStatus === 'disconnected' && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      handleReconnect();
+    }
+  }, [connectionStatus, reconnectAttempts]);
+
+  // Connection handlers
+  const handleConnect = async () => {
+    try {
+      setConnectionStatus('connecting');
+      
+      // Placeholder for WebRTC session initialization
+      // This will be replaced with actual RingCentral SDK implementation
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setIsConnected(true);
+      setConnectionStatus('connected');
+      setReconnectAttempts(0);
+      
+      // Initialize session monitoring
+      startSessionMonitoring();
+    } catch (error) {
+      console.error('Connection failed:', error);
+      setConnectionStatus('disconnected');
+      handleConnectionError(error);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      // Placeholder for WebRTC session cleanup
+      if (webrtcSession) {
+        // Clean up WebRTC session
+        setWebrtcSession(null);
+      }
+      
+      setIsConnected(false);
+      setConnectionStatus('disconnected');
+      setReconnectAttempts(0);
+    } catch (error) {
+      console.error('Disconnect failed:', error);
+    }
+  };
+
+  const handleReconnect = async () => {
+    try {
+      setReconnectAttempts(prev => prev + 1);
+      await handleConnect();
+    } catch (error) {
+      console.error('Reconnection failed:', error);
+      setConnectionStatus('disconnected');
+    }
+  };
+
+  const checkConnection = async () => {
+    try {
+      // Placeholder for connection check
+      // This will be replaced with actual WebRTC session status check
+      if (webrtcSession) {
+        // Check session status
+      }
+    } catch (error) {
+      console.error('Connection check failed:', error);
+      setConnectionStatus('disconnected');
+    }
+  };
+
+  const handleConnectionError = (error) => {
+    // Handle different types of connection errors
+    console.error('Connection error:', error);
+    setIsConnected(false);
+    setConnectionStatus('disconnected');
+  };
+
+  const startSessionMonitoring = () => {
+    // Initialize WebRTC session monitoring
+    // This will be replaced with actual RingCentral SDK implementation
+  };
+
+  // Update the recording save handler to set hasVoiceRecording
+  const handleRecordingSave = () => {
+    setIsRecording(false);
+    setRecordingSaved(true);
+    setFormData(prev => ({
+      ...prev,
+      hasVoiceRecording: true
+    }));
+    setTimeout(() => {
+      setShowVerificationModal(false);
+      setRecordingSaved(false);
+    }, 2000);
+  };
+
+  const [dispositionCompleted, setDispositionCompleted] = useState(false);
+
   return (
     <div className="office-container">
       <style jsx>{`
@@ -1012,47 +1442,96 @@ export default function Office() {
                 )}
               </Button>
 
-              {/* Phone Status */}
+              {/* Agent Status Button */}
               <Button 
-                variant={isDialing ? "danger" : "outline-secondary"} 
+                variant={
+                  agentStatus === 'on_call' ? "danger" : 
+                  agentStatus === 'break' || agentStatus === 'lunch' ? "warning" :
+                  agentStatus === 'meeting' ? "info" :
+                  agentStatus === 'training' ? "primary" :
+                  agentStatus === 'admin' || agentStatus === 'personal' ? "secondary" :
+                  agentStatus === 'technical_issue' ? "danger" :
+                  agentStatus.startsWith('wrap_up') ? "warning" : 
+                  "success"
+                } 
                 size="sm"
                 className="d-flex align-items-center gap-2"
-                onClick={() => setActiveTab('dialer')}
+                onClick={() => {
+                  if (!isDialing && agentStatus !== 'on_call') {
+                    setActiveTab('dialer');
+                    setAgentStatus('available');
+                  }
+                }}
+                disabled={isDialing}
+                data-status={agentStatus}
               >
-                <FaPhone className={isDialing ? "pulse" : ""} />
+                {agentStatus === 'on_call' ? <FaPhone className="pulse" /> :
+                 agentStatus === 'break' || agentStatus === 'lunch' ? <FaCoffee /> :
+                 agentStatus === 'meeting' ? <FaUsers /> :
+                 agentStatus === 'training' ? <FaGraduationCap /> :
+                 agentStatus === 'admin' ? <FaCog /> :
+                 agentStatus === 'technical_issue' ? <FaExclamationTriangle /> :
+                 agentStatus === 'personal' ? <FaUser /> :
+                 <FaPhone />}
                 <span className="status-text">
-                  {isDialing ? "On Call" : "Ready"}
+                  {agentStatus === 'on_call' ? "On Call" :
+                   agentStatus === 'break' ? "On Break" :
+                   agentStatus === 'lunch' ? "Lunch Break" :
+                   agentStatus === 'meeting' ? "In Meeting" :
+                   agentStatus === 'training' ? "Training" :
+                   agentStatus === 'admin' ? "Admin Work" :
+                   agentStatus === 'technical_issue' ? "System Down" :
+                   agentStatus === 'personal' ? "Personal Time" :
+                   agentStatus.startsWith('wrap_up') ? selectedDisposition ? 
+                     getStatusFromDisposition(dispositionCategory, selectedDisposition).label : 
+                     "Wrap-Up" : 
+                   "Ready"}
                 </span>
-                {isDialing && (
+                {agentStatus === 'on_call' && (
                   <span className="call-duration">{formatDuration(callDuration)}</span>
                 )}
               </Button>
             </div>
 
             {/* Disposition Modal */}
-            <Modal show={showDispositionModal} onHide={() => setShowDispositionModal(false)}>
+            <Modal 
+              show={showDispositionModal} 
+              onHide={() => {
+                setShowDispositionModal(false);
+                // Don't end the call if they cancel - keep it active
+              }}
+            >
               <Modal.Header closeButton>
-                <Modal.Title>Call Disposition Required</Modal.Title>
+                <Modal.Title>Call Disposition</Modal.Title>
               </Modal.Header>
               <Modal.Body>
                 <Form>
                   <Form.Group className="mb-3">
+                    <Form.Label>Disposition Category</Form.Label>
+                    <Form.Select 
+                      value={dispositionCategory}
+                      onChange={(e) => setDispositionCategory(e.target.value)}
+                      className="mb-3"
+                    >
+                      <option value="lead_contact">Lead Contact Results</option>
+                      <option value="qualification">Qualification Outcomes</option>
+                      <option value="sales">Sales / Enrollment Outcomes</option>
+                    </Form.Select>
+
                     <Form.Label>Select Disposition</Form.Label>
                     <Form.Select 
                       value={selectedDisposition} 
                       onChange={(e) => setSelectedDisposition(e.target.value)}
                     >
                       <option value="">Select a disposition</option>
-                      <option value="sold">Sold Enrollment</option>
-                      <option value="not_interested">Not Interested</option>
-                      <option value="has_plan">Already Has Plan</option>
-                      <option value="not_qualified">Does Not Qualify</option>
-                      <option value="angry">Angry/Unruly</option>
-                      <option value="thinking">Wants to Think About It</option>
-                      <option value="wrong_number">Wrong Number</option>
-                      <option value="bad_connection">Bad Connection</option>
+                      {dispositionCodes[dispositionCategory].map((code) => (
+                        <option key={code.value} value={code.value}>
+                          {code.label}
+                        </option>
+                      ))}
                     </Form.Select>
                   </Form.Group>
+
                   <Form.Group className="mb-3">
                     <Form.Label>Notes</Form.Label>
                     <Form.Control 
@@ -1064,46 +1543,69 @@ export default function Office() {
                     />
                   </Form.Group>
                 </Form>
-                {selectedDisposition === 'sold' && (
+
+                {selectedDisposition && selectedDisposition.startsWith('sale_') && (
                   <div className="alert alert-success mt-3">
                     <FaCheckCircle className="me-2" />
-                    Congratulations! Enrollment successfully recorded.
+                    Sale recorded! Please complete the enrollment process.
                   </div>
                 )}
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="secondary" onClick={() => setShowDispositionModal(false)}>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    setShowDispositionModal(false);
+                    // Don't end the call if they cancel - keep it active
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button 
                   variant="primary" 
                   onClick={() => {
                     if (selectedDisposition) {
+                      // Get status from disposition
+                      const newStatus = getStatusFromDisposition(dispositionCategory, selectedDisposition);
+                      
                       // Save the disposition
                       setNotes(prev => [...prev, {
                         date: new Date().toLocaleString(),
-                        type: 'Call',
-                        disposition: selectedDisposition,
+                        type: 'Status Change',
+                        disposition: dispositionCodes[dispositionCategory]?.find(code => code.value === selectedDisposition)?.label || selectedDisposition,
                         agent: 'John Doe',
-                        duration: formatDuration(callDuration),
+                        duration: agentStatus === 'on_call' ? formatDuration(callDuration) : 'N/A',
                         notes: dispositionNotes
                       }]);
                       
-                      // End the call and reset call state
+                      // Now we can end the call since disposition is complete
+                      if (callTimer) {
+                        clearInterval(callTimer);
+                        setCallTimer(null);
+                      }
+                      
+                      // Reset all call states
+                      setIsCallActive(false);
                       setIsDialing(false);
                       setCallStatus('idle');
                       setCallDuration(0);
-                      setPhoneNumber('');
                       
-                      // Close the modal and reset form
+                      // Set agent status back to available/ready
+                      setAgentStatus('available');
+                      
+                      // Close modal and reset form
                       setShowDispositionModal(false);
                       setSelectedDisposition('');
                       setDispositionNotes('');
+                      setDispositionCategory('lead_contact');
+                      
+                      // Reset phone number
+                      setPhoneNumber('');
                     }
                   }}
                   disabled={!selectedDisposition}
                 >
-                  End Call
+                  Submit & End Call
                 </Button>
               </Modal.Footer>
             </Modal>
@@ -1672,14 +2174,16 @@ export default function Office() {
                         <FaPhone className="me-2" /> Dialer Pad
                       </h5>
                       <Form.Select
-                        value={agentDisposition}
-                        onChange={(e) => setAgentDisposition(e.target.value)}
+                        value={agentStatus}
+                        onChange={(e) => setAgentStatus(e.target.value)}
                         className="form-select-sm"
                         style={{ width: '120px' }}
                       >
-                        <option value="active">Active</option>
-                        <option value="break">On Break</option>
-                        <option value="meeting">In Meeting</option>
+                        {agentStatusCodes.map((status) => (
+                          <option key={status.value} value={status.value}>
+                            {status.label}
+                          </option>
+                        ))}
                       </Form.Select>
                     </div>
                   </Card.Header>
@@ -1705,19 +2209,12 @@ export default function Office() {
                           />
                           
                           {/* Call Status Display */}
-                          {callStatus !== 'idle' && (
+                          {isCallActive && (
                             <div className="call-status-indicator text-center mb-3">
-                              {callStatus === 'dialing' && (
-                                <Badge bg="warning" className="px-3 py-2">
-                                  <FaPhone className="me-2" /> Dialing...
-                                </Badge>
-                              )}
-                              {callStatus === 'connected' && (
-                                <Badge bg="success" className="px-3 py-2">
-                                  <FaPhone className="me-2" /> Connected - {formatDuration(callDuration)}
-                                </Badge>
-                              )}
-                    </div>
+                              <Badge bg="success" className="px-3 py-2">
+                                <FaPhone className="me-2" /> Connected - {formatDuration(callDuration)}
+                              </Badge>
+                            </div>
                           )}
 
                           {/* Dialer Grid */}
@@ -1752,53 +2249,78 @@ export default function Office() {
                         </div>
 
                           {/* Call Action Buttons */}
-                          <div className="dialer-actions mt-3 d-flex justify-content-between">
-                            {!isDialing ? (
-                              <>
-                          <Button
-                            variant="danger"
+                          <div className="dialer-actions mt-3">
+                            {!isCallActive ? (
+                              <div className="d-flex justify-content-between w-100">
+                                <Button
+                                  variant="danger"
                                   className="action-button"
                                   onClick={handleDialerClear}
-                          >
+                                >
                                   <FaTimes />
-                          </Button>
-                          <Button
-                            variant="success"
+                                </Button>
+                                <Button
+                                  variant="success"
                                   className="action-button"
                                   onClick={handleCall}
-                                  disabled={phoneNumber.length === 0}
-                          >
-                            <FaPhone />
-                          </Button>
-                          <Button
-                            variant="secondary"
+                                  disabled={phoneNumber.length === 0 || !isConnected}
+                                >
+                                  <FaPhone />
+                                </Button>
+                                <Button
+                                  variant="secondary"
                                   className="action-button"
                                   onClick={() => setPhoneNumber(prev => prev.slice(0, -1))}
                                   disabled={phoneNumber.length === 0}
-                          >
+                                >
                                   <FaBackspace />
-                          </Button>
-                              </>
+                                </Button>
+                              </div>
                             ) : (
-                              <Button 
-                                variant="danger" 
-                                className="action-button mx-auto"
-                                onClick={handleEndCall}
-                              >
-                                <FaPhone className="rotate-135" />
-                              </Button>
+                              <div className="w-100 d-flex justify-content-center">
+                                <Button 
+                                  variant="danger" 
+                                  size="lg"
+                                  className="action-button"
+                                  onClick={handleEndCall}
+                                >
+                                  <FaPhone className="rotate-135" />
+                                </Button>
+                              </div>
                             )}
-                        </div>
+                          </div>
+
+                          {/* RingCentral Authentication Button */}
+                          <div className="mt-3">
+                            <Button
+                              variant={isConnected ? "success" : "primary"}
+                              className="w-100 d-flex align-items-center justify-content-center gap-2"
+                              onClick={handleConnect}
+                              disabled={connectionStatus === 'connecting'}
+                            >
+                              {connectionStatus === 'connecting' ? (
+                                <>
+                                  <Spinner animation="border" size="sm" />
+                                  <span>Connecting...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <FaPhoneAlt />
+                                  <span>Connect to RingCentral</span>
+                                </>
+                              )}
+                            </Button>
+                          </div>
 
                           {/* Transfer Button */}
                           {isDialing && (
-                          <Button 
-                            variant="info" 
+                            <Button 
+                              variant="info" 
                               className="w-100 mt-3 transfer-button"
                               onClick={() => {/* Handle transfer */}}
-                          >
-                            <FaExchangeAlt className="me-2" /> Transfer Call
-                          </Button>
+                            >
+                              <FaExchangeAlt className="me-2" /> Transfer Call
+                            </Button>
                           )}
                         </div>
                       </Card.Body>
@@ -1851,97 +2373,144 @@ export default function Office() {
                       <div className="section mb-4">
                         <h6 className="mb-3">Personal Information</h6>
                         <Row>
-                          <Col md={3}>
+                          <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>First Name</Form.Label>
-                              <Form.Control type="text" placeholder="Enter first name" />
+                              <Form.Control
+                                type="text"
+                                name="firstName"
+                                value={formData.firstName}
+                                onChange={handleInputChange}
+                                placeholder="Enter first name"
+                                isInvalid={!!validationErrors.firstName}
+                              />
+                              {validationErrors.firstName && (
+                                <Form.Text className="text-danger">{validationErrors.firstName}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
-                          <Col md={3}>
+                          <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>Middle Name</Form.Label>
-                              <Form.Control type="text" placeholder="Enter middle name" />
+                              <Form.Control
+                                type="text"
+                                name="middleName"
+                                value={formData.middleName}
+                                onChange={handleInputChange}
+                                placeholder="Enter middle name"
+                                isInvalid={!!validationErrors.middleName}
+                              />
+                              {validationErrors.middleName && (
+                                <Form.Text className="text-danger">{validationErrors.middleName}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
-                          <Col md={3}>
+                          <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>Last Name</Form.Label>
-                              <Form.Control type="text" placeholder="Enter last name" />
-                            </Form.Group>
-                          </Col>
-                          <Col md={3}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Suffix</Form.Label>
-                              <Form.Select>
-                                <option value="">Select suffix (if applicable)</option>
-                                <option value="jr">Jr.</option>
-                                <option value="sr">Sr.</option>
-                                <option value="ii">II</option>
-                                <option value="iii">III</option>
-                                <option value="iv">IV</option>
-                                <option value="v">V</option>
-                              </Form.Select>
+                              <Form.Control
+                                type="text"
+                                name="lastName"
+                                value={formData.lastName}
+                                onChange={handleInputChange}
+                                placeholder="Enter last name"
+                                isInvalid={!!validationErrors.lastName}
+                              />
+                              {validationErrors.lastName && (
+                                <Form.Text className="text-danger">{validationErrors.lastName}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                         </Row>
                         <Row>
-                          <Col md={4}>
+                          <Col md={3}>
                             <Form.Group className="mb-3">
                               <Form.Label>Date of Birth</Form.Label>
-                              <Form.Control type="date" />
+                              <Form.Control
+                                type="date"
+                                name="dateOfBirth"
+                                value={formData.dateOfBirth}
+                                onChange={handleInputChange}
+                                isInvalid={!!validationErrors.dateOfBirth}
+                              />
+                              {validationErrors.dateOfBirth && (
+                                <Form.Text className="text-danger">{validationErrors.dateOfBirth}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
-                          <Col md={4}>
+                          <Col md={3}>
                             <Form.Group className="mb-3">
                               <Form.Label>Email</Form.Label>
-                              <Form.Control type="email" placeholder="Enter email" />
+                              <Form.Control
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleInputChange}
+                                placeholder="Enter email"
+                                isInvalid={!!validationErrors.email}
+                              />
+                              {validationErrors.email && (
+                                <Form.Text className="text-danger">{validationErrors.email}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
-                          <Col md={4}>
+                          <Col md={3}>
                             <Form.Group className="mb-3">
                               <Form.Label>Phone</Form.Label>
                               <Form.Control 
                                 type="tel"
-                                value={enrollmentPhone}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/[^\d]/g, '');
-                                  if (value.length <= 11) {
-                                    setEnrollmentPhone(value);
-                                  }
-                                }}
-                                placeholder="Enter phone number"
+                                name="phone"
+                                value={formData.phone}
+                                onChange={handleInputChange}
+                                placeholder="(XXX) XXX-XXXX"
+                                isInvalid={!!validationErrors.phone}
                               />
+                              {validationErrors.phone && (
+                                <Form.Text className="text-danger">{validationErrors.phone}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
-                        </Row>
-                      </div>
-
-                      {/* Tax Filing Status */}
-                      <div className="section mb-4">
-                        <h6 className="mb-3">Tax Filing Status</h6>
-                        <Row>
-                          <Col md={6}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Tax Filing Status</Form.Label>
-                              <Form.Select>
-                                <option value="">Select filing status</option>
-                                <option value="single">Single</option>
-                                <option value="head_of_household">Head of Household</option>
-                                <option value="married_jointly">Married Filing Jointly</option>
-                                <option value="married_separately">Married Filing Separately</option>
-                              </Form.Select>
-                            </Form.Group>
-                          </Col>
-                          <Col md={6}>
+                          <Col md={3}>
                             <Form.Group className="mb-3">
                               <Form.Label>Marital Status</Form.Label>
-                              <Form.Select>
-                                <option value="">Select marital status</option>
+                              <Form.Select
+                                name="maritalStatus"
+                                value={formData.maritalStatus}
+                                onChange={handleInputChange}
+                                isInvalid={!!validationErrors.maritalStatus}
+                              >
+                                <option value="">Select status</option>
                                 <option value="single">Single</option>
                                 <option value="married">Married</option>
                                 <option value="divorced">Divorced</option>
                                 <option value="widowed">Widowed</option>
                               </Form.Select>
+                              {validationErrors.maritalStatus && (
+                                <Form.Text className="text-danger">{validationErrors.maritalStatus}</Form.Text>
+                              )}
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row>
+                          <Col md={12}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Tax Filing Status</Form.Label>
+                              <Form.Select
+                                name="taxFilingStatus"
+                                value={formData.taxFilingStatus}
+                                onChange={handleInputChange}
+                                isInvalid={!!validationErrors.taxFilingStatus}
+                              >
+                                <option value="">Select tax filing status</option>
+                                <option value="single">Single</option>
+                                <option value="married_joint">Married Filing Jointly</option>
+                                <option value="married_separate">Married Filing Separately</option>
+                                <option value="head_household">Head of Household</option>
+                                <option value="qualifying_widow">Qualifying Widow(er)</option>
+                              </Form.Select>
+                              {validationErrors.taxFilingStatus && (
+                                <Form.Text className="text-danger">{validationErrors.taxFilingStatus}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                         </Row>
@@ -1972,19 +2541,36 @@ export default function Office() {
                               <Col md={4}>
                                 <Form.Group className="mb-3">
                                   <Form.Label>Spouse First Name</Form.Label>
-                                  <Form.Control type="text" placeholder="Enter spouse's first name" />
+                                  <Form.Control
+                                    type="text"
+                                    name="spouseFirstName"
+                                    value={formData.spouseFirstName}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter spouse's first name"
+                                  />
                                 </Form.Group>
                               </Col>
                               <Col md={4}>
                                 <Form.Group className="mb-3">
                                   <Form.Label>Spouse Last Name</Form.Label>
-                                  <Form.Control type="text" placeholder="Enter spouse's last name" />
+                                  <Form.Control
+                                    type="text"
+                                    name="spouseLastName"
+                                    value={formData.spouseLastName}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter spouse's last name"
+                                  />
                                 </Form.Group>
                               </Col>
                               <Col md={4}>
                                 <Form.Group className="mb-3">
                                   <Form.Label>Spouse Date of Birth</Form.Label>
-                                  <Form.Control type="date" />
+                                  <Form.Control
+                                    type="date"
+                                    name="spouseDateOfBirth"
+                                    value={formData.spouseDateOfBirth}
+                                    onChange={handleInputChange}
+                                  />
                                 </Form.Group>
                               </Col>
                             </Row>
@@ -2082,7 +2668,18 @@ export default function Office() {
                           <Col md={12}>
                             <Form.Group className="mb-3">
                               <Form.Label>Street Address</Form.Label>
-                              <Form.Control type="text" placeholder="Enter street address" />
+                              <Form.Control
+                                type="text"
+                                name="address"
+                                value={formData.address}
+                                onChange={handleInputChange}
+                                placeholder="Enter street address"
+                                isInvalid={!!validationErrors.address}
+                                className={validationErrors.address ? 'border-danger' : ''}
+                              />
+                              {validationErrors.address && (
+                                <Form.Text className="text-danger">{validationErrors.address}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                         </Row>
@@ -2090,19 +2687,49 @@ export default function Office() {
                           <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>City</Form.Label>
-                              <Form.Control type="text" placeholder="Enter city" />
+                              <Form.Control
+                                type="text"
+                                name="city"
+                                value={formData.city}
+                                onChange={handleInputChange}
+                                placeholder="Enter city"
+                                isInvalid={!!validationErrors.city}
+                              />
+                              {validationErrors.city && (
+                                <Form.Text className="text-danger">{validationErrors.city}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                           <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>State/Province</Form.Label>
-                              <Form.Control type="text" placeholder="Enter state/province" />
+                              <Form.Control
+                                type="text"
+                                name="state"
+                                value={formData.state}
+                                onChange={handleInputChange}
+                                placeholder="Enter state/province"
+                                isInvalid={!!validationErrors.state}
+                              />
+                              {validationErrors.state && (
+                                <Form.Text className="text-danger">{validationErrors.state}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                           <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>ZIP Code</Form.Label>
-                              <Form.Control type="text" placeholder="Enter ZIP code" />
+                              <Form.Control
+                                type="text"
+                                name="zipCode"
+                                value={formData.zipCode}
+                                onChange={handleInputChange}
+                                placeholder="Enter ZIP code"
+                                isInvalid={!!validationErrors.zipCode}
+                              />
+                              {validationErrors.zipCode && (
+                                <Form.Text className="text-danger">{validationErrors.zipCode}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                         </Row>
@@ -2113,14 +2740,28 @@ export default function Office() {
                         <h6 className="mb-3">Mailing Address</h6>
                         <Form.Check
                           type="checkbox"
-                          label="Same as residential address"
+                          label="Same as Residential Address"
                           className="mb-3"
+                          checked={isMailingSameAsResidential}
+                          onChange={(e) => setIsMailingSameAsResidential(e.target.checked)}
                         />
+                        {!isMailingSameAsResidential && (
+                          <>
                         <Row>
                           <Col md={12}>
                             <Form.Group className="mb-3">
                               <Form.Label>Street Address</Form.Label>
-                              <Form.Control type="text" placeholder="Enter mailing address" />
+                                  <Form.Control
+                                    type="text"
+                                    name="mailingAddress"
+                                    value={formData.mailingAddress}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter mailing address"
+                                    isInvalid={!!validationErrors.mailingAddress}
+                                  />
+                                  {validationErrors.mailingAddress && (
+                                    <Form.Text className="text-danger">{validationErrors.mailingAddress}</Form.Text>
+                                  )}
                             </Form.Group>
                           </Col>
                         </Row>
@@ -2128,22 +2769,54 @@ export default function Office() {
                           <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>City</Form.Label>
-                              <Form.Control type="text" placeholder="Enter city" />
+                                  <Form.Control
+                                    type="text"
+                                    name="mailingCity"
+                                    value={formData.mailingCity}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter city"
+                                    isInvalid={!!validationErrors.mailingCity}
+                                  />
+                                  {validationErrors.mailingCity && (
+                                    <Form.Text className="text-danger">{validationErrors.mailingCity}</Form.Text>
+                                  )}
                             </Form.Group>
                           </Col>
                           <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>State/Province</Form.Label>
-                              <Form.Control type="text" placeholder="Enter state/province" />
+                                  <Form.Control
+                                    type="text"
+                                    name="mailingState"
+                                    value={formData.mailingState}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter state/province"
+                                    isInvalid={!!validationErrors.mailingState}
+                                  />
+                                  {validationErrors.mailingState && (
+                                    <Form.Text className="text-danger">{validationErrors.mailingState}</Form.Text>
+                                  )}
                             </Form.Group>
                           </Col>
                           <Col md={4}>
                             <Form.Group className="mb-3">
                               <Form.Label>ZIP Code</Form.Label>
-                              <Form.Control type="text" placeholder="Enter ZIP code" />
+                                  <Form.Control
+                                    type="text"
+                                    name="mailingZipCode"
+                                    value={formData.mailingZipCode}
+                                    onChange={handleInputChange}
+                                    placeholder="Enter ZIP code"
+                                    isInvalid={!!validationErrors.mailingZipCode}
+                                  />
+                                  {validationErrors.mailingZipCode && (
+                                    <Form.Text className="text-danger">{validationErrors.mailingZipCode}</Form.Text>
+                                  )}
                             </Form.Group>
                           </Col>
                         </Row>
+                          </>
+                        )}
                       </div>
 
                       {/* Country of Origin */}
@@ -2153,13 +2826,33 @@ export default function Office() {
                           <Col md={6}>
                             <Form.Group className="mb-3">
                               <Form.Label>Country of Origin</Form.Label>
-                              <Form.Control type="text" placeholder="Enter country of origin" />
+                              <Form.Control
+                                type="text"
+                                name="countryOfOrigin"
+                                value={formData.countryOfOrigin}
+                                onChange={handleInputChange}
+                                placeholder="Enter country of origin"
+                                isInvalid={!!validationErrors.countryOfOrigin}
+                              />
+                              {validationErrors.countryOfOrigin && (
+                                <Form.Text className="text-danger">{validationErrors.countryOfOrigin}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                           <Col md={6}>
                             <Form.Group className="mb-3">
                               <Form.Label>State/Province of Origin</Form.Label>
-                              <Form.Control type="text" placeholder="Enter state/province of origin" />
+                              <Form.Control
+                                type="text"
+                                name="stateOfOrigin"
+                                value={formData.stateOfOrigin}
+                                onChange={handleInputChange}
+                                placeholder="Enter state/province of origin"
+                                isInvalid={!!validationErrors.stateOfOrigin}
+                              />
+                              {validationErrors.stateOfOrigin && (
+                                <Form.Text className="text-danger">{validationErrors.stateOfOrigin}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                         </Row>
@@ -2172,51 +2865,33 @@ export default function Office() {
                           <Col md={6}>
                             <Form.Group className="mb-3">
                               <Form.Label>Occupation</Form.Label>
-                              <Form.Control type="text" placeholder="Enter occupation" />
+                              <Form.Control
+                                type="text"
+                                name="occupation"
+                                value={formData.occupation}
+                                onChange={handleInputChange}
+                                placeholder="Enter occupation"
+                                isInvalid={!!validationErrors.occupation}
+                              />
+                              {validationErrors.occupation && (
+                                <Form.Text className="text-danger">{validationErrors.occupation}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                           <Col md={6}>
                             <Form.Group className="mb-3">
-                              <Form.Label>Expected Annual Salary</Form.Label>
-                              <Form.Control type="number" placeholder="Enter expected annual salary" />
-                            </Form.Group>
-                          </Col>
-                        </Row>
-                      </div>
-
-                      {/* Social Security Number */}
-                      <div className="section mb-4">
-                        <h6 className="mb-3">Social Security Number</h6>
-                        <Row>
-                          <Col md={6}>
-                            <Form.Group className="mb-3">
-                              <Form.Label>Social Security Number (SSN)</Form.Label>
-                              <div className="input-group">
-                                <div className="input-group-prepend">
-                                  <span className="input-group-text bg-light">SSN</span>
-                                </div>
-                                <Form.Control 
-                                  type="text" 
-                                  placeholder="Enter SSN (###-##-####)" 
-                                  maxLength={11}
-                                  value={ssn}
-                                  onChange={(e) => {
-                                    // Use the formatSSN function to format as the user types
-                                    const formatted = formatSSN(e.target.value);
-                                    setSsn(formatted);
-                                  }}
-                                />
-                                {ssnValid && (
-                                  <div className="input-group-append">
-                                    <span className="input-group-text bg-success text-white">
-                                      <FaCheck />
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              <Form.Text className="text-muted">
-                                <strong>Important:</strong> Verify the SSN is correct before submitting
-                              </Form.Text>
+                              <Form.Label>Expected Annual Salary (Current Tax Year)</Form.Label>
+                              <Form.Control
+                                type="number"
+                                name="annualSalary"
+                                value={formData.annualSalary}
+                                onChange={handleInputChange}
+                                placeholder="Enter expected annual salary"
+                                isInvalid={!!validationErrors.annualSalary}
+                              />
+                              {validationErrors.annualSalary && (
+                                <Form.Text className="text-danger">{validationErrors.annualSalary}</Form.Text>
+                              )}
                             </Form.Group>
                           </Col>
                         </Row>
@@ -2235,7 +2910,7 @@ export default function Office() {
                             >
                               <FaMicrophone className="me-2" /> Start New Recording
                             </Button>
-                          </div>
+                                </div>
                         </h6>
                         <div className="recording-status p-3 border rounded">
                           <div className="d-flex align-items-center">
@@ -2294,11 +2969,11 @@ export default function Office() {
                               <div className="d-flex align-items-center gap-2">
                                 <span className={`fw-semibold ${activeCoverage.isActive ? 'text-success' : 'text-secondary'}`}>
                                   {activeCoverage.isActive ? 'Active Coverage' : 'No Active Coverage'}
-                                </span>
+                                    </span>
                                 {activeCoverage.isActive && (
                                   <Badge bg="success" className="rounded-pill">Verified</Badge>
                                 )}
-                              </div>
+                                  </div>
                               {activeCoverage.isActive && activeCoverage.enrollmentDate && (
                                 <small className="text-muted d-block">
                                   Enrolled: {new Date(activeCoverage.enrollmentDate).toLocaleDateString('en-US', { 
@@ -2306,8 +2981,8 @@ export default function Office() {
                                     year: 'numeric'
                                   })}
                                 </small>
-                              )}
-                            </div>
+                                )}
+                              </div>
                           </div>
                         </div>
                       </div>
@@ -2402,21 +3077,54 @@ export default function Office() {
                         <Button variant="outline-secondary" onClick={() => setShowHistoryModal(true)}>
                           <FaHistory className="me-2" /> View History
                         </Button>
-                        <div>
-                          <Button variant="secondary" className="me-2" onClick={() => handleSave('draft')}>
-                            <FaSave className="me-2" /> Save Draft
-                          </Button>
-                          <Button variant="primary">
-                            <FaCheckCircle className="me-2" /> Submit Application
-                          </Button>
-                        </div>
-                      </div>
+                            <div>
+                          <Button 
+                            variant="secondary" 
+                            className="me-2" 
+                            onClick={() => handleSave('draft')}
+                            disabled={savingStatus === 'saving' || isSubmitting}
+                          >
+                            {savingStatus === 'saving' && !isSubmitting ? (
+                              <>
+                                <FaSpinner className="me-2 spin" /> Saving...
+                              </>
+                            ) : savingStatus === 'draft-saved' ? (
+                              <>
+                                <FaCheck className="me-2 text-success" /> Draft Saved!
+                              </>
+                            ) : (
+                              <>
+                                <FaSave className="me-2" /> Save Draft
+                              </>
+                            )}
+                              </Button>
+                          <Button 
+                            variant="primary"
+                            onClick={() => handleSave('submit')}
+                            disabled={savingStatus === 'saving' || isDraftSaving}
+                          >
+                            {savingStatus === 'saving' && !isDraftSaving ? (
+                              <>
+                                <FaSpinner className="me-2 spin" /> Submitting...
+                              </>
+                            ) : savingStatus === 'submitted' ? (
+                              <>
+                                <FaCheck className="me-2 text-success" /> Submitted!
+                              </>
+                            ) : (
+                              <>
+                                <FaCheckCircle className="me-2" /> Submit Application
+                              </>
+                            )}
+                              </Button>
+                            </div>
+                          </div>
                     </Form>
                   </Card.Body>
                 </Card>
-              </div>
-            </div>
-          </div>
+                          </div>
+                        </div>
+                      </div>
         )}
 
         {activeTab === 'analytics' && (
@@ -2429,7 +3137,7 @@ export default function Office() {
                   <div className="d-flex justify-content-between mb-2">
                     <span>Conversion Rate</span>
                     <span className="text-success">32%</span>
-                  </div>
+                          </div>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Avg Sale Value</span>
                     <span className="text-primary">$450</span>
@@ -2442,8 +3150,8 @@ export default function Office() {
                     <span>Revenue per Call</span>
                     <span className="text-warning">$145</span>
                   </div>
-                </div>
-              </div>
+                        </div>
+                      </div>
 
               {/* Time Metrics */}
               <div className="analytics-section">
@@ -2452,11 +3160,11 @@ export default function Office() {
                   <div className="d-flex justify-content-between mb-2">
                     <span>Avg Call Duration</span>
                     <span className="text-primary">8:30</span>
-                  </div>
+                        </div>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Time to Close</span>
                     <span className="text-success">12:45</span>
-                  </div>
+                      </div>
                   <div className="d-flex justify-content-between mb-2">
                     <span>First Response</span>
                     <span className="text-info">45s</span>
@@ -2465,8 +3173,8 @@ export default function Office() {
                     <span>Talk-to-Listen Ratio</span>
                     <span className="text-warning">40:60</span>
                   </div>
-                </div>
               </div>
+            </div>
 
               {/* Sales Funnel Analytics */}
               <div className="analytics-section">
@@ -2475,21 +3183,21 @@ export default function Office() {
                   <div className="d-flex justify-content-between mb-2">
                     <span>Lead to Opportunity</span>
                     <span className="text-primary">45%</span>
-                  </div>
+                            </div>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Opportunity to Quote</span>
                     <span className="text-success">65%</span>
-                  </div>
+                            </div>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Quote to Close</span>
                     <span className="text-info">48%</span>
-                  </div>
+                          </div>
                   <div className="d-flex justify-content-between">
                     <span>Overall Pipeline Velocity</span>
                     <span className="text-warning">3.2 days</span>
+                        </div>
+                      </div>
                   </div>
-                </div>
-              </div>
 
               {/* Performance Trends */}
               <div className="analytics-section">
@@ -2498,11 +3206,11 @@ export default function Office() {
                   <div className="d-flex justify-content-between mb-2">
                     <span>Peak Performance Hours</span>
                     <span className="text-success">10AM - 2PM</span>
-                  </div>
+            </div>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Best Performing Day</span>
                     <span className="text-primary">Wednesday</span>
-                  </div>
+          </div>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Avg Deals per Day</span>
                     <span className="text-info">3.5</span>
@@ -2516,26 +3224,26 @@ export default function Office() {
             </div>
 
             <div className="analytics-main">
-              {/* Time Tracking Overview Card */}
-              <Card className="dashboard-card mb-4">
-                <Card.Header>
-                  <div className="d-flex justify-content-between align-items-center">
-                    <h5 className="mb-0">
-                      <FaClock className="me-2" /> Time Tracking Overview
-                    </h5>
-                    <div className="d-flex gap-2">
-                      <Form.Select size="sm" className="w-auto">
-                        <option value="today">Today</option>
-                        <option value="week">This Week</option>
-                        <option value="month">This Month</option>
-                      </Form.Select>
-                      <Button variant="outline-primary" size="sm">
-                        <FaDownload className="me-1" /> Export
-                      </Button>
-                    </div>
+            {/* Time Tracking Overview Card */}
+            <Card className="dashboard-card mb-4">
+              <Card.Header>
+                <div className="d-flex justify-content-between align-items-center">
+                  <h5 className="mb-0">
+                    <FaClock className="me-2" /> Time Tracking Overview
+                  </h5>
+                  <div className="d-flex gap-2">
+                    <Form.Select size="sm" className="w-auto">
+                      <option value="today">Today</option>
+                      <option value="week">This Week</option>
+                      <option value="month">This Month</option>
+                    </Form.Select>
+                    <Button variant="outline-primary" size="sm">
+                      <FaDownload className="me-1" /> Export
+                    </Button>
                   </div>
-                </Card.Header>
-                <Card.Body>
+                </div>
+              </Card.Header>
+              <Card.Body>
                   <div className="time-tracking-metrics">
                     <Row className="g-4">
                       <Col md={3}>
@@ -2579,98 +3287,161 @@ export default function Office() {
                         </div>
                       </Col>
                     </Row>
-                  </div>
+                </div>
 
-                  <div className="time-tracking-details mt-4">
-                    <Row>
-                      <Col md={6}>
+                <div className="time-tracking-details mt-4">
+                  <Row>
+                    <Col md={6}>
                         <div className="time-card p-3 border rounded">
-                          <h6 className="mb-3">Daily Activity</h6>
-                          <div className="activity-timeline">
-                            <div className="activity-item d-flex justify-content-between mb-2">
-                              <span>Clock In</span>
-                              <span className="text-success">8:00 AM</span>
-                            </div>
-                            <div className="activity-item d-flex justify-content-between mb-2">
-                              <span>Morning Break</span>
-                              <span className="text-warning">10:15 AM (15min)</span>
-                            </div>
-                            <div className="activity-item d-flex justify-content-between mb-2">
-                              <span>Lunch Break</span>
-                              <span className="text-warning">12:30 PM (30min)</span>
-                            </div>
-                            <div className="activity-item d-flex justify-content-between">
-                              <span>Current Status</span>
-                              <span className="text-primary">Active</span>
-                            </div>
+                        <h6 className="mb-3">Daily Activity</h6>
+                        <div className="activity-timeline">
+                          <div className="activity-item d-flex justify-content-between mb-2">
+                            <span>Clock In</span>
+                            <span className="text-success">8:00 AM</span>
+                          </div>
+                          <div className="activity-item d-flex justify-content-between mb-2">
+                            <span>Morning Break</span>
+                            <span className="text-warning">10:15 AM (15min)</span>
+                          </div>
+                          <div className="activity-item d-flex justify-content-between mb-2">
+                            <span>Lunch Break</span>
+                            <span className="text-warning">12:30 PM (30min)</span>
+                          </div>
+                          <div className="activity-item d-flex justify-content-between">
+                            <span>Current Status</span>
+                            <span className="text-primary">Active</span>
                           </div>
                         </div>
-                      </Col>
-                      <Col md={6}>
+                      </div>
+                    </Col>
+                    <Col md={6}>
                         <div className="time-card weekly-hours p-3 border rounded">
-                          <h6 className="mb-3">Weekly Hours Distribution</h6>
-                          <div className="hours-distribution">
-                            <div className="d-flex justify-content-between mb-2">
-                              <span>Active Work</span>
-                              <span className="text-success">35h 15m (88%)</span>
-                            </div>
-                            <div className="d-flex justify-content-between mb-2">
-                              <span>Breaks</span>
-                              <span className="text-warning">3h 45m (9%)</span>
-                            </div>
-                            <div className="d-flex justify-content-between">
-                              <span>Training</span>
-                              <span className="text-info">1h 15m (3%)</span>
-                            </div>
+                        <h6 className="mb-3">Weekly Hours Distribution</h6>
+                        <div className="hours-distribution">
+                          <div className="d-flex justify-content-between mb-2">
+                            <span>Active Work</span>
+                            <span className="text-success">35h 15m (88%)</span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2">
+                            <span>Breaks</span>
+                            <span className="text-warning">3h 45m (9%)</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span>Training</span>
+                            <span className="text-info">1h 15m (3%)</span>
                           </div>
                         </div>
-                      </Col>
-                    </Row>
-                  </div>
-                </Card.Body>
-              </Card>
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
+              </Card.Body>
+            </Card>
 
               {/* Real-time Activity Indicators */}
               <div className="real-time-activity">
-                <h6 className="mb-3">Real-Time Activity Indicators</h6>
+                <h6 className="mb-3">Today's Sales Performance</h6>
                 <div className="activity-indicators">
                   <div className="d-flex flex-wrap gap-3">
-                    <div className="indicator-item p-3 border rounded">
+                    {/* Sales Counter */}
+                    <div className="indicator-item p-3 border rounded flex-grow-1">
                       <div className="d-flex align-items-center">
-                        <div className={`status-dot ${isTimedIn ? 'bg-success' : 'bg-secondary'} me-2`}></div>
+                        <div className="status-dot bg-success me-2"></div>
                         <div>
-                          <h6 className="mb-1">Time Clock Status</h6>
-                          <p className="mb-0 text-muted">
-                            {isTimedIn ? `Active since ${timeInStart.toLocaleTimeString()}` : 'Not clocked in'}
-                          </p>
+                          <h6 className="mb-1">Sales Today</h6>
+                          <div className="d-flex align-items-center">
+                            <h3 className="mb-0 me-2 text-success">3</h3>
+                            <span className="text-muted small">Sales</span>
+                  </div>
+                </div>
+                </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="indicator-item p-3 border rounded">
-                      <div className="d-flex align-items-center">
-                        <div className={`status-dot ${isDialing ? 'bg-danger' : 'bg-success'} me-2`}></div>
-                        <div>
-                          <h6 className="mb-1">Call Status</h6>
-                          <p className="mb-0 text-muted">
-                            {isDialing ? `On call (${formatDuration(callDuration)})` : 'Available'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="indicator-item p-3 border rounded">
+
+                    {/* Call Time */}
+                    <div className="indicator-item p-3 border rounded flex-grow-1">
                       <div className="d-flex align-items-center">
                         <div className="status-dot bg-primary me-2"></div>
                         <div>
-                          <h6 className="mb-1">Today's Progress</h6>
-                          <p className="mb-0 text-muted">
-                            {`${totalTimeToday > 0 ? formatDuration(totalTimeToday) : '0:00'} / 8:00`}
-                          </p>
+                          <h6 className="mb-1">Total Call Time</h6>
+                          <div className="d-flex align-items-center">
+                            <h3 className="mb-0 me-2">4:15</h3>
+                            <span className="text-muted small">Hours</span>
+                        </div>
+                        </div>
+                        </div>
+                        </div>
+
+                    {/* Average Call Time */}
+                    <div className="indicator-item p-3 border rounded flex-grow-1">
+                            <div className="d-flex align-items-center">
+                        <div className="status-dot bg-info me-2"></div>
+                              <div>
+                          <h6 className="mb-1">Avg Time Per Sale</h6>
+                            <div className="d-flex align-items-center">
+                            <h3 className="mb-0 me-2">45</h3>
+                            <span className="text-muted small">Minutes</span>
+                              </div>
+                            </div>
+                          </div>
+                              </div>
+                            </div>
+
+                  {/* Sales Details */}
+                  <div className="mt-4">
+                    <h6 className="mb-3">Sales Details</h6>
+                    <div className="sales-details-section">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Time</th>
+                            <th>Client</th>
+                            <th>Plan</th>
+                            <th>Premium</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>9:15 AM</td>
+                            <td>John Smith</td>
+                            <td>Gold Plan</td>
+                            <td>$450/mo</td>
+                          </tr>
+                          <tr>
+                            <td>11:30 AM</td>
+                            <td>Sarah Johnson</td>
+                            <td>Silver Plan</td>
+                            <td>$325/mo</td>
+                          </tr>
+                          <tr>
+                            <td>2:45 PM</td>
+                            <td>Michael Brown</td>
+                            <td>Gold Plan</td>
+                            <td>$450/mo</td>
+                          </tr>
+                          <tr>
+                            <td>3:20 PM</td>
+                            <td>Emily Davis</td>
+                            <td>Platinum Plan</td>
+                            <td>$575/mo</td>
+                          </tr>
+                          <tr>
+                            <td>4:10 PM</td>
+                            <td>Robert Wilson</td>
+                            <td>Gold Plan</td>
+                            <td>$450/mo</td>
+                          </tr>
+                          <tr>
+                            <td>4:45 PM</td>
+                            <td>Lisa Anderson</td>
+                            <td>Silver Plan</td>
+                            <td>$325/mo</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -3110,7 +3881,7 @@ export default function Office() {
                         <Button variant="info" onClick={() => handleSendEmail(selectedClient.email)}>
                           <FaEnvelope className="me-2" /> Email
                         </Button>
-                        <Button variant="success" onClick={() => handleStartMeeting(selectedClient)}>
+                        <Button variant="success" onClick={() => handleOpenChat(selectedClient)}>
                           <FaComments className="me-2" /> Message
                         </Button>
                       </div>
@@ -3386,6 +4157,28 @@ export default function Office() {
                 <FaMicrophone className="me-2" /> Start Recording
               </>
             )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Add Validation Modal */}
+      <Modal show={showValidationModal} onHide={() => setShowValidationModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Required Fields Missing</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="alert alert-danger">
+            Please fill out all required fields before submitting the application:
+            <ul className="mt-2 mb-0">
+              {Object.entries(validationErrors).map(([field, message]) => (
+                <li key={field}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={() => setShowValidationModal(false)}>
+            OK
           </Button>
         </Modal.Footer>
       </Modal>
