@@ -42,7 +42,7 @@ import {
   FaUserTie, FaExternalLinkAlt, FaUnlink,
   FaQuestionCircle, FaEye,
   FaInbox, FaArrowLeft, FaReply, FaReplyAll, FaForward, FaChartPie,
-  FaCalendarCheck, FaNewspaper, FaRegStar // Added icons for Email and Marketing tabs
+  FaCalendarCheck, FaNewspaper, FaRegStar, FaChevronLeft, FaChevronRight,
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -1548,6 +1548,8 @@ export default function Office() {
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [applicationSearchTerm, setApplicationSearchTerm] = useState('');
   const [applicationTimeframe, setApplicationTimeframe] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const applicationsPerPage = 25;
 
   // --- Admin Tab Functions ---
   const handleViewApplication = (app) => {
@@ -1755,6 +1757,29 @@ export default function Office() {
     
     return filtered;
   }, [applications, applicationSearchTerm, applicationTimeframe]);
+
+  // Pagination logic
+  const indexOfLastApplication = currentPage * applicationsPerPage;
+  const indexOfFirstApplication = indexOfLastApplication - applicationsPerPage;
+  const currentApplications = filteredApplications.slice(indexOfFirstApplication, indexOfLastApplication);
+  const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage);
+
+  // Change page handler
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Handle previous page
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // Handle next page
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   return (
     <div className="office-container">
@@ -4684,8 +4709,8 @@ export default function Office() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredApplications.length > 0 ? (
-                    filteredApplications.map((app) => (
+                  {currentApplications.length > 0 ? (
+                    currentApplications.map((app) => (
                       <tr key={app.id}>
                         <td>{app.clientName}</td>
                         <td>{app.clientId}</td>
@@ -4733,6 +4758,60 @@ export default function Office() {
                   )}
                 </tbody>
               </Table>
+              
+              {/* Pagination Controls */}
+              {filteredApplications.length > 0 && (
+                <div className="d-flex justify-content-between align-items-center mt-3">
+                  <div>
+                    Showing {indexOfFirstApplication + 1} to {Math.min(indexOfLastApplication, filteredApplications.length)} of {filteredApplications.length} applications
+                  </div>
+                  <div>
+                    <Button 
+                      variant="outline-secondary" 
+                      size="sm" 
+                      onClick={handlePreviousPage} 
+                      disabled={currentPage === 1}
+                      className="me-2"
+                    >
+                      <FaChevronLeft /> Previous
+                    </Button>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      // Show pages around current page
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "primary" : "outline-secondary"}
+                          size="sm"
+                          onClick={() => paginate(pageNum)}
+                          className="mx-1"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                    <Button 
+                      variant="outline-secondary" 
+                      size="sm" 
+                      onClick={handleNextPage} 
+                      disabled={currentPage === totalPages}
+                      className="ms-2"
+                    >
+                      Next <FaChevronRight />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card.Body>
           </Card>
         )}
