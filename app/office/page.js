@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Container, Row, Col, Card, Button, Form, Table, Nav, Tab, Badge, Modal, Spinner } from 'react-bootstrap';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Container, Row, Col, Card, Button, Form, Table, Nav, Tab, Badge, Modal, Spinner, ListGroup, InputGroup } from 'react-bootstrap';
 import { 
   // Navigation and UI icons
   FaPhone, FaUser, FaEnvelope, FaCalendar, FaChartLine, FaUsers, 
@@ -36,7 +36,13 @@ import {
   FaPhoneSlash, FaSignInAlt, FaPhoneAlt,
   
   // Integration icons
-  FaGoogle, FaHistory, FaSpinner, FaSync, FaFire
+  FaGoogle, FaHistory, FaSpinner, FaSync, FaFire,
+  FaTimesCircle,
+  FaHeadset, FaBullhorn,
+  FaUserTie, FaExternalLinkAlt, FaUnlink,
+  FaQuestionCircle, FaEye,
+  FaInbox, FaArrowLeft, FaReply, FaReplyAll, FaForward, FaChartPie,
+  FaCalendarCheck, FaNewspaper, FaRegStar // Added icons for Email and Marketing tabs
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -398,10 +404,10 @@ export default function Office() {
         [name]: formattedValue
       }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
     }
   };
 
@@ -410,7 +416,7 @@ export default function Office() {
     try {
       // Set saving status
       if (type === 'draft') {
-        setIsDraftSaving(true);
+      setIsDraftSaving(true);
         setSavingStatus('saving');
       } else {
         setIsSubmitting(true);
@@ -452,7 +458,7 @@ export default function Office() {
         setSavingStatus('submitted');
         setIsSubmitting(false);
       }
-
+      
       // Reset status after 3 seconds
       setTimeout(() => {
         setSavingStatus('');
@@ -882,7 +888,7 @@ export default function Office() {
     } else if (phoneNumber.length <= 6) {
       return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
     } else {
-      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
     }
   };
 
@@ -1530,6 +1536,226 @@ export default function Office() {
 
   const [showSalesModal, setShowSalesModal] = useState(false);
 
+  // State for Admin Tab
+  const [applications, setApplications] = useState([
+    // Mock Data - Replace with actual data fetching later
+    { id: 'APP-001', clientName: 'Alice Wonderland', clientId: 'CLT-1001', submissionDate: '2024-07-28', status: 'Pending', hasRecording: true, hasESignature: true, details: { /* more fields */ } },
+    { id: 'APP-002', clientName: 'Bob The Builder', clientId: 'CLT-1002', submissionDate: '2024-07-27', status: 'Pending', hasRecording: false, hasESignature: true, details: { /* more fields */ } },
+    { id: 'APP-003', clientName: 'Charlie Chaplin', clientId: 'CLT-1003', submissionDate: '2024-07-26', status: 'Confirmed', hasRecording: true, hasESignature: false, details: { /* more fields */ } },
+    { id: 'APP-004', clientName: 'Diana Prince', clientId: 'CLT-1004', submissionDate: '2024-07-25', status: 'Pending', hasRecording: true, hasESignature: true, details: { /* more fields */ } },
+  ]);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [applicationSearchTerm, setApplicationSearchTerm] = useState('');
+  const [applicationTimeframe, setApplicationTimeframe] = useState('all');
+
+  // --- Admin Tab Functions ---
+  const handleViewApplication = (app) => {
+    setSelectedApplication(app);
+    setShowAdminModal(true);
+  };
+
+  const handleConfirmApplication = (appId) => {
+    setApplications(prevApps =>
+      prevApps.map(app =>
+        app.id === appId ? { ...app, status: 'Confirmed' } : app
+      )
+    );
+  };
+
+  const handleSaveChanges = () => {
+    // TODO: Implement logic to save edited application details
+    // For now, just update the state if selectedApplication was modified locally
+    if (selectedApplication) {
+       setApplications(prevApps =>
+         prevApps.map(app =>
+           app.id === selectedApplication.id ? selectedApplication : app
+         )
+       );
+    }
+    setShowAdminModal(false);
+    setSelectedApplication(null);
+  };
+  // --- End Admin Tab Functions ---
+
+  // State for Agents Tab
+  const [agentsData, setAgentsData] = useState([
+    // Mock Data - Replace with actual data fetching later
+    { id: 'AGT-78945', name: 'John Doe', connectionStatus: 'Connected', activityStatus: 'Ready', lastActivity: '2m ago' },
+    { id: 'AGT-12345', name: 'Jane Smith', connectionStatus: 'Connected', activityStatus: 'On Call', lastActivity: 'Active Now' },
+    { id: 'AGT-67890', name: 'Mike Brown', connectionStatus: 'Disconnected', activityStatus: 'Offline', lastActivity: '1h ago' },
+    { id: 'AGT-11223', name: 'Sarah Johnson', connectionStatus: 'Connected', activityStatus: 'On Break', lastActivity: '15m ago' },
+  ]);
+  const [callLogSearchQuery, setCallLogSearchQuery] = useState('');
+
+  // State for Support Tab
+  const [supportRequestsData, setSupportRequestsData] = useState([
+    // Mock Data - Replace with actual data fetching later
+    { id: 'REQ-001', agentName: 'John Doe', agentId: 'AGT-78945', category: 'IT', request: 'Cannot connect to VPN.', dateSubmitted: '2024-07-29 09:15', status: 'Pending', resolution: '' },
+    { id: 'REQ-002', agentName: 'Jane Smith', agentId: 'AGT-12345', category: 'Management', request: 'Requesting schedule change for next week.', dateSubmitted: '2024-07-29 10:30', status: 'In Progress', resolution: 'Manager reviewing schedule.' },
+    { id: 'REQ-003', agentName: 'Mike Brown', agentId: 'AGT-67890', category: 'IT', request: 'Headset audio not working.', dateSubmitted: '2024-07-28 14:00', status: 'Resolved', resolution: 'Replaced headset cable.' },
+    { id: 'REQ-004', agentName: 'Sarah Johnson', agentId: 'AGT-11223', category: 'Management', request: 'Inquiry about commission structure.', dateSubmitted: '2024-07-28 11:00', status: 'Resolved', resolution: 'Provided commission documentation.' },
+    { id: 'REQ-005', agentName: 'John Doe', agentId: 'AGT-78945', category: 'IT', request: 'Software update causing errors.', dateSubmitted: '2024-07-29 11:45', status: 'Pending', resolution: '' },
+  ]);
+  const [showSupportRequestModal, setShowSupportRequestModal] = useState(false);
+  const [selectedSupportRequest, setSelectedSupportRequest] = useState(null);
+
+  // --- Support Tab Functions ---
+  const handleViewSupportRequest = (req) => {
+    setSelectedSupportRequest({ ...req }); // Clone to avoid direct state mutation in modal
+    setShowSupportRequestModal(true);
+  };
+
+  const handleSupportRequestChange = (field, value) => {
+    setSelectedSupportRequest(prev => prev ? { ...prev, [field]: value } : null);
+  };
+
+  const handleSaveSupportRequest = () => {
+    if (selectedSupportRequest) {
+      setSupportRequestsData(prevReqs =>
+        prevReqs.map(req =>
+          req.id === selectedSupportRequest.id ? selectedSupportRequest : req
+        )
+      );
+    }
+    setShowSupportRequestModal(false);
+    setSelectedSupportRequest(null);
+  };
+  // --- End Support Tab Functions ---
+
+  // State for Email Tab
+  const [emailsData, setEmailsData] = useState([
+    { id: 'email-001', from: 'John Smith', subject: 'Health Insurance Quote Follow-up', content: 'Hi, I wanted to follow up on our conversation about health insurance options. When would be a good time to continue our discussion?', time: '10:30 AM', read: true, starred: false, folder: 'inbox' },
+    { id: 'email-002', from: 'Marketing Team', subject: 'New Campaign Materials', content: 'Team, The new marketing materials for the summer campaign are now available. Please review and use these updated templates for all client communications.', time: '9:15 AM', read: false, starred: true, folder: 'inbox' },
+    { id: 'email-003', from: 'Sarah Johnson', subject: 'Question about my policy', content: 'Hello, I have a question about my current policy coverage. Can you please clarify if dental procedures are covered under my plan?', time: 'Yesterday', read: true, starred: false, folder: 'inbox' },
+    { id: 'email-004', from: 'IT Support', subject: 'System Maintenance Notice', content: 'Please be informed that system maintenance will be performed this weekend. The dialer system will be offline from Saturday 8pm to Sunday 2am.', time: '2 days ago', read: true, starred: false, folder: 'inbox' },
+    { id: 'email-005', from: 'Manager', subject: 'Monthly performance review', content: 'Your monthly performance report is ready for review. Please schedule a meeting this week to discuss your results and targets for next month.', time: '3 days ago', read: false, starred: true, folder: 'inbox' },
+  ]);
+  const [selectedEmail, setSelectedEmail] = useState(null);
+  const [emailFolder, setEmailFolder] = useState('inbox');
+  
+  // State for Marketing Tab
+  const [marketingCampaigns, setMarketingCampaigns] = useState([
+    { id: 'camp-001', name: 'Summer Health Awareness', status: 'Active', startDate: '2024-06-01', endDate: '2024-08-31', audience: 'General', engagement: '32%', leads: 215, conversions: 43 },
+    { id: 'camp-002', name: 'Senior Care Special', status: 'Scheduled', startDate: '2024-08-15', endDate: '2024-10-15', audience: 'Seniors', engagement: 'N/A', leads: 0, conversions: 0 },
+    { id: 'camp-003', name: 'Family Plan Promotion', status: 'Active', startDate: '2024-07-01', endDate: '2024-09-30', audience: 'Families', engagement: '28%', leads: 187, conversions: 36 },
+    { id: 'camp-004', name: 'Spring Coverage Drive', status: 'Completed', startDate: '2024-03-01', endDate: '2024-05-31', audience: 'General', engagement: '35%', leads: 341, conversions: 72 },
+  ]);
+  const [marketingTemplates, setMarketingTemplates] = useState([
+    { id: 'temp-001', name: 'Health Insurance Overview', type: 'Email', lastModified: '2024-07-15', usageCount: 45 },
+    { id: 'temp-002', name: 'Family Plan Benefits', type: 'Email', lastModified: '2024-07-10', usageCount: 32 },
+    { id: 'temp-003', name: 'Senior Care Options', type: 'Social Media', lastModified: '2024-07-05', usageCount: 28 },
+    { id: 'temp-004', name: 'Preventive Care Importance', type: 'Landing Page', lastModified: '2024-06-30', usageCount: 19 },
+  ]);
+  
+  // Email Tab Functions
+  const handleEmailSelect = (email) => {
+    setSelectedEmail(email);
+    // Mark as read if it was unread
+    if (!email.read) {
+      setEmailsData(prevEmails => 
+        prevEmails.map(e => 
+          e.id === email.id ? { ...e, read: true } : e
+        )
+      );
+    }
+  };
+  
+  const handleStarEmail = (emailId, event) => {
+    event.stopPropagation(); // Prevent triggering email selection
+    setEmailsData(prevEmails => 
+      prevEmails.map(email => 
+        email.id === emailId ? { ...email, starred: !email.starred } : email
+      )
+    );
+  };
+  
+  const handleDeleteEmail = (emailId, event) => {
+    event.stopPropagation(); // Prevent triggering email selection
+    setEmailsData(prevEmails => prevEmails.filter(email => email.id !== emailId));
+    if (selectedEmail && selectedEmail.id === emailId) {
+      setSelectedEmail(null);
+    }
+  };
+
+  // Add this to the existing state declarations
+  const clockHourHandRef = useRef(null);
+  const clockMinuteHandRef = useRef(null);
+  const clockSecondHandRef = useRef(null);
+  
+  // Add this useEffect to update the clock hands
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const updateClock = () => {
+        const now = new Date();
+        const hours = now.getHours() % 12;
+        const minutes = now.getMinutes();
+        const seconds = now.getSeconds();
+        
+        if (clockHourHandRef.current) {
+          clockHourHandRef.current.style.transform = `rotate(${(hours * 30) + (minutes * 0.5)}deg) translateX(-50%)`;
+        }
+        
+        if (clockMinuteHandRef.current) {
+          clockMinuteHandRef.current.style.transform = `rotate(${minutes * 6}deg) translateX(-50%)`;
+        }
+        
+        if (clockSecondHandRef.current) {
+          clockSecondHandRef.current.style.transform = `rotate(${seconds * 6}deg) translateX(-50%)`;
+        }
+      };
+      
+      updateClock(); // Initial update
+      const intervalId = setInterval(updateClock, 1000);
+      
+      return () => clearInterval(intervalId);
+    }
+  }, []);
+
+  // Filter applications based on search term and timeframe
+  const filteredApplications = useMemo(() => {
+    let filtered = [...applications];
+    
+    // Filter by search term
+    if (applicationSearchTerm) {
+      const searchLower = applicationSearchTerm.toLowerCase();
+      filtered = filtered.filter(app => 
+        app.clientName.toLowerCase().includes(searchLower) ||
+        app.clientId.toLowerCase().includes(searchLower) ||
+        app.id.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Filter by timeframe
+    if (applicationTimeframe !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      filtered = filtered.filter(app => {
+        const submissionDate = new Date(app.submissionDate);
+        
+        switch (applicationTimeframe) {
+          case 'daily':
+            return submissionDate >= today;
+          case 'weekly':
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            return submissionDate >= weekStart;
+          case 'monthly':
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            return submissionDate >= monthStart;
+          case 'yearly':
+            const yearStart = new Date(today.getFullYear(), 0, 1);
+            return submissionDate >= yearStart;
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return filtered;
+  }, [applications, applicationSearchTerm, applicationTimeframe]);
+
   return (
     <div className="office-container">
       <style jsx>{`
@@ -1929,7 +2155,7 @@ export default function Office() {
           </div>
         </div>
 
-        <Nav variant="pills" className="workspace-nav">
+        <Nav variant="pills" className="workspace-nav mb-4">
           <Nav.Item>
             <Nav.Link active={activeTab === 'home'} onClick={() => setActiveTab('home')}>
               <FaHome className="me-2" /> Home
@@ -1945,6 +2171,12 @@ export default function Office() {
               <FaChartBar className="me-2" /> Analytics
             </Nav.Link>
           </Nav.Item>
+          {/* Add Admin Tab */}
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'admin'} onClick={() => setActiveTab('admin')}>
+              <FaUserShield className="me-2" /> Admin
+            </Nav.Link>
+          </Nav.Item>
           <Nav.Item>
             <Nav.Link active={activeTab === 'settings'} onClick={() => setActiveTab('settings')}>
               <FaCog className="me-2" /> Settings
@@ -1953,6 +2185,26 @@ export default function Office() {
           <Nav.Item>
             <Nav.Link active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>
               <FaComments className="me-2" /> Chat
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'email'} onClick={() => setActiveTab('email')}>
+              <FaEnvelope className="me-2" /> Email
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'agents'} onClick={() => setActiveTab('agents')}>
+              <FaUsers className="me-2" /> Agents
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'support'} onClick={() => setActiveTab('support')}>
+              <FaHeadset className="me-2" /> Support
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'marketing'} onClick={() => setActiveTab('marketing')}>
+              <FaBullhorn className="me-2" /> Marketing
             </Nav.Link>
           </Nav.Item>
         </Nav>
@@ -2041,6 +2293,7 @@ export default function Office() {
                       <div className="clock-marking marking-6" style={{ position: 'absolute', width: '2px', height: '8px', background: '#3b82f6', left: '50%', transform: 'translateX(-50%)', bottom: '2px' }}></div>
                       <div className="clock-marking marking-9" style={{ position: 'absolute', width: '8px', height: '2px', background: '#3b82f6', left: '2px', top: '50%', transform: 'translateY(-50%)' }}></div>
                       <div 
+                        ref={clockHourHandRef}
                         className="clock-hand hour-hand" 
                         style={{ 
                           position: 'absolute',
@@ -2050,10 +2303,11 @@ export default function Office() {
                           bottom: '50%',
                           left: '50%',
                           transformOrigin: 'bottom',
-                          transform: `rotate(${((currentTime.getHours() % 12) * 30) + (currentTime.getMinutes() * 0.5)}deg) translateX(-50%)`
+                          transform: 'rotate(0deg) translateX(-50%)'
                         }}
                       ></div>
                       <div 
+                        ref={clockMinuteHandRef}
                         className="clock-hand minute-hand" 
                         style={{ 
                           position: 'absolute',
@@ -2063,10 +2317,11 @@ export default function Office() {
                           bottom: '50%',
                           left: '50%',
                           transformOrigin: 'bottom',
-                          transform: `rotate(${currentTime.getMinutes() * 6}deg) translateX(-50%)`
+                          transform: 'rotate(0deg) translateX(-50%)'
                         }}
                       ></div>
                       <div 
+                        ref={clockSecondHandRef}
                         className="clock-hand second-hand" 
                         style={{ 
                           position: 'absolute',
@@ -2076,7 +2331,7 @@ export default function Office() {
                           bottom: '50%',
                           left: '50%',
                           transformOrigin: 'bottom',
-                          transform: `rotate(${Math.floor(currentTime.getSeconds() * 6)}deg) translateX(-50%)`
+                          transform: 'rotate(0deg) translateX(-50%)'
                         }}
                       ></div>
                       <div className="clock-center" style={{ position: 'absolute', width: '4px', height: '4px', background: '#2563eb', borderRadius: '50%', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
@@ -3615,13 +3870,13 @@ export default function Office() {
 
                       {/* Add this at the bottom of the form, just before the Action Buttons section */}
                       <div className="d-flex justify-content-between align-items-center mt-4">
-                        <Button 
+                          <Button 
                           variant="outline-secondary" 
                           onClick={() => setShowNotesHistoryModal(true)}
                         >
                           <FaHistory className="me-2" /> View Notes History
                         </Button>
-                        <div>
+                            <div>
                           <Button 
                             variant="secondary" 
                             className="me-2" 
@@ -3641,7 +3896,7 @@ export default function Office() {
                                 <FaSave className="me-2" /> Save Draft
                               </>
                             )}
-                          </Button>
+                              </Button>
                           <Button 
                             variant="primary"
                             onClick={() => handleSave('submit')}
@@ -3660,9 +3915,9 @@ export default function Office() {
                                 <FaCheckCircle className="me-2" /> Submit Application
                               </>
                             )}
-                          </Button>
-                        </div>
-                      </div>
+                              </Button>
+                            </div>
+                          </div>
 
                       {/* Notes History Modal */}
                       <Modal 
@@ -4378,577 +4633,818 @@ export default function Office() {
           </div>
         )}
         {activeTab === 'chat' && renderChatSection()}
-      </Container>
 
-      {/* Client Profile Modal */}
-      <Modal 
-        show={showClientProfile} 
-        onHide={() => setShowClientProfile(false)}
-        size="lg"
-      >
+        {/* --- Admin Tab Content --- */}
+        {activeTab === 'admin' && (
+          <Card className="dashboard-card mb-4">
+            <Card.Header>
+              <h5 className="mb-0">
+                <FaUserShield className="me-2" /> Submitted Applications Review
+              </h5>
+            </Card.Header>
+            <Card.Body>
+              <Row className="mb-3">
+                <Col md={6}>
+                  <InputGroup>
+                    <Form.Control
+                      placeholder="Search by name, client ID or application ID..."
+                      value={applicationSearchTerm}
+                      onChange={(e) => setApplicationSearchTerm(e.target.value)}
+                    />
+                    <Button variant="outline-secondary">
+                      <FaSearch />
+                    </Button>
+                  </InputGroup>
+                </Col>
+                <Col md={6}>
+                  <Form.Select 
+                    value={applicationTimeframe}
+                    onChange={(e) => setApplicationTimeframe(e.target.value)}
+                    aria-label="Filter by timeframe"
+                  >
+                    <option value="all">All Applications</option>
+                    <option value="daily">Today</option>
+                    <option value="weekly">This Week</option>
+                    <option value="monthly">This Month</option>
+                    <option value="yearly">This Year</option>
+                  </Form.Select>
+                </Col>
+              </Row>
+              
+              <Table striped bordered hover responsive>
+                <thead>
+                  <tr>
+                    <th>Client Name</th>
+                    <th>Client ID</th>
+                    <th>Submitted</th>
+                    <th>Recording</th>
+                    <th>E-Signature</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredApplications.length > 0 ? (
+                    filteredApplications.map((app) => (
+                      <tr key={app.id}>
+                        <td>{app.clientName}</td>
+                        <td>{app.clientId}</td>
+                        <td>{app.submissionDate}</td>
+                        <td className="text-center">
+                          {app.hasRecording ? <FaCheckCircle color="green" /> : <FaTimesCircle color="gray" />}
+                        </td>
+                        <td className="text-center">
+                          {app.hasESignature ? <FaCheckCircle color="green" /> : <FaTimesCircle color="gray" />}
+                        </td>
+                        <td>
+                          <Badge bg={app.status === 'Confirmed' ? 'success' : 'warning'}>
+                            {app.status}
+                          </Badge>
+                        </td>
+                        <td>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="me-2"
+                            onClick={() => handleViewApplication(app)}
+                            title="View Details"
+                          >
+                            <FaEdit />
+                          </Button>
+                          {app.status === 'Pending' && (
+                            <Button
+                              variant="outline-success"
+                              size="sm"
+                              onClick={() => handleConfirmApplication(app.id)}
+                              title="Confirm Application"
+                            >
+                              <FaCheck /> Confirm
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center">
+                        No applications found matching your criteria.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </Card.Body>
+          </Card>
+        )}
+        {/* --- End Admin Tab Content --- */}
+
+        {/* --- Admin Application Details Modal --- */}
+        <Modal show={showAdminModal} onHide={() => setShowAdminModal(false)} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>
-            <div className="d-flex align-items-center">
-              <div className="client-avatar me-3">
-                <FaUser size={24} />
-              </div>
-              {selectedClient?.name}
-            </div>
-          </Modal.Title>
+            <Modal.Title>Application Details - {selectedApplication?.clientName} ({selectedApplication?.id})</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {selectedClient && (
-            <div className="client-profile">
+            {selectedApplication ? (
+              <Form>
+                {/* Display application details here - make editable later */}
               <Row>
-                <Col md={8}>
-                  <Card className="mb-3">
-                    <Card.Header>
-                      <h6 className="mb-0">Basic Information</h6>
-                    </Card.Header>
-                    <Card.Body>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Client Name</Form.Label>
+                      <Form.Control type="text" value={selectedApplication.clientName} readOnly />
+                    </Form.Group>
+                  </Col>
+                   <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Client ID</Form.Label>
+                      <Form.Control type="text" value={selectedApplication.clientId} readOnly />
+                    </Form.Group>
+                  </Col>
+                </Row>
                       <Row>
                         <Col md={6}>
-                          <p className="mb-1">
-                            <strong>Company:</strong> {selectedClient.company}
-                          </p>
-                          <p className="mb-1">
-                            <strong>Position:</strong> {selectedClient.position}
-                          </p>
-                          <p className="mb-1">
-                            <strong>Industry:</strong> {selectedClient.industry}
-                          </p>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Submission Date</Form.Label>
+                      <Form.Control type="text" value={selectedApplication.submissionDate} readOnly />
+                    </Form.Group>
                         </Col>
                         <Col md={6}>
-                          <p className="mb-1">
-                            <strong>Email:</strong> {selectedClient.email}
-                          </p>
-                          <p className="mb-1">
-                            <strong>Phone:</strong> {selectedClient.phone}
-                          </p>
-                          <p className="mb-1">
-                            <strong>Location:</strong> {selectedClient.location}
-                          </p>
+                     <Form.Group className="mb-3">
+                       <Form.Label>Status</Form.Label>
+                       <Form.Select value={selectedApplication.status} onChange={(e) => setSelectedApplication({...selectedApplication, status: e.target.value})}>
+                         <option value="Pending">Pending</option>
+                         <option value="Confirmed">Confirmed</option>
+                         {/* Add other statuses if needed */}
+                       </Form.Select>
+                     </Form.Group>
                         </Col>
                       </Row>
-                      <div className="mt-3">
-                        <p className="mb-1"><strong>Address:</strong></p>
-                        <p>{selectedClient.address}</p>
-                      </div>
-                    </Card.Body>
-                  </Card>
+                 <Row>
+                    <Col md={6}>
+                        <Form.Check
+                            type="checkbox"
+                            label="Recording Attached"
+                            checked={selectedApplication.hasRecording}
+                            readOnly
+                            className="mb-3"
+                         />
+                    </Col>
+                    <Col md={6}>
+                        <Form.Check
+                            type="checkbox"
+                            label="E-Signature Attached"
+                            checked={selectedApplication.hasESignature}
+                            readOnly
+                            className="mb-3"
+                         />
+                    </Col>
+                 </Row>
+                 {/* Add more fields from selectedApplication.details as needed */}
+                 <Form.Group className="mb-3">
+                   <Form.Label>Full Application Data (Read Only)</Form.Label>
+                   <Form.Control
+                     as="textarea"
+                     rows={10}
+                     value={JSON.stringify(selectedApplication.details || { note: 'No detailed data available in mock.' }, null, 2)}
+                     readOnly
+                   />
+                 </Form.Group>
+              </Form>
+            ) : (
+              <p>No application selected.</p>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowAdminModal(false)}>
+              Close
+            </Button>
+            {/* Enable Save button when editing is implemented */}
+             <Button variant="primary" onClick={handleSaveChanges} >
+               Save Changes
+             </Button>
+          </Modal.Footer>
+        </Modal>
+        {/* --- End Admin Modal --- */}
 
-                  <Card className="mb-3">
+        {/* --- Agents Tab Content --- */}
+        {activeTab === 'agents' && (
+          <Card className="dashboard-card mb-4">
                     <Card.Header>
-                      <h6 className="mb-0">Interaction History</h6>
+              <h5 className="mb-0">
+                <FaUsers className="me-2" /> Agent Management
+              </h5>
                     </Card.Header>
                     <Card.Body>
-                      <div className="timeline">
-                        {selectedClient.history.map((event, index) => (
-                          <div key={index} className="timeline-item">
-                            <div className="timeline-icon">
-                              {event.type === 'call' ? <FaPhone /> : 
-                               event.type === 'email' ? <FaEnvelope /> : 
-                               <FaVideo />}
-                            </div>
-                            <div className="timeline-content">
-                              <h6>{event.title}</h6>
-                              <p className="text-muted small">{event.date}</p>
-                              <p>{event.description}</p>
-                              {event.duration && (
-                                <Badge bg="info" className="me-2">
-                                  Duration: {event.duration}
-                                </Badge>
-                              )}
-                              {event.outcome && (
-                                <Badge bg="success">
-                                  Outcome: {event.outcome}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </Card.Body>
-                  </Card>
+              <Row className="mb-4">
+                {/* RingCentral Admin Link */}
+                <Col md={6} className="mb-3 mb-md-0">
+                  <h6 className="mb-2">RingCentral Administration</h6>
+                  <Button 
+                    variant="primary" 
+                    href="https://service.ringcentral.com" // Replace with actual admin URL if different
+                    target="_blank" // Open in new tab
+                    rel="noopener noreferrer"
+                  >
+                    <FaExternalLinkAlt className="me-2" /> Connect to RingCentral Admin
+                  </Button>
+                  <p className="text-muted small mt-2">Access the RingCentral admin portal to manage users, settings, and analytics.</p>
                 </Col>
 
-                <Col md={4}>
-                  <Card className="mb-3">
-                    <Card.Header>
-                      <h6 className="mb-0">Quick Actions</h6>
-                    </Card.Header>
-                    <Card.Body>
-                      <div className="d-grid gap-2">
-                        <Button variant="primary" onClick={() => setPhoneNumber(selectedClient.phone)}>
-                          <FaPhone className="me-2" /> Call
-                        </Button>
-                        <Button variant="info" onClick={() => handleSendEmail(selectedClient.email)}>
-                          <FaEnvelope className="me-2" /> Email
-                        </Button>
-                        <Button variant="success" onClick={() => handleOpenChat(selectedClient)}>
-                          <FaComments className="me-2" /> Message
-                        </Button>
-                      </div>
+                {/* Call Log Search */}
+                <Col md={6}>
+                  <h6 className="mb-2">Search Call Logs</h6>
+                  <Form.Group>
+                    <div className="input-group">
+                      <Form.Control
+                        type="text"
+                        placeholder="Search by agent name, client, or phone number..."
+                        value={callLogSearchQuery}
+                        onChange={(e) => setCallLogSearchQuery(e.target.value)}
+                      />
+                      <Button variant="outline-secondary">
+                        <FaSearch />
+                      </Button>
+                            </div>
+                  </Form.Group>
+                  <p className="text-muted small mt-2">Find specific call recordings and details.</p>
+                </Col>
+              </Row>
+
+              {/* Agent List Table */}
+              <h6 className="mb-3">Active Agents</h6>
+              <Table striped bordered hover responsive size="sm">
+                <thead>
+                  <tr>
+                    <th>Agent Name</th>
+                    <th>Agent ID</th>
+                    <th>Connection Status</th>
+                    <th>Activity Status</th>
+                    <th>Last Activity</th>
+                    {/* Add more columns if needed, e.g., Actions */}
+                  </tr>
+                </thead>
+                <tbody>
+                  {agentsData.map((agent) => (
+                    <tr key={agent.id}>
+                      <td><FaUserTie className="me-2" />{agent.name}</td>
+                      <td>{agent.id}</td>
+                      <td>
+                        <Badge bg={agent.connectionStatus === 'Connected' ? 'success' : 'secondary'} className="d-flex align-items-center">
+                          {agent.connectionStatus === 'Connected' ? <FaLink className="me-1" /> : <FaUnlink className="me-1" />}
+                          {agent.connectionStatus}
+                                </Badge>
+                      </td>
+                      <td>
+                        <Badge bg={
+                          agent.activityStatus === 'Ready' ? 'success' :
+                          agent.activityStatus === 'On Call' ? 'danger' :
+                          agent.activityStatus === 'On Break' ? 'warning' :
+                          'secondary'
+                        }>
+                          {agent.activityStatus}
+                                </Badge>
+                      </td>
+                      <td>{agent.lastActivity}</td>
+                      {/* Example Actions Column 
+                      <td>
+                        <Button variant="outline-info" size="xs" title="View Agent Details"><FaEye /></Button>
+                      </td>
+                      */}
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
                     </Card.Body>
                   </Card>
+        )}
+        {/* --- End Agents Tab Content --- */}
 
-                  <Card className="mb-3">
+        {/* --- Support Tab Content --- */}
+        {activeTab === 'support' && (
+          <Card className="dashboard-card mb-4">
                     <Card.Header>
-                      <h6 className="mb-0">Notes</h6>
+              <h5 className="mb-0">
+                <FaHeadset className="me-2" /> Agent Support Requests
+              </h5>
                     </Card.Header>
                     <Card.Body>
+              {/* Add Filtering/Sorting Options Here Later if needed */}
+              <div className="mb-3">
+                <Row>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label>Filter by Status</Form.Label>
+                      <Form.Select size="sm">
+                        <option value="all">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label>Filter by Category</Form.Label>
+                      <Form.Select size="sm">
+                        <option value="all">All Categories</option>
+                        <option value="IT">IT</option>
+                        <option value="Management">Management</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                     <Form.Group>
+                      <Form.Label>Search Requests</Form.Label>
+                      <Form.Control size="sm" type="search" placeholder="Search by agent or keyword..." />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                      </div>
+
+              {/* Support Request Table */}
+              <Table striped bordered hover responsive size="sm">
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>Category</th>
+                    <th>Request Summary</th>
+                    <th>Date Submitted</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {supportRequestsData.map((req) => (
+                    <tr key={req.id}>
+                      <td><FaUserTie className="me-1 text-muted" /> {req.agentName} ({req.agentId})</td>
+                      <td>
+                        <Badge bg={req.category === 'IT' ? 'info' : 'primary'} pill>
+                          {req.category === 'IT' ? <FaUserCog className="me-1"/> : <FaBriefcase className="me-1"/>}
+                          {req.category}
+                        </Badge>
+                      </td>
+                      <td style={{ maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{req.request}</td>
+                      <td>{new Date(req.dateSubmitted).toLocaleString()}</td>
+                      <td>
+                        <Badge bg={
+                          req.status === 'Pending' ? 'warning' :
+                          req.status === 'In Progress' ? 'info' :
+                          req.status === 'Resolved' ? 'success' :
+                          'secondary'
+                        }>
+                          {req.status}
+                        </Badge>
+                      </td>
+                      <td>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          onClick={() => handleViewSupportRequest(req)}
+                          title="View Details & Update"
+                        >
+                          <FaEye /> View / Update
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+                    </Card.Body>
+                  </Card>
+        )}
+        {/* --- End Support Tab Content --- */}
+
+        {/* --- Support Request Details Modal --- */}
+        <Modal show={showSupportRequestModal} onHide={() => setShowSupportRequestModal(false)} size="lg">
+          <Modal.Header closeButton>
+            <Modal.Title>Support Request Details - {selectedSupportRequest?.id}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {selectedSupportRequest ? (
                       <Form>
-                        <Form.Group>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Agent Name</Form.Label>
+                      <Form.Control type="text" value={selectedSupportRequest.agentName} readOnly />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Agent ID</Form.Label>
+                      <Form.Control type="text" value={selectedSupportRequest.agentId} readOnly />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row>
+                   <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Category</Form.Label>
+                      <Form.Control type="text" value={selectedSupportRequest.category} readOnly />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Date Submitted</Form.Label>
+                      <Form.Control type="text" value={new Date(selectedSupportRequest.dateSubmitted).toLocaleString()} readOnly />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Form.Group className="mb-3">
+                  <Form.Label>Full Request</Form.Label>
+                  <Form.Control as="textarea" rows={3} value={selectedSupportRequest.request} readOnly />
+                </Form.Group>
+                <hr />
+                 <Row>
+                  <Col md={6}>
+                     <Form.Group className="mb-3">
+                       <Form.Label>Update Status</Form.Label>
+                       <Form.Select 
+                         value={selectedSupportRequest.status} 
+                         onChange={(e) => handleSupportRequestChange('status', e.target.value)}
+                       >
+                         <option value="Pending">Pending</option>
+                         <option value="In Progress">In Progress</option>
+                         <option value="Resolved">Resolved</option>
+                         <option value="Closed">Closed</option> {/* Added Closed status */}
+                       </Form.Select>
+                     </Form.Group>
+                   </Col>
+                 </Row>
+                 <Form.Group className="mb-3">
+                   <Form.Label>Resolution / Notes</Form.Label>
                           <Form.Control
                             as="textarea"
                             rows={4}
-                            value={selectedClient.notes}
-                            onChange={(e) => setClientNotes(e.target.value)}
-                            placeholder="Add notes about this client..."
+                     placeholder="Add resolution details or notes here..."
+                     value={selectedSupportRequest.resolution || ''} 
+                     onChange={(e) => handleSupportRequestChange('resolution', e.target.value)}
                           />
                         </Form.Group>
-                        <Button variant="primary" size="sm" className="mt-2">
-                          Save Notes
-                        </Button>
                       </Form>
-                    </Card.Body>
-                  </Card>
-
-                  <Card>
-                    <Card.Header>
-                      <h6 className="mb-0">Tags</h6>
-                    </Card.Header>
-                    <Card.Body>
-                      <div className="d-flex flex-wrap gap-2">
-                        {selectedClient.tags.map((tag, index) => (
-                          <Badge 
-                            key={index} 
-                            bg="light" 
-                            text="dark"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                        <Button variant="outline-primary" size="sm">
-                          <FaPlus /> Add Tag
-                    </Button>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-            </div>
+            ) : (
+              <p>No support request selected.</p>
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowClientProfile(false)}>
-            Close
+            <Button variant="secondary" onClick={() => setShowSupportRequestModal(false)}>
+              Cancel
           </Button>
-          <Button variant="primary">
+             <Button variant="primary" onClick={handleSaveSupportRequest} disabled={!selectedSupportRequest}>
             Save Changes
           </Button>
         </Modal.Footer>
       </Modal>
-      
-      {/* Chat Modal */}
-      <Modal
-        show={showChatModal}
-        onHide={() => setShowChatModal(false)}
-        size="lg"
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <div className="d-flex align-items-center">
-              <div className="chat-avatar me-3">
-                <FaUserCircle size={32} />
-              </div>
-              {selectedChat?.name}
-            </div>
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="chat-messages" style={{ height: '400px', overflowY: 'auto' }}>
-            {selectedChat?.messages?.map((message, index) => (
-              <div 
-                key={index} 
-                className={`message ${message.sender === 'me' ? 'sent' : 'received'} mb-3`}
-              >
-                <div className="message-content p-2 rounded">
-                  <p className="mb-0">{message.text}</p>
-                  <small className="text-muted">{message.timestamp}</small>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="chat-input mt-3">
-            <div className="input-group">
-              <Form.Control
-                type="text"
-                placeholder="Type a message..."
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSendMessage();
-                  }
-                }}
-              />
-              <Button variant="primary" onClick={handleSendMessage}>
-                <FaPaperPlane />
-              </Button>
-            </div>
-          </div>
-        </Modal.Body>
-      </Modal>
+        {/* --- End Support Request Details Modal --- */}
 
-      {/* History Modal */}
-      <Modal 
-        show={showHistoryModal} 
-        onHide={() => {
-          setShowHistoryModal(false);
-          setShowNewNoteForm(false);
-        }}
-        size="lg"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Application History</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="history-timeline">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h6 className="mb-0">Notes & Disposition History</h6>
-              <Button 
-                variant="outline-primary" 
-                size="sm"
-                onClick={() => setShowNewNoteForm(true)}
-              >
-                <FaPlus className="me-1" /> Add Note
-              </Button>
-            </div>
-
-            {showNewNoteForm && (
-              <div className="new-note-form mb-4 p-3 border rounded">
-                <h6 className="mb-3">Add New Note</h6>
-                <Form>
-                  <Row>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Type</Form.Label>
-                        <Form.Select
-                          value={newNote.type}
-                          onChange={(e) => setNewNote(prev => ({ ...prev, type: e.target.value }))}
-                        >
-                          <option>Note</option>
-                          <option>Call</option>
-                          <option>Meeting</option>
-                          <option>Email</option>
-                          <option>Application</option>
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Disposition</Form.Label>
-                        <Form.Select
-                          value={newNote.disposition}
-                          onChange={(e) => setNewNote(prev => ({ ...prev, disposition: e.target.value }))}
-                        >
-                          <option>General</option>
-                          <option>Follow-up Required</option>
-                          <option>Completed</option>
-                          <option>Pending Response</option>
-                          <option>Submitted</option>
-                        </Form.Select>
-                      </Form.Group>
-                    </Col>
-                  </Row>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Notes</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={3}
-                      value={newNote.notes}
-                      onChange={(e) => setNewNote(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder="Enter your notes here..."
-                    />
-                  </Form.Group>
-                  <div className="d-flex justify-content-end gap-2">
-                    <Button 
-                      variant="outline-secondary" 
-                      onClick={() => setShowNewNoteForm(false)}
+        {/* --- Email Tab Content --- */}
+        {activeTab === 'email' && (
+          <Row>
+            <Col md={3}>
+              <Card className="mb-3">
+                <Card.Body className="p-0">
+                  <ListGroup variant="flush">
+                    <ListGroup.Item 
+                      action 
+                      active={emailFolder === 'inbox'}
+                      onClick={() => setEmailFolder('inbox')}
+                      className="d-flex justify-content-between align-items-center"
                     >
-                      Cancel
-                    </Button>
-                    <Button 
-                      variant="primary" 
-                      onClick={handleSaveNote}
-                      disabled={!newNote.notes.trim()}
-                    >
-                      Save Note
-                    </Button>
-                  </div>
-                </Form>
-              </div>
-            )}
-
-            {notes.map((note, index) => (
-              <div key={index} className="history-entry mb-3">
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <div className="d-flex align-items-center gap-2">
-                      <span className="text-muted">{note.date}</span>
-                      <Badge bg="info">{note.type}</Badge>
-                      <Badge bg={
-                        note.disposition?.toLowerCase().includes('sale') ? 'success' :
-                        note.disposition === 'Follow-up Required' ? 'warning' : 'secondary'
-                      }>
-                        {note.disposition}
+                      <span><FaInbox className="me-2" /> Inbox</span>
+                      <Badge bg="primary" pill>
+                        {emailsData.filter(email => !email.read && email.folder === 'inbox').length}
                       </Badge>
+                    </ListGroup.Item>
+                    <ListGroup.Item 
+                      action 
+                      active={emailFolder === 'sent'}
+                      onClick={() => setEmailFolder('sent')}
+                    >
+                      <FaPaperPlane className="me-2" /> Sent
+                    </ListGroup.Item>
+                    <ListGroup.Item 
+                      action 
+                      active={emailFolder === 'drafts'}
+                      onClick={() => setEmailFolder('drafts')}
+                    >
+                      <FaEdit className="me-2" /> Drafts
+                    </ListGroup.Item>
+                    <ListGroup.Item 
+                      action 
+                      active={emailFolder === 'starred'}
+                      onClick={() => setEmailFolder('starred')}
+                    >
+                      <FaStar className="me-2" /> Starred
+                    </ListGroup.Item>
+                    <ListGroup.Item 
+                      action 
+                      active={emailFolder === 'trash'}
+                      onClick={() => setEmailFolder('trash')}
+                    >
+                      <FaTrash className="me-2" /> Trash
+                    </ListGroup.Item>
+                  </ListGroup>
+                </Card.Body>
+              </Card>
+              <Button variant="primary" className="w-100 mb-3">
+                <FaPlus className="me-2" /> Compose
+              </Button>
+            </Col>
+            
+            <Col md={9}>
+              <Card>
+                <Card.Header className="bg-white">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div className="d-flex align-items-center">
+              <Form.Control
+                        type="search" 
+                        placeholder="Search emails..." 
+                        className="me-2"
+                        style={{ maxWidth: '300px' }}
+                      />
+                      <Button variant="outline-secondary" size="sm">
+                        <FaSearch />
+              </Button>
+            </div>
+                    <div>
+                      <Button variant="outline-secondary" size="sm" className="me-2">
+                        <FaFilter /> Filter
+                      </Button>
+                      <Button variant="outline-secondary" size="sm">
+                        <FaSync /> Refresh
+                      </Button>
+          </div>
+                  </div>
+                </Card.Header>
+                
+                <Card.Body className="p-0">
+                  {selectedEmail ? (
+                    <div className="email-detail p-3">
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h5>{selectedEmail.subject}</h5>
+                        <div>
+                          <Button variant="outline-secondary" size="sm" className="me-1" onClick={() => setSelectedEmail(null)}>
+                            <FaArrowLeft /> Back
+                          </Button>
+                          <Button variant="outline-secondary" size="sm" className="me-1">
+                            <FaReply /> Reply
+                          </Button>
+                          <Button variant="outline-secondary" size="sm" className="me-1">
+                            <FaForward /> Forward
+                          </Button>
+                          <Button variant="outline-danger" size="sm" onClick={(e) => handleDeleteEmail(selectedEmail.id, e)}>
+                            <FaTrash />
+                          </Button>
+            </div>
+          </div>
+
+                      <div className="email-header d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                  <div>
+                          <strong>From:</strong> {selectedEmail.from}
                     </div>
-                    <div className="mt-1">
-                      <small className="text-muted">
-                        <FaUser className="me-1" /> {note.agent} • 
-                        <FaClock className="ms-2 me-1" /> {note.duration}
-                        {note.type === 'Application' && note.notes.includes('Application ID:') && (
-                          <>
-                            <FaFileAlt className="ms-2 me-1" /> 
-                            {note.notes.match(/Application ID: ([A-Z0-9-]+)/)?.[1]}
-                          </>
-                        )}
-                      </small>
+                        <div>
+                          <small className="text-muted">{selectedEmail.time}</small>
                     </div>
                   </div>
-                </div>
-                <p className="mb-2">{note.notes}</p>
-                
-                {note.policyDetails && (
-                  <div className="policy-details-history mt-3 border-top pt-3">
-                    <h6 className="mb-2">
-                      <FaFileAlt className="me-2" />
-                      Policy Details
-                    </h6>
-                    <div className="row g-3">
-                      <div className="col-md-4">
-                        <small className="text-muted d-block">Plan Name</small>
-                        <span>{note.policyDetails.planName}</span>
+                      
+                      <div className="email-content p-2">
+                        <p>{selectedEmail.content}</p>
                       </div>
-                      <div className="col-md-4">
-                        <small className="text-muted d-block">Coverage Type</small>
-                        <span>{note.policyDetails.coverageType}</span>
                       </div>
-                      <div className="col-md-4">
-                        <small className="text-muted d-block">Deductible</small>
-                        <span>${note.policyDetails.deductible}</span>
+                  ) : (
+                    <div className="email-list">
+                      <ListGroup variant="flush">
+                        {emailsData
+                          .filter(email => {
+                            if (emailFolder === 'inbox') return email.folder === 'inbox';
+                            if (emailFolder === 'starred') return email.starred;
+                            return email.folder === emailFolder;
+                          })
+                          .map(email => (
+                            <ListGroup.Item 
+                              key={email.id}
+                              action
+                              onClick={() => handleEmailSelect(email)}
+                              className={`d-flex justify-content-between align-items-center py-3 ${!email.read ? 'fw-bold' : ''}`}
+                            >
+                              <div className="d-flex align-items-center">
+                                <div className="me-2" onClick={(e) => handleStarEmail(email.id, e)}>
+                                  {email.starred ? <FaStar className="text-warning" /> : <FaRegStar />}
                       </div>
-                      <div className="col-md-4">
-                        <small className="text-muted d-block">Monthly Premium</small>
-                        <span>${note.policyDetails.premium}</span>
+                                <div>
+                                  <div className="sender">{email.from}</div>
+                                  <div className="subject">{email.subject}</div>
                       </div>
-                      <div className="col-md-4">
-                        <small className="text-muted d-block">Effective Date</small>
-                        <span>{note.policyDetails.effectiveDate}</span>
                       </div>
-                      <div className="col-md-4">
-                        <small className="text-muted d-block">Status</small>
-                        <Badge bg="success">{note.policyDetails.status}</Badge>
+                              <div className="d-flex align-items-center">
+                                <div className="time me-3 text-muted small">
+                                  {email.time}
                       </div>
+                                <Button 
+                                  variant="link" 
+                                  className="p-0 text-danger"
+                                  onClick={(e) => handleDeleteEmail(email.id, e)}
+                                >
+                                  <FaTrash />
+                                </Button>
                     </div>
+                            </ListGroup.Item>
+                          ))}
+                      </ListGroup>
                   </div>
                 )}
-              </div>
-            ))}
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowHistoryModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        )}
+        {/* --- End Email Tab Content --- */}
 
-      {/* Add the Verification Script Modal */}
-      <Modal 
-        show={showVerificationModal} 
-        onHide={() => {
-          if (!isRecording) {
-            setShowVerificationModal(false);
-          }
-        }}
-        size="lg"
-        centered
-        backdrop={isRecording ? 'static' : true}
-        keyboard={!isRecording}
-      >
-        <Modal.Header closeButton={!isRecording}>
-          <Modal.Title>Verification Script</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="verification-script p-4 bg-light rounded mb-4">
-            <h6 className="text-primary mb-4">Please read the following script to obtain legal consent:</h6>
-            <div className="script-content">
-              <p className="mb-4 lead">
-                "Hello, I am recording this call to verify your consent for health insurance enrollment. 
-                Today's date is {new Date().toLocaleDateString()}."
-              </p>
-              <p className="mb-4 lead">
-                "Could you please state your full name and confirm that you authorize our office to assist you with your health insurance enrollment?"
-              </p>
-              <p className="mb-4 lead">
-                "Do you understand that by providing this consent, you are allowing us to:
-                <br/>1. Access and handle your personal information for enrollment purposes
-                <br/>2. Submit applications on your behalf to health insurance providers
-                <br/>3. Communicate with insurance companies regarding your coverage"
-              </p>
-              <p className="lead">
-                "Please respond with 'Yes, I understand and consent' if you agree."
-              </p>
+        {/* --- Marketing Tab Content --- */}
+        {activeTab === 'marketing' && (
+          <div>
+            <Card className="dashboard-card mb-4">
+              <Card.Header>
+                <h5 className="mb-0">
+                  <FaBullhorn className="me-2" /> Campaign Management
+                </h5>
+              </Card.Header>
+              <Card.Body>
+                <div className="d-flex justify-content-between mb-3">
+                  <h6>Current Campaigns</h6>
+                  <Button variant="primary" size="sm">
+                    <FaPlus className="me-1" /> New Campaign
+                  </Button>
+              </div>
+                
+                <Table striped hover responsive>
+                  <thead>
+                    <tr>
+                      <th>Campaign Name</th>
+                      <th>Status</th>
+                      <th>Timeframe</th>
+                      <th>Target Audience</th>
+                      <th>Engagement</th>
+                      <th>Leads</th>
+                      <th>Conversions</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {marketingCampaigns.map(campaign => (
+                      <tr key={campaign.id}>
+                        <td>{campaign.name}</td>
+                        <td>
+                          <Badge bg={
+                            campaign.status === 'Active' ? 'success' :
+                            campaign.status === 'Scheduled' ? 'info' :
+                            campaign.status === 'Completed' ? 'secondary' : 'warning'
+                          }>
+                            {campaign.status}
+                          </Badge>
+                        </td>
+                        <td>{campaign.startDate} - {campaign.endDate}</td>
+                        <td>{campaign.audience}</td>
+                        <td>{campaign.engagement}</td>
+                        <td>{campaign.leads}</td>
+                        <td>{campaign.conversions}</td>
+                        <td>
+                          <Button variant="outline-primary" size="sm" className="me-1">
+                            <FaEdit /> Edit
+                          </Button>
+                          <Button variant="outline-secondary" size="sm">
+                            <FaChartBar /> Analytics
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </Card.Body>
+            </Card>
+            
+            <Row>
+              <Col md={6}>
+                <Card className="dashboard-card mb-4">
+                  <Card.Header>
+                    <h5 className="mb-0">
+                      <FaFileAlt className="me-2" /> Marketing Templates
+                    </h5>
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="d-flex justify-content-between mb-3">
+                      <Form.Control type="search" placeholder="Search templates..." className="w-50" />
+                      <Button variant="primary" size="sm">
+                        <FaPlus className="me-1" /> New Template
+          </Button>
+                    </div>
+                    
+                    <ListGroup>
+                      {marketingTemplates.map(template => (
+                        <ListGroup.Item key={template.id} className="d-flex justify-content-between align-items-center">
+                          <div>
+                            <h6 className="mb-0">{template.name}</h6>
+                            <small className="text-muted">{template.type} • Modified: {template.lastModified}</small>
             </div>
-          </div>
-          <div className="recording-status text-center">
-            {isRecording ? (
-              <div className="alert alert-danger">
-                <FaMicrophone className="me-2 pulse" />
-                Recording in progress... Please read the entire script
-              </div>
-            ) : recordingSaved ? (
-              <div className="alert alert-success">
-                <FaCheckCircle className="me-2" />
-                Recording saved successfully
-              </div>
-            ) : (
-              <div className="alert alert-info">
-                <FaInfoCircle className="me-2" />
-                Click "Start Recording" when ready to read the script
-              </div>
-            )}
-          </div>
-        </Modal.Body>
-        <Modal.Footer className="d-flex justify-content-between">
-          {!isRecording && !recordingSaved && (
-            <Button 
-              variant="secondary" 
-              onClick={() => setShowVerificationModal(false)}
-            >
-              Cancel
+                          <div className="d-flex align-items-center">
+                            <Badge bg="secondary" className="me-2">Used {template.usageCount} times</Badge>
+                            <Button variant="outline-secondary" size="sm" className="me-1">
+                              <FaEdit />
             </Button>
-          )}
-          <Button 
-            variant={isRecording ? "danger" : recordingSaved ? "success" : "primary"}
-            onClick={() => {
-              if (!isRecording && !recordingSaved) {
-                setIsRecording(true);
-              } else if (isRecording) {
-                setIsRecording(false);
-                setRecordingSaved(true);
-                setTimeout(() => {
-                  setShowVerificationModal(false);
-                  setRecordingSaved(false);
-                }, 2000);
-              }
-            }}
-            className="d-flex align-items-center"
-          >
-            {isRecording ? (
-              <>
-                <FaStop className="me-2" /> Stop Recording & Save
-              </>
-            ) : recordingSaved ? (
-              <>
-                <FaCheck className="me-2" /> Recording Verified
-              </>
-            ) : (
-              <>
-                <FaMicrophone className="me-2" /> Start Recording
-              </>
-            )}
+                            <Button variant="outline-primary" size="sm">
+                              <FaEye />
           </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Add Validation Modal */}
-      <Modal show={showValidationModal} onHide={() => setShowValidationModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Required Fields Missing</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="alert alert-danger">
-            Please fill out all required fields before submitting the application:
-            <ul className="mt-2 mb-0">
-              {Object.entries(validationErrors).map(([field, message]) => (
-                <li key={field}>{message}</li>
-              ))}
-            </ul>
+                          </div>
+                        </ListGroup.Item>
+                      ))}
+                    </ListGroup>
+                  </Card.Body>
+                </Card>
+              </Col>
+              
+              <Col md={6}>
+                <Card className="dashboard-card mb-4">
+                  <Card.Header>
+                    <h5 className="mb-0">
+                      <FaChartPie className="me-2" /> Campaign Performance
+                    </h5>
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="d-flex justify-content-between mb-3">
+                      <h6>Performance Overview</h6>
+                      <Form.Select size="sm" style={{ width: 'auto' }}>
+                        <option>Last 30 Days</option>
+                        <option>Last Quarter</option>
+                        <option>Year to Date</option>
+                      </Form.Select>
           </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowValidationModal(false)}>
-            OK
+                    
+                    <Row className="text-center g-3 mb-3">
+                      <Col md={4}>
+                        <Card className="bg-light">
+                          <Card.Body>
+                            <h2 className="text-primary">28%</h2>
+                            <p className="mb-0">Average Engagement</p>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                      <Col md={4}>
+                        <Card className="bg-light">
+                          <Card.Body>
+                            <h2 className="text-success">743</h2>
+                            <p className="mb-0">Total Leads</p>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                      <Col md={4}>
+                        <Card className="bg-light">
+                          <Card.Body>
+                            <h2 className="text-info">151</h2>
+                            <p className="mb-0">Conversions</p>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    </Row>
+                    
+                    <div className="d-flex justify-content-between mb-3">
+                      <h6>Upcoming Scheduled Activities</h6>
+                      <Button variant="outline-primary" size="sm">
+                        <FaCalendarCheck className="me-1" /> Schedule
           </Button>
-        </Modal.Footer>
-      </Modal>
+                    </div>
+                    
+                    <ListGroup>
+                      <ListGroup.Item className="d-flex justify-content-between align-items-center">
+              <div>
+                          <span className="fw-bold">Email Blast: Summer Health Tips</span>
+                          <p className="mb-0 small text-muted">Scheduled for July 30, 2024</p>
+              </div>
+                        <Badge bg="info">Scheduled</Badge>
+                      </ListGroup.Item>
+                      <ListGroup.Item className="d-flex justify-content-between align-items-center">
+              <div>
+                          <span className="fw-bold">Social Media Campaign: Family Coverage</span>
+                          <p className="mb-0 small text-muted">Scheduled for August 5, 2024</p>
+              </div>
+                        <Badge bg="info">Scheduled</Badge>
+                      </ListGroup.Item>
+                      <ListGroup.Item className="d-flex justify-content-between align-items-center">
+              <div>
+                          <span className="fw-bold">Newsletter: August Health Updates</span>
+                          <p className="mb-0 small text-muted">Scheduled for August 10, 2024</p>
+              </div>
+                        <Badge bg="info">Scheduled</Badge>
+                      </ListGroup.Item>
+                    </ListGroup>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+            </div>
+        )}
+        {/* --- End Marketing Tab Content --- */}
 
-      {/* Points History Modal */}
-      <Modal
-        show={showPointsHistoryModal}
-        onHide={() => setShowPointsHistoryModal(false)}
-        size="lg"
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <FaStar className="text-warning me-2" /> Points History
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="points-history">
-            <div className="points-history-item d-flex justify-content-between align-items-center p-3 border-bottom">
-              <div>
-                <h6 className="mb-1">Referral Bonus</h6>
-                <small className="text-muted">July 15, 2023</small>
-              </div>
-              <span className="text-success fw-bold">+500 points</span>
-            </div>
-            <div className="points-history-item d-flex justify-content-between align-items-center p-3 border-bottom">
-              <div>
-                <h6 className="mb-1">Health Assessment Completion</h6>
-                <small className="text-muted">June 30, 2023</small>
-              </div>
-              <span className="text-success fw-bold">+200 points</span>
-            </div>
-            <div className="points-history-item d-flex justify-content-between align-items-center p-3">
-              <div>
-                <h6 className="mb-1">Annual Check-up</h6>
-                <small className="text-muted">June 15, 2023</small>
-              </div>
-              <span className="text-success fw-bold">+300 points</span>
-            </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowPointsHistoryModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      <Modal show={showSalesModal} onHide={() => setShowSalesModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirmed Submissions</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <ul>
-            <li>Submission 1</li>
-            <li>Submission 2</li>
-            <li>Submission 3</li>
-          </ul>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowSalesModal(false)}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      </Container>
     </div>
   );
 } 
