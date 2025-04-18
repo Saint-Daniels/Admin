@@ -1539,10 +1539,10 @@ export default function Office() {
   // State for Admin Tab
   const [applications, setApplications] = useState([
     // Mock Data - Replace with actual data fetching later
-    { id: 'APP-001', clientName: 'Alice Wonderland', clientId: 'CLT-1001', submissionDate: '2024-07-28', status: 'Pending', hasRecording: true, hasESignature: true, details: { /* more fields */ } },
-    { id: 'APP-002', clientName: 'Bob The Builder', clientId: 'CLT-1002', submissionDate: '2024-07-27', status: 'Pending', hasRecording: false, hasESignature: true, details: { /* more fields */ } },
-    { id: 'APP-003', clientName: 'Charlie Chaplin', clientId: 'CLT-1003', submissionDate: '2024-07-26', status: 'Confirmed', hasRecording: true, hasESignature: false, details: { /* more fields */ } },
-    { id: 'APP-004', clientName: 'Diana Prince', clientId: 'CLT-1004', submissionDate: '2024-07-25', status: 'Pending', hasRecording: true, hasESignature: true, details: { /* more fields */ } },
+    { id: 'APP-001', clientName: 'Alice Wonderland', clientId: 'CLT-1001', agentId: 'AGT-501', submissionDate: '2024-07-28', status: 'Pending', hasRecording: true, hasESignature: true, details: { /* more fields */ } },
+    { id: 'APP-002', clientName: 'Bob The Builder', clientId: 'CLT-1002', agentId: 'AGT-502', submissionDate: '2024-07-27', status: 'Pending', hasRecording: false, hasESignature: true, details: { /* more fields */ } },
+    { id: 'APP-003', clientName: 'Charlie Chaplin', clientId: 'CLT-1003', agentId: 'AGT-501', submissionDate: '2024-07-26', status: 'Confirmed', hasRecording: true, hasESignature: false, details: { /* more fields */ } },
+    { id: 'APP-004', clientName: 'Diana Prince', clientId: 'CLT-1004', agentId: 'AGT-503', submissionDate: '2024-07-25', status: 'Pending', hasRecording: true, hasESignature: true, details: { /* more fields */ } },
   ]);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
@@ -1779,6 +1779,59 @@ export default function Office() {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
     }
+  };
+
+  // State for Google Drive Tab
+  const [driveFiles, setDriveFiles] = useState([
+    { id: 'file-001', name: 'Client Intake Form.docx', type: 'document', size: '45 KB', lastModified: '2024-07-15', owner: 'You' },
+    { id: 'file-002', name: 'Insurance Policy Templates', type: 'folder', size: '4 folders, 12 files', lastModified: '2024-07-10', owner: 'You' },
+    { id: 'file-003', name: 'Meeting Notes - July.pdf', type: 'pdf', size: '156 KB', lastModified: '2024-07-05', owner: 'John Doe' },
+    { id: 'file-004', name: 'Sales Report Q2.xlsx', type: 'spreadsheet', size: '1.2 MB', lastModified: '2024-06-30', owner: 'Jane Smith' },
+    { id: 'file-005', name: 'Agent Training Materials', type: 'folder', size: '3 folders, 25 files', lastModified: '2024-06-25', owner: 'Training Dept' },
+  ]);
+  const [currentDriveFolder, setCurrentDriveFolder] = useState('My Drive');
+  
+  // State for Gemini Tab
+  const [geminiPrompt, setGeminiPrompt] = useState('');
+  const [geminiResponse, setGeminiResponse] = useState('');
+  const [geminiHistory, setGeminiHistory] = useState([
+    { role: 'assistant', content: 'Hello! I\'m Gemini AI. How can I assist you today?' }
+  ]);
+  const [isGeminiLoading, setIsGeminiLoading] = useState(false);
+  
+  // Gemini Tab Functions
+  const handleGeminiSubmit = () => {
+    if (!geminiPrompt.trim()) return;
+    
+    // Add user prompt to history
+    const updatedHistory = [
+      ...geminiHistory,
+      { role: 'user', content: geminiPrompt }
+    ];
+    setGeminiHistory(updatedHistory);
+    setGeminiPrompt('');
+    setIsGeminiLoading(true);
+    
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponse = { 
+        role: 'assistant', 
+        content: 'This is a simulated response from Gemini. In a real implementation, this would connect to the Gemini API to get an actual response based on your prompt.' 
+      };
+      setGeminiHistory([...updatedHistory, aiResponse]);
+      setIsGeminiLoading(false);
+    }, 1500);
+  };
+  
+  // Google Drive Tab Functions
+  const handleFolderClick = (folderId, folderName) => {
+    setCurrentDriveFolder(folderName);
+    // In a real implementation, this would fetch the contents of the folder
+  };
+  
+  const handleFileAction = (fileId, action) => {
+    // In a real implementation, this would perform actions like download, share, etc.
+    console.log(`Performing ${action} on file ${fileId}`);
   };
 
   return (
@@ -2230,6 +2283,16 @@ export default function Office() {
           <Nav.Item>
             <Nav.Link active={activeTab === 'marketing'} onClick={() => setActiveTab('marketing')}>
               <FaBullhorn className="me-2" /> Marketing
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'gemini'} onClick={() => setActiveTab('gemini')}>
+              <FaRobot className="me-2" /> Gemini
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'drive'} onClick={() => setActiveTab('drive')}>
+              <FaGoogleDrive className="me-2" /> Drive
             </Nav.Link>
           </Nav.Item>
         </Nav>
@@ -4701,6 +4764,8 @@ export default function Office() {
                   <tr>
                     <th>Client Name</th>
                     <th>Client ID</th>
+                    <th>Application ID</th>
+                    <th>Agent ID</th>
                     <th>Submitted</th>
                     <th>Recording</th>
                     <th>E-Signature</th>
@@ -4714,6 +4779,8 @@ export default function Office() {
                       <tr key={app.id}>
                         <td>{app.clientName}</td>
                         <td>{app.clientId}</td>
+                        <td>{app.id}</td>
+                        <td>{app.agentId}</td>
                         <td>{app.submissionDate}</td>
                         <td className="text-center">
                           {app.hasRecording ? <FaCheckCircle color="green" /> : <FaTimesCircle color="gray" />}
@@ -4751,7 +4818,7 @@ export default function Office() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className="text-center">
+                      <td colSpan="9" className="text-center">
                         No applications found matching your criteria.
                       </td>
                     </tr>
@@ -4837,6 +4904,20 @@ export default function Office() {
                     <Form.Group className="mb-3">
                       <Form.Label>Client ID</Form.Label>
                       <Form.Control type="text" value={selectedApplication.clientId} readOnly />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Application ID</Form.Label>
+                      <Form.Control type="text" value={selectedApplication.id} readOnly />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Agent ID</Form.Label>
+                      <Form.Control type="text" value={selectedApplication.agentId} readOnly />
                     </Form.Group>
                   </Col>
                 </Row>
@@ -5534,6 +5615,191 @@ export default function Office() {
         )}
         {/* --- End Marketing Tab Content --- */}
 
+        {/* --- Gemini Tab Content --- */}
+        {activeTab === 'gemini' && (
+          <Card className="dashboard-card mb-4">
+            <Card.Header>
+              <h5 className="mb-0">
+                <FaRobot className="me-2" /> Gemini AI Assistant
+              </h5>
+            </Card.Header>
+            <Card.Body>
+              <div className="gemini-chat-container" style={{ height: '60vh', display: 'flex', flexDirection: 'column' }}>
+                <div className="gemini-messages" style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+                  {geminiHistory.map((message, index) => (
+                    <div 
+                      key={index} 
+                      className={`message ${message.role === 'assistant' ? 'assistant' : 'user'}`}
+                      style={{ 
+                        marginBottom: '1rem', 
+                        padding: '0.75rem', 
+                        borderRadius: '8px',
+                        backgroundColor: message.role === 'assistant' ? '#e3f2fd' : '#f0f4c3',
+                        marginLeft: message.role === 'assistant' ? '0' : 'auto',
+                        marginRight: message.role === 'assistant' ? 'auto' : '0',
+                        maxWidth: '80%',
+                        width: 'fit-content'
+                      }}
+                    >
+                      <div className="message-content">{message.content}</div>
+                    </div>
+                  ))}
+                  {isGeminiLoading && (
+                    <div className="message assistant" style={{ padding: '0.75rem', borderRadius: '8px', backgroundColor: '#e3f2fd', width: 'fit-content' }}>
+                      <div className="message-content">
+                        <FaSpinner className="spin me-2" /> Gemini is thinking...
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="gemini-input">
+                  <InputGroup>
+                    <Form.Control
+                      as="textarea"
+                      value={geminiPrompt}
+                      onChange={(e) => setGeminiPrompt(e.target.value)}
+                      placeholder="Ask Gemini something..."
+                      style={{ resize: 'none', height: '80px' }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleGeminiSubmit();
+                        }
+                      }}
+                    />
+                    <Button 
+                      variant="primary" 
+                      onClick={handleGeminiSubmit}
+                      disabled={!geminiPrompt.trim() || isGeminiLoading}
+                    >
+                      {isGeminiLoading ? <FaSpinner className="spin" /> : <FaPaperPlane />}
+                    </Button>
+                  </InputGroup>
+                  <small className="text-muted mt-1">Press Enter to send. Shift+Enter for a new line.</small>
+                </div>
+              </div>
+            </Card.Body>
+          </Card>
+        )}
+        {/* --- End Gemini Tab Content --- */}
+
+        {/* --- Google Drive Tab Content --- */}
+        {activeTab === 'drive' && (
+          <Card className="dashboard-card mb-4">
+            <Card.Header>
+              <h5 className="mb-0">
+                <FaGoogleDrive className="me-2" /> Google Drive
+              </h5>
+            </Card.Header>
+            <Card.Body>
+              <div className="drive-header d-flex justify-content-between align-items-center mb-3">
+                <div className="breadcrumb-nav">
+                  <Button variant="link" className="p-0 me-2" onClick={() => setCurrentDriveFolder('My Drive')}>
+                    My Drive
+                  </Button>
+                  {currentDriveFolder !== 'My Drive' && (
+                    <>
+                      <FaChevronRight className="me-2" />
+                      <span>{currentDriveFolder}</span>
+                    </>
+                  )}
+                </div>
+                <div className="drive-actions">
+                  <Button variant="outline-primary" size="sm" className="me-2">
+                    <FaUpload className="me-1" /> Upload
+                  </Button>
+                  <Button variant="outline-primary" size="sm" className="me-2">
+                    <FaFolder className="me-1" /> New Folder
+                  </Button>
+                  <InputGroup className="d-inline-flex" style={{ width: '200px' }}>
+                    <Form.Control
+                      size="sm"
+                      placeholder="Search in Drive"
+                    />
+                    <Button variant="outline-secondary" size="sm">
+                      <FaSearch />
+                    </Button>
+                  </InputGroup>
+                </div>
+              </div>
+              
+              <Table hover responsive>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Owner</th>
+                    <th>Last Modified</th>
+                    <th>Size</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {driveFiles.map((file) => (
+                    <tr key={file.id}>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          {file.type === 'folder' ? (
+                            <FaFolder className="me-2 text-warning" />
+                          ) : file.type === 'document' ? (
+                            <FaFileWord className="me-2 text-primary" />
+                          ) : file.type === 'pdf' ? (
+                            <FaFilePdf className="me-2 text-danger" />
+                          ) : file.type === 'spreadsheet' ? (
+                            <FaFileExcel className="me-2 text-success" />
+                          ) : (
+                            <FaFileAlt className="me-2 text-secondary" />
+                          )}
+                          {file.type === 'folder' ? (
+                            <Button 
+                              variant="link" 
+                              className="p-0 text-decoration-none text-dark"
+                              onClick={() => handleFolderClick(file.id, file.name)}
+                            >
+                              {file.name}
+                            </Button>
+                          ) : (
+                            file.name
+                          )}
+                        </div>
+                      </td>
+                      <td>{file.owner}</td>
+                      <td>{file.lastModified}</td>
+                      <td>{file.size}</td>
+                      <td>
+                        <Button 
+                          variant="link" 
+                          className="p-1" 
+                          onClick={() => handleFileAction(file.id, 'download')}
+                          title="Download"
+                        >
+                          <FaDownload />
+                        </Button>
+                        <Button 
+                          variant="link" 
+                          className="p-1" 
+                          onClick={() => handleFileAction(file.id, 'share')}
+                          title="Share"
+                        >
+                          <FaUsers />
+                        </Button>
+                        <Button 
+                          variant="link" 
+                          className="p-1" 
+                          onClick={() => handleFileAction(file.id, 'more')}
+                          title="More options"
+                        >
+                          <FaEllipsisV />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Card.Body>
+          </Card>
+        )}
+        {/* --- End Google Drive Tab Content --- */}
+        
       </Container>
     </div>
   );
