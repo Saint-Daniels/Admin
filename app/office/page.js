@@ -298,7 +298,8 @@ export default function Office() {
     effectiveDate: '',
     policyStatus: '',
     spouseSSN: '',
-    ssn: '' // Add SSN field to initial state
+    ssn: '',
+    willBeClaimedOnTaxes: '' // Add new field
   });
 
   // Add these state variables at the top
@@ -2791,21 +2792,19 @@ export default function Office() {
                           </Col>
                           <Col md={3}>
                             <Form.Group className="mb-3">
-                              <Form.Label>Marital Status</Form.Label>
+                              <Form.Label>Will be claimed on taxes?</Form.Label>
                               <Form.Select
-                                name="maritalStatus"
-                                value={formData.maritalStatus}
+                                name="willBeClaimedOnTaxes"
+                                value={formData.willBeClaimedOnTaxes}
                                 onChange={handleInputChange}
-                                isInvalid={!!validationErrors.maritalStatus}
+                                isInvalid={!!validationErrors.willBeClaimedOnTaxes}
                               >
-                                <option value="">Select status</option>
-                                <option value="single">Single</option>
-                                <option value="married">Married</option>
-                                <option value="divorced">Divorced</option>
-                                <option value="widowed">Widowed</option>
+                                <option value="">Select option</option>
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
                               </Form.Select>
-                              {validationErrors.maritalStatus && (
-                                <Form.Text className="text-danger">{validationErrors.maritalStatus}</Form.Text>
+                              {validationErrors.willBeClaimedOnTaxes && (
+                                <Form.Text className="text-danger">{validationErrors.willBeClaimedOnTaxes}</Form.Text>
                               )}
                             </Form.Group>
                           </Col>
