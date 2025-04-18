@@ -2849,7 +2849,7 @@ body {
   background: #f8fafc;
   border-radius: 12px;
   padding: 1rem;
-  height: calc(100vh - 200px);
+  height: auto;
   overflow-y: auto;
   position: sticky;
   top: 1rem;

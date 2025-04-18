@@ -1528,6 +1528,8 @@ export default function Office() {
   // Add state for notes history modal
   const [showNotesHistoryModal, setShowNotesHistoryModal] = useState(false);
 
+  const [showSalesModal, setShowSalesModal] = useState(false);
+
   return (
     <div className="office-container">
       <style jsx>{`
@@ -3772,7 +3774,7 @@ export default function Office() {
             </div>
 
               {/* Sales Funnel Analytics */}
-              <div className="analytics-section">
+              <div className="analytics-section" style={{ padding: '1.5rem' }}>
                 <h6 className="mb-3">Sales Funnel Analytics</h6>
                 <div className="funnel-stats">
                   <div className="d-flex justify-content-between mb-2">
@@ -3828,9 +3830,9 @@ export default function Office() {
                   </h5>
                   <div className="d-flex gap-2">
                     <Form.Select size="sm" className="w-auto">
-                      <option value="today">Today</option>
-                      <option value="week">This Week</option>
-                      <option value="month">This Month</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
                     </Form.Select>
                     <Button variant="outline-primary" size="sm">
                       <FaDownload className="me-1" /> Export
@@ -3939,9 +3941,9 @@ export default function Office() {
                 <div className="activity-indicators">
                   <div className="d-flex flex-wrap gap-3">
                     {/* Sales Counter */}
-                    <div className="indicator-item p-3 border rounded flex-grow-1">
+                    <div className="indicator-item p-3 border rounded flex-grow-1" onClick={() => setShowSalesModal(true)}>
                       <div className="d-flex align-items-center">
-                        <div className="status-dot bg-success me-2"></div>
+                        <div className="status-dot bg-success me-2" style={{ backgroundColor: '#28a745' }}></div>
                         <div>
                           <h6 className="mb-1">Sales Today</h6>
                           <div className="d-flex align-items-center">
@@ -3992,6 +3994,7 @@ export default function Office() {
                             <th>Client</th>
                             <th>Plan</th>
                             <th>Premium</th>
+                            <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -4000,36 +4003,42 @@ export default function Office() {
                             <td>John Smith</td>
                             <td>Gold Plan</td>
                             <td>$450/mo</td>
+                            <td style={{ color: '#28a745', fontWeight: 'bold' }}>Confirmed</td>
                           </tr>
                           <tr>
                             <td>11:30 AM</td>
                             <td>Sarah Johnson</td>
                             <td>Silver Plan</td>
                             <td>$325/mo</td>
+                            <td style={{ color: '#28a745', fontWeight: 'bold' }}>Confirmed</td>
                           </tr>
                           <tr>
                             <td>2:45 PM</td>
                             <td>Michael Brown</td>
                             <td>Gold Plan</td>
                             <td>$450/mo</td>
+                            <td style={{ color: '#28a745', fontWeight: 'bold' }}>Confirmed</td>
                           </tr>
                           <tr>
                             <td>3:20 PM</td>
                             <td>Emily Davis</td>
                             <td>Platinum Plan</td>
                             <td>$575/mo</td>
+                            <td style={{ color: '#28a745', fontWeight: 'bold' }}>Confirmed</td>
                           </tr>
                           <tr>
                             <td>4:10 PM</td>
                             <td>Robert Wilson</td>
                             <td>Gold Plan</td>
                             <td>$450/mo</td>
+                            <td style={{ color: '#ff6347', fontWeight: 'bold' }}>Pending</td>
                           </tr>
                           <tr>
                             <td>4:45 PM</td>
                             <td>Lisa Anderson</td>
                             <td>Silver Plan</td>
                             <td>$325/mo</td>
+                            <td style={{ color: '#ff6347', fontWeight: 'bold' }}>Pending</td>
                           </tr>
                         </tbody>
                       </table>
@@ -4918,6 +4927,24 @@ export default function Office() {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowPointsHistoryModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showSalesModal} onHide={() => setShowSalesModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirmed Submissions</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <ul>
+            <li>Submission 1</li>
+            <li>Submission 2</li>
+            <li>Submission 3</li>
+          </ul>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowSalesModal(false)}>
             Close
           </Button>
         </Modal.Footer>
