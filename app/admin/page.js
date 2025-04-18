@@ -19,7 +19,7 @@ import {
   FaSave, FaBackspace, FaMicrophone, FaStop, FaCheck,
   FaMicrophoneSlash, FaInfoCircle, FaExclamationTriangle,
   FaPhoneSlash, FaSignInAlt, FaPhoneAlt, FaUserLock,
-  FaGoogle, FaSpinner
+  FaGoogle, FaSpinner, FaMemory
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';

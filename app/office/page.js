@@ -36,7 +36,7 @@ import {
   FaPhoneSlash, FaSignInAlt, FaPhoneAlt,
   
   // Integration icons
-  FaGoogle, FaHistory, FaSpinner, FaSync
+  FaGoogle, FaHistory, FaSpinner, FaSync, FaFire
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -116,6 +116,22 @@ export default function Office() {
       agent: 'Mike Brown',
       duration: 'N/A',
       notes: 'Sent follow-up email with requested documentation. Awaiting client response.'
+    },
+    {
+      date: '2024-03-13 09:15',
+      type: 'Application',
+      disposition: 'Submitted',
+      agent: 'Agent ID: AGT-78945',
+      duration: 'N/A',
+      notes: 'Application submitted successfully. Application ID: APP-2024-00321. Client completed all required documentation and signed electronically.',
+      policyDetails: {
+        planName: 'Premium Coverage Plan',
+        coverageType: 'Family',
+        deductible: '1,500',
+        premium: '350',
+        effectiveDate: '2024-04-01',
+        status: 'Pending Review'
+      }
     }
   ]);
 
@@ -197,22 +213,21 @@ export default function Office() {
   const [recordingSaved, setRecordingSaved] = useState(false);
 
   // Add these state variables near the other state declarations
-  const [agentStatus, setAgentStatus] = useState('not_connected');
+  const [agentStatus, setAgentStatus] = useState('available');
   const [dispositionCategory, setDispositionCategory] = useState('lead_contact');
 
   // Add status code options
   const agentStatusCodes = [
-    { value: 'not_connected', label: 'Not Connected', color: 'secondary' },
-    { value: 'available', label: 'Available / Ready', color: 'success' },
-    { value: 'on_call', label: 'On Call', color: 'danger' },
-    { value: 'wrap_up', label: 'Wrap-Up / After Call Work (ACW)', color: 'warning' },
-    { value: 'break', label: 'On Break', color: 'info' },
-    { value: 'lunch', label: 'Lunch Break', color: 'info' },
-    { value: 'meeting', label: 'In Meeting', color: 'primary' },
-    { value: 'training', label: 'Training', color: 'primary' },
-    { value: 'admin', label: 'Admin Work', color: 'secondary' },
-    { value: 'technical_issue', label: 'Technical Issue / System Down', color: 'danger' },
-    { value: 'personal', label: 'Personal / Aux (Auxiliary time)', color: 'secondary' }
+    { value: 'available', label: 'Available' },
+    { value: 'on_call', label: 'On Call' },
+    { value: 'break', label: 'On Break' },
+    { value: 'lunch', label: 'Lunch' },
+    { value: 'meeting', label: 'In Meeting' },
+    { value: 'training', label: 'Training' },
+    { value: 'admin', label: 'Admin' },
+    { value: 'personal', label: 'Personal' },
+    { value: 'technical_issue', label: 'Technical Issue' },
+    { value: 'not_connected', label: 'Not Connected' }
   ];
 
   // Add disposition code options
@@ -281,7 +296,9 @@ export default function Office() {
     spouseDateOfBirth: '',
     hasVoiceRecording: false,
     effectiveDate: '',
-    policyStatus: ''
+    policyStatus: '',
+    spouseSSN: '',
+    ssn: '' // Add SSN field to initial state
   });
 
   // Add these state variables at the top
@@ -371,55 +388,83 @@ export default function Office() {
   // Update handleInputChange to use the new formData state
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Special handling for phone number formatting
+    if (name === 'phone') {
+      const formattedValue = formatPhoneNumber(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: formattedValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   // Update handleSave function to include validation
   const handleSave = async (type) => {
-    if (type === 'submit') {
-      if (!validateForm()) {
-        setShowValidationModal(true);
-        // If voice recording is missing, show the recording modal after a short delay
-        if (!formData.hasVoiceRecording) {
-          setTimeout(() => {
-            setShowValidationModal(false);
-            setShowVerificationModal(true);
-          }, 2000);
-        }
-        return;
-      }
-      setIsSubmitting(true);
-    } else {
-      setIsDraftSaving(true);
-    }
-    
-    setSavingStatus('saving');
     try {
-      // Simulate save operation
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update coverage status based on the form data
-      if (formData.coverageType) {
-        setHasCoverage(true);
+      // Set saving status
+      if (type === 'draft') {
+        setIsDraftSaving(true);
+        setSavingStatus('saving');
+      } else {
+        setIsSubmitting(true);
+        setSavingStatus('saving');
       }
-      
-      setSavingStatus(type === 'draft' ? 'draft-saved' : 'submitted');
-      
+
+      // Generate a new client ID if it's a draft save
+      if (type === 'draft') {
+        const timestamp = new Date().getTime();
+        const randomNum = Math.floor(Math.random() * 1000);
+        const clientId = `CLT-${timestamp}-${randomNum}`;
+        
+        // Update the application ID to client ID in the form header
+        const applicationIdElement = document.querySelector('.application-id-badge');
+        if (applicationIdElement) {
+          applicationIdElement.textContent = `Client ID: ${clientId}`;
+        }
+
+        // Update the agent ID to the current agent
+        const agentIdElement = document.querySelector('.agent-id-badge');
+        if (agentIdElement) {
+          agentIdElement.textContent = `Agent ID: AGT-${Math.floor(Math.random() * 100000)}`;
+        }
+
+        // Update the enrollment title with the client's name if available
+        if (formData.firstName && formData.lastName) {
+          setEnrollmentTitle(`${formData.firstName} ${formData.lastName}'s Enrollment`);
+        }
+      }
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Update status based on save type
+      if (type === 'draft') {
+        setSavingStatus('draft-saved');
+        setIsDraftSaving(false);
+      } else {
+        setSavingStatus('submitted');
+        setIsSubmitting(false);
+      }
+
       // Reset status after 3 seconds
       setTimeout(() => {
         setSavingStatus('');
-        setIsDraftSaving(false);
-        setIsSubmitting(false);
       }, 3000);
+
     } catch (error) {
-      console.error('Error saving:', error);
+      console.error('Error saving form:', error);
       setSavingStatus('error');
-      setIsDraftSaving(false);
-      setIsSubmitting(false);
-      setTimeout(() => setSavingStatus(''), 3000);
+      
+      // Reset error status after 3 seconds
+      setTimeout(() => {
+        setSavingStatus('');
+      }, 3000);
     }
   };
 
@@ -785,7 +830,8 @@ export default function Office() {
 
   const handleClientSelect = (client) => {
     setSelectedClient(client);
-    setShowProfile(true);
+    setEnrollmentTitle(`${client.firstName} ${client.lastName}'s Enrollment`);
+    setShowClientProfile(false);
   };
 
   const handleStartMeeting = (client) => {
@@ -826,11 +872,17 @@ export default function Office() {
   // Add this function near the other helper functions
   const formatPhoneNumber = (value) => {
     if (!value) return value;
-    const phoneNumber = value.replace(/[^\d]/g, '');
-    const phoneNumberLength = phoneNumber.length;
-    if (phoneNumberLength < 4) return `(${phoneNumber}`;
-    if (phoneNumberLength < 7) return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
-    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    // Remove all non-digit characters
+    const phoneNumber = value.replace(/\D/g, '');
+    
+    // Format based on length
+    if (phoneNumber.length <= 3) {
+      return `(${phoneNumber}`;
+    } else if (phoneNumber.length <= 6) {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    } else {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    }
   };
 
   // Update the handleDialerInput function
@@ -1321,16 +1373,44 @@ export default function Office() {
 
   // Update the recording save handler to set hasVoiceRecording
   const handleRecordingSave = () => {
-    setIsRecording(false);
-    setRecordingSaved(true);
+    // Generate a new application ID
+    const timestamp = new Date().getTime();
+    const randomNum = Math.floor(Math.random() * 1000);
+    const applicationId = `APP-${timestamp}-${randomNum}`;
+
+    // Update the application ID in the form header
+    const applicationIdElement = document.querySelector('.application-id-badge');
+    if (applicationIdElement) {
+      applicationIdElement.textContent = `Application ID: ${applicationId}`;
+    }
+
+    // Update form data with the new application ID
     setFormData(prev => ({
       ...prev,
+      applicationId: applicationId,
       hasVoiceRecording: true
     }));
-    setTimeout(() => {
-      setShowVerificationModal(false);
-      setRecordingSaved(false);
-    }, 2000);
+
+    // Add a note about the recording and application ID
+    const note = {
+      date: new Date().toLocaleString(),
+      type: 'Recording',
+      disposition: 'Completed',
+      agent: 'Current Agent',
+      duration: 'N/A',
+      notes: `Voice recording completed. Application ID: ${applicationId}`,
+      policyDetails: {
+        planName: formData.planName,
+        coverageType: formData.coverageType,
+        deductible: formData.deductible,
+        premium: formData.premium,
+        effectiveDate: formData.effectiveDate,
+        status: 'Pending'
+      }
+    };
+    
+    setNotes(prev => [note, ...prev]);
+    setShowRecordingModal(false);
   };
 
   const [dispositionCompleted, setDispositionCompleted] = useState(false);
@@ -1349,6 +1429,103 @@ export default function Office() {
 
   // Add state for points history modal
   const [showPointsHistoryModal, setShowPointsHistoryModal] = useState(false);
+
+  // Add state for new note form
+  const [showNewNoteForm, setShowNewNoteForm] = useState(false);
+  const [newNote, setNewNote] = useState({
+    type: 'Note',
+    disposition: 'General',
+    notes: ''
+  });
+
+  // Add handler for saving new notes
+  const handleSaveNote = () => {
+    if (!newNote.notes.trim()) return;
+    
+    const note = {
+      date: new Date().toLocaleString(),
+      type: newNote.type,
+      disposition: newNote.disposition,
+      agent: 'Current Agent',
+      duration: 'N/A',
+      notes: newNote.notes
+    };
+    
+    setNotes(prev => [note, ...prev]);
+    setNewNote({
+      type: 'Note',
+      disposition: 'General',
+      notes: ''
+    });
+    setShowNewNoteForm(false);
+  };
+
+  // Add state for Sunfire submission
+  const [isSunfireSubmitting, setIsSunfireSubmitting] = useState(false);
+  const [sunfireStatus, setSunfireStatus] = useState('');
+
+  // Add handler for Sunfire submission
+  const handleSunfireSubmit = async () => {
+    try {
+      setIsSunfireSubmitting(true);
+      setSunfireStatus('connecting');
+
+      // Validate form before submitting to Sunfire
+      if (!validateForm()) {
+        setSunfireStatus('validation-error');
+        setIsSunfireSubmitting(false);
+        return;
+      }
+
+      // Simulate Sunfire API connection
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Update status to show successful connection
+      setSunfireStatus('connected');
+      
+      // Add a note about Sunfire submission
+      const note = {
+        date: new Date().toLocaleString(),
+        type: 'Application',
+        disposition: 'Submitted',
+        agent: 'Current Agent',
+        duration: 'N/A',
+        notes: 'Application submitted to Sunfire successfully',
+        policyDetails: {
+          planName: formData.planName,
+          coverageType: formData.coverageType,
+          deductible: formData.deductible,
+          premium: formData.premium,
+          effectiveDate: formData.effectiveDate,
+          status: 'Pending'
+        }
+      };
+      
+      setNotes(prev => [note, ...prev]);
+
+      // Reset status after 3 seconds
+      setTimeout(() => {
+        setSunfireStatus('');
+        setIsSunfireSubmitting(false);
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error submitting to Sunfire:', error);
+      setSunfireStatus('error');
+      
+      // Reset error status after 3 seconds
+      setTimeout(() => {
+        setSunfireStatus('');
+        setIsSunfireSubmitting(false);
+      }, 3000);
+    }
+  };
+
+  // Add state for enrollment title
+  const [enrollmentTitle, setEnrollmentTitle] = useState('Untitled Enrollment');
+
+  // Add state for notes history modal
+  const [showNotesHistoryModal, setShowNotesHistoryModal] = useState(false);
 
   return (
     <div className="office-container">
@@ -1896,7 +2073,7 @@ export default function Office() {
                           bottom: '50%',
                           left: '50%',
                           transformOrigin: 'bottom',
-                          transform: `rotate(${currentTime.getSeconds() * 6}deg) translateX(-50%)`
+                          transform: `rotate(${Math.floor(currentTime.getSeconds() * 6)}deg) translateX(-50%)`
                         }}
                       ></div>
                       <div className="clock-center" style={{ position: 'absolute', width: '4px', height: '4px', background: '#2563eb', borderRadius: '50%', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
@@ -2427,7 +2604,17 @@ export default function Office() {
                 <Card>
                   <Card.Header>
                     <div className="d-flex justify-content-between align-items-center">
-                      <h5 className="mb-0">Enrollment Application</h5>
+                      <div>
+                        <h4 className="mb-2">{enrollmentTitle}</h4>
+                        <div className="d-flex gap-3 mt-2">
+                          <Badge bg="info" className="agent-id-badge">
+                            <FaUser className="me-1" /> Agent ID: AGT-78945
+                          </Badge>
+                          <Badge bg="primary" className="client-id-badge">
+                            <FaFileAlt className="me-1" /> Client ID: CLT-2024-00321
+                          </Badge>
+                        </div>
+                      </div>
                       <Button 
                         variant="outline-secondary" 
                         size="sm"
@@ -2435,31 +2622,32 @@ export default function Office() {
                           // Reset form data
                           setFormData({
                             firstName: '',
-                            middleName: '',
                             lastName: '',
                             email: '',
                             phone: '',
-                            streetAddress: '',
-                            apartment: '',
+                            address: '',
                             city: '',
-                            stateProvince: '',
+                            state: '',
                             zipCode: '',
-                            country: '',
+                            dateOfBirth: '',
+                            ssn: '',
                             occupation: '',
-                            employer: '',
-                            income: '',
+                            annualSalary: '',
+                            planName: '',
+                            deductible: '',
+                            premium: '',
                             coverageType: '',
-                            healthConditions: [],
-                            medications: []
+                            spouseFirstName: '',
+                            spouseLastName: '',
+                            spouseDateOfBirth: '',
+                            hasVoiceRecording: false,
+                            effectiveDate: '',
+                            policyStatus: ''
                           });
-                          // Reset other form-related states
-                          setShowSpouseFields(false);
-                          setShowChildrenFields(false);
-                          setChildren([]);
-                          setValidationErrors({});
+                          setEnrollmentTitle('Untitled Enrollment');
                         }}
                       >
-                        <FaSync className="me-1" /> Reset Form
+                        <FaTimes className="me-1" /> Reset Form
                       </Button>
                     </div>
                   </Card.Header>
@@ -2593,6 +2781,7 @@ export default function Office() {
                                 value={formData.phone}
                                 onChange={handleInputChange}
                                 placeholder="(XXX) XXX-XXXX"
+                                maxLength="14"
                                 isInvalid={!!validationErrors.phone}
                               />
                               {validationErrors.phone && (
@@ -2703,6 +2892,25 @@ export default function Office() {
                                   />
                                 </Form.Group>
                               </Col>
+                              <Col md={4}>
+                                <Form.Group className="mb-3">
+                                  <Form.Label>Spouse SSN</Form.Label>
+                                  <Form.Control
+                                    type="text"
+                                    name="spouseSSN"
+                                    value={formData.spouseSSN}
+                                    onChange={(e) => {
+                                      const formattedSSN = formatSSN(e.target.value);
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        spouseSSN: formattedSSN
+                                      }));
+                                    }}
+                                    placeholder="###-##-####"
+                                    maxLength="11"
+                                  />
+                                </Form.Group>
+                              </Col>
                             </Row>
                           </div>
                         )}
@@ -2772,6 +2980,21 @@ export default function Office() {
                                           type="date"
                                           value={child.dob}
                                           onChange={(e) => updateChild(index, 'dob', e.target.value)}
+                                        />
+                                      </Form.Group>
+                                    </Col>
+                                    <Col md={4}>
+                                      <Form.Group className="mb-3">
+                                        <Form.Label>SSN</Form.Label>
+                                        <Form.Control 
+                                          type="text"
+                                          placeholder="###-##-####"
+                                          maxLength="11"
+                                          value={child.ssn}
+                                          onChange={(e) => {
+                                            const formattedSSN = formatSSN(e.target.value);
+                                            updateChild(index, 'ssn', formattedSSN);
+                                          }}
                                         />
                                       </Form.Group>
                                     </Col>
@@ -3010,17 +3233,215 @@ export default function Office() {
                           </Col>
                           <Col md={6}>
                             <Form.Group className="mb-3">
-                              <Form.Label>Expected Annual Salary (Current Tax Year)</Form.Label>
+                              <Form.Label>Annual Salary</Form.Label>
                               <Form.Control
-                                type="number"
+                                type="text"
                                 name="annualSalary"
                                 value={formData.annualSalary}
                                 onChange={handleInputChange}
-                                placeholder="Enter expected annual salary"
+                                placeholder="Enter annual salary"
                                 isInvalid={!!validationErrors.annualSalary}
                               />
                               {validationErrors.annualSalary && (
                                 <Form.Text className="text-danger">{validationErrors.annualSalary}</Form.Text>
+                              )}
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </div>
+
+                      {/* Social Security Number */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Social Security Number</h6>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>SSN</Form.Label>
+                              <div className="position-relative">
+                                <Form.Control
+                                  type="text"
+                                  name="ssn"
+                                  value={formData.ssn || ''}
+                                  onChange={(e) => {
+                                    const formattedSSN = formatSSN(e.target.value);
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      ssn: formattedSSN
+                                    }));
+                                    setSsnValid(validateSSN(formattedSSN));
+                                  }}
+                                  placeholder="###-##-####"
+                                  maxLength="11"
+                                  isInvalid={!!validationErrors.ssn}
+                                  className={ssnValid ? 'is-valid' : ''}
+                                />
+                                <div className="position-absolute top-50 end-0 translate-middle-y me-2">
+                                  {ssnValid ? (
+                                    <FaCheck className="text-success" />
+                                  ) : formData.ssn && formData.ssn.length > 0 ? (
+                                    <FaTimes className="text-danger" />
+                                  ) : null}
+                                </div>
+                              </div>
+                              {validationErrors.ssn && (
+                                <Form.Text className="text-danger">{validationErrors.ssn}</Form.Text>
+                              )}
+                              {!ssnValid && formData.ssn && formData.ssn.length > 0 && (
+                                <Form.Text className="text-danger">Please enter a valid SSN (9 digits)</Form.Text>
+                              )}
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                      </div>
+
+                      {/* Health Insurance Coverage */}
+                      <div className="section mb-4">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h6 className="mb-0">Health Insurance Coverage</h6>
+                          <div className="d-flex gap-2">
+                            <Button 
+                              variant="warning" 
+                              size="sm"
+                              className="sunfire-button"
+                              onClick={handleSunfireSubmit}
+                              disabled={isSunfireSubmitting || sunfireStatus === 'connected'}
+                            >
+                              {isSunfireSubmitting ? (
+                                <>
+                                  <FaSpinner className="me-1 spin" /> {sunfireStatus === 'connecting' ? 'Connecting to Sunfire...' : 'Submitting...'}
+                                </>
+                              ) : sunfireStatus === 'connected' ? (
+                                <>
+                                  <FaCheck className="me-1 text-success" /> Connected to Sunfire
+                                </>
+                              ) : (
+                                <>
+                                  <FaFire className="me-1" /> Connect to Sunfire
+                                </>
+                              )}
+                            </Button>
+                            <Button 
+                              variant="primary" 
+                              size="sm"
+                              onClick={() => handleSave('submit')}
+                              disabled={isSubmitting}
+                            >
+                              {isSubmitting ? (
+                                <>
+                                  <FaSpinner className="me-1 spin" /> Submitting...
+                                </>
+                              ) : (
+                                <>
+                                  <FaSave className="me-1" /> Submit Application
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Plan Name</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="planName"
+                                value={formData.planName}
+                                onChange={handleInputChange}
+                                placeholder="Enter plan name"
+                                isInvalid={!!validationErrors.planName}
+                              />
+                              {validationErrors.planName && (
+                                <Form.Text className="text-danger">{validationErrors.planName}</Form.Text>
+                              )}
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Coverage Type</Form.Label>
+                              <Form.Select
+                                name="coverageType"
+                                value={formData.coverageType}
+                                onChange={handleInputChange}
+                                isInvalid={!!validationErrors.coverageType}
+                              >
+                                <option value="">Select coverage type</option>
+                                <option value="individual">Individual</option>
+                                <option value="family">Family</option>
+                                <option value="employee">Employee</option>
+                                <option value="employee_plus_one">Employee + 1</option>
+                              </Form.Select>
+                              {validationErrors.coverageType && (
+                                <Form.Text className="text-danger">{validationErrors.coverageType}</Form.Text>
+                              )}
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Deductible</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="deductible"
+                                value={formData.deductible}
+                                onChange={handleInputChange}
+                                placeholder="Enter deductible amount"
+                                isInvalid={!!validationErrors.deductible}
+                              />
+                              {validationErrors.deductible && (
+                                <Form.Text className="text-danger">{validationErrors.deductible}</Form.Text>
+                              )}
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Premium</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="premium"
+                                value={formData.premium}
+                                onChange={handleInputChange}
+                                placeholder="Enter premium amount"
+                                isInvalid={!!validationErrors.premium}
+                              />
+                              {validationErrors.premium && (
+                                <Form.Text className="text-danger">{validationErrors.premium}</Form.Text>
+                              )}
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Effective Date</Form.Label>
+                              <Form.Control
+                                type="date"
+                                name="effectiveDate"
+                                value={formData.effectiveDate}
+                                onChange={handleInputChange}
+                                isInvalid={!!validationErrors.effectiveDate}
+                              />
+                              {validationErrors.effectiveDate && (
+                                <Form.Text className="text-danger">{validationErrors.effectiveDate}</Form.Text>
+                              )}
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Policy Status</Form.Label>
+                              <Form.Select
+                                name="policyStatus"
+                                value={formData.policyStatus}
+                                onChange={handleInputChange}
+                                isInvalid={!!validationErrors.policyStatus}
+                              >
+                                <option value="">Select policy status</option>
+                                <option value="active">Active</option>
+                                <option value="pending">Pending</option>
+                                <option value="cancelled">Cancelled</option>
+                              </Form.Select>
+                              {validationErrors.policyStatus && (
+                                <Form.Text className="text-danger">{validationErrors.policyStatus}</Form.Text>
                               )}
                             </Form.Group>
                           </Col>
@@ -3191,97 +3612,15 @@ export default function Office() {
                         </div>
                       </div>
 
-                      {/* Health Insurance Coverage */}
-                      <div className="section mb-4">
-                        <h6 className="mb-3 d-flex justify-content-between align-items-center">
-                          <span>Health Insurance Coverage</span>
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
-                            onClick={() => setInsuranceCoverages([...insuranceCoverages, {}])}
-                          >
-                            <FaPlus className="me-1" /> Add Coverage
-                          </Button>
-                        </h6>
-                        
-                        {insuranceCoverages.map((coverage, index) => (
-                          <div key={index} className="insurance-coverage-item mb-4 p-3 border rounded">
-                            <div className="d-flex justify-content-between align-items-center mb-3">
-                              <h6 className="mb-0">Coverage #{index + 1}</h6>
-                              {index > 0 && (
-                                <Button 
-                                  variant="outline-danger" 
-                                  size="sm"
-                                  onClick={() => {
-                                    const updatedCoverages = [...insuranceCoverages];
-                                    updatedCoverages.splice(index, 1);
-                                    setInsuranceCoverages(updatedCoverages);
-                                  }}
-                                >
-                                  <FaTrash className="me-1" /> Remove
-                                </Button>
-                              )}
-                            </div>
-                            <Row>
-                              <Col md={6}>
-                                <Form.Group className="mb-3">
-                                  <Form.Label>Insurance Provider</Form.Label>
-                                  <Form.Select>
-                                    <option value="">Select insurance provider</option>
-                                    <option value="united">UnitedHealthcare</option>
-                                    <option value="cigna">Cigna</option>
-                                    <option value="ambetter">Ambetter</option>
-                                    <option value="oscar">Oscar</option>
-                                    <option value="aetna">Aetna</option>
-                                    <option value="anthem">Anthem Blue Cross</option>
-                                    <option value="kaiser">Kaiser Permanente</option>
-                                    <option value="humana">Humana</option>
-                                    <option value="molina">Molina Healthcare</option>
-                                  </Form.Select>
-                                </Form.Group>
-                              </Col>
-                              <Col md={6}>
-                                <Form.Group className="mb-3">
-                                  <Form.Label>Plan Name</Form.Label>
-                                  <Form.Control type="text" placeholder="Enter plan name" />
-                                </Form.Group>
-                              </Col>
-                            </Row>
-                            <Row>
-                              <Col md={4}>
-                                <Form.Group className="mb-3">
-                                  <Form.Label>Deductible</Form.Label>
-                                  <Form.Control type="number" placeholder="Enter deductible amount" />
-                                </Form.Group>
-                              </Col>
-                              <Col md={4}>
-                                <Form.Group className="mb-3">
-                                  <Form.Label>Premium</Form.Label>
-                                  <Form.Control type="number" placeholder="Enter premium amount" />
-                                </Form.Group>
-                              </Col>
-                              <Col md={4}>
-                                <Form.Group className="mb-3">
-                                  <Form.Label>Coverage Type</Form.Label>
-                                  <Form.Select>
-                                    <option value="">Select coverage type</option>
-                                    <option value="aca">ACA Health</option>
-                                    <option value="dental">Dental</option>
-                                    <option value="vision">Vision</option>
-                                  </Form.Select>
-                                </Form.Group>
-                              </Col>
-                            </Row>
-                          </div>
-                        ))}
-                      </div>
-
                       {/* Add this at the bottom of the form, just before the Action Buttons section */}
                       <div className="d-flex justify-content-between align-items-center mt-4">
-                        <Button variant="outline-secondary" onClick={() => setShowHistoryModal(true)}>
-                          <FaHistory className="me-2" /> View History
+                        <Button 
+                          variant="outline-secondary" 
+                          onClick={() => setShowNotesHistoryModal(true)}
+                        >
+                          <FaHistory className="me-2" /> View Notes History
                         </Button>
-                            <div>
+                        <div>
                           <Button 
                             variant="secondary" 
                             className="me-2" 
@@ -3301,7 +3640,7 @@ export default function Office() {
                                 <FaSave className="me-2" /> Save Draft
                               </>
                             )}
-                              </Button>
+                          </Button>
                           <Button 
                             variant="primary"
                             onClick={() => handleSave('submit')}
@@ -3320,9 +3659,62 @@ export default function Office() {
                                 <FaCheckCircle className="me-2" /> Submit Application
                               </>
                             )}
-                              </Button>
-                            </div>
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Notes History Modal */}
+                      <Modal 
+                        show={showNotesHistoryModal} 
+                        onHide={() => setShowNotesHistoryModal(false)}
+                        size="lg"
+                      >
+                        <Modal.Header closeButton>
+                          <Modal.Title>Notes & Disposition History</Modal.Title>
+                        </Modal.Header>
+                        <Modal.Body>
+                          <div className="notes-history">
+                            {notes.map((note, index) => (
+                              <div key={index} className="note-entry p-3 border rounded mb-3">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <div className="d-flex align-items-center gap-2">
+                                    <Badge bg="info">{note.type}</Badge>
+                                    <small className="text-muted">{note.date}</small>
+                                  </div>
+                                  <Badge bg={getStatusFromDisposition(note.type, note.disposition)}>
+                                    {note.disposition}
+                                  </Badge>
+                                </div>
+                                <div className="note-content">
+                                  <p className="mb-2">{note.notes}</p>
+                                  {note.policyDetails && (
+                                    <div className="policy-details mt-2 p-2 bg-light rounded">
+                                      <h6 className="mb-2">Policy Details</h6>
+                                      <Row>
+                                        <Col md={6}>
+                                          <p className="mb-1"><strong>Plan:</strong> {note.policyDetails.planName}</p>
+                                          <p className="mb-1"><strong>Coverage:</strong> {note.policyDetails.coverageType}</p>
+                                        </Col>
+                                        <Col md={6}>
+                                          <p className="mb-1"><strong>Deductible:</strong> {note.policyDetails.deductible}</p>
+                                          <p className="mb-1"><strong>Premium:</strong> {note.policyDetails.premium}</p>
+                                        </Col>
+                                      </Row>
+                                      <p className="mb-1"><strong>Effective Date:</strong> {note.policyDetails.effectiveDate}</p>
+                                      <p className="mb-0"><strong>Status:</strong> {note.policyDetails.status}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
+                        </Modal.Body>
+                        <Modal.Footer>
+                          <Button variant="secondary" onClick={() => setShowNotesHistoryModal(false)}>
+                            Close
+                          </Button>
+                        </Modal.Footer>
+                      </Modal>
                     </Form>
                   </Card.Body>
                 </Card>
@@ -4205,36 +4597,93 @@ export default function Office() {
       {/* History Modal */}
       <Modal 
         show={showHistoryModal} 
-        onHide={() => setShowHistoryModal(false)}
+        onHide={() => {
+          setShowHistoryModal(false);
+          setShowNewNoteForm(false);
+        }}
         size="lg"
       >
         <Modal.Header closeButton>
           <Modal.Title>Application History</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <div className="mb-4">
-            <h6 className="mb-3">Application Progress</h6>
-            <div className="completion-indicator">
-              <div className="d-flex align-items-center">
-                <div className="d-flex gap-1">
-                  <div className={`completion-dot ${formCompletion.personalInfo ? 'complete' : 'incomplete'}`} title="Personal Information"></div>
-                  <div className={`completion-dot ${formCompletion.contactInfo ? 'complete' : 'incomplete'}`} title="Contact Information"></div>
-                  <div className={`completion-dot ${formCompletion.addressInfo ? 'complete' : 'incomplete'}`} title="Address Information"></div>
-                  <div className={`completion-dot ${formCompletion.spouseInfo ? 'complete' : 'incomplete'}`} title="Spouse Information"></div>
-                  <div className={`completion-dot ${formCompletion.childrenInfo ? 'complete' : 'incomplete'}`} title="Children Information"></div>
-                  <div className={`completion-dot ${formCompletion.insuranceInfo ? 'complete' : 'incomplete'}`} title="Insurance Information"></div>
-                </div>
-                <span className="ms-2 text-sm">
-                  {Object.values(formCompletion).every(v => v) ? 
-                    'Application Complete' : 
-                    'In Progress'}
-                </span>
-              </div>
-            </div>
-          </div>
-
           <div className="history-timeline">
-            <h6 className="mb-3">Notes & Disposition History</h6>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h6 className="mb-0">Notes & Disposition History</h6>
+              <Button 
+                variant="outline-primary" 
+                size="sm"
+                onClick={() => setShowNewNoteForm(true)}
+              >
+                <FaPlus className="me-1" /> Add Note
+              </Button>
+            </div>
+
+            {showNewNoteForm && (
+              <div className="new-note-form mb-4 p-3 border rounded">
+                <h6 className="mb-3">Add New Note</h6>
+                <Form>
+                  <Row>
+                    <Col md={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Type</Form.Label>
+                        <Form.Select
+                          value={newNote.type}
+                          onChange={(e) => setNewNote(prev => ({ ...prev, type: e.target.value }))}
+                        >
+                          <option>Note</option>
+                          <option>Call</option>
+                          <option>Meeting</option>
+                          <option>Email</option>
+                          <option>Application</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Disposition</Form.Label>
+                        <Form.Select
+                          value={newNote.disposition}
+                          onChange={(e) => setNewNote(prev => ({ ...prev, disposition: e.target.value }))}
+                        >
+                          <option>General</option>
+                          <option>Follow-up Required</option>
+                          <option>Completed</option>
+                          <option>Pending Response</option>
+                          <option>Submitted</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Notes</Form.Label>
+                    <Form.Control
+                      as="textarea"
+                      rows={3}
+                      value={newNote.notes}
+                      onChange={(e) => setNewNote(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Enter your notes here..."
+                    />
+                  </Form.Group>
+                  <div className="d-flex justify-content-end gap-2">
+                    <Button 
+                      variant="outline-secondary" 
+                      onClick={() => setShowNewNoteForm(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      variant="primary" 
+                      onClick={handleSaveNote}
+                      disabled={!newNote.notes.trim()}
+                    >
+                      Save Note
+                    </Button>
+                  </div>
+                </Form>
+              </div>
+            )}
+
             {notes.map((note, index) => (
               <div key={index} className="history-entry mb-3">
                 <div className="d-flex justify-content-between align-items-start mb-2">
@@ -4253,6 +4702,12 @@ export default function Office() {
                       <small className="text-muted">
                         <FaUser className="me-1" /> {note.agent} • 
                         <FaClock className="ms-2 me-1" /> {note.duration}
+                        {note.type === 'Application' && note.notes.includes('Application ID:') && (
+                          <>
+                            <FaFileAlt className="ms-2 me-1" /> 
+                            {note.notes.match(/Application ID: ([A-Z0-9-]+)/)?.[1]}
+                          </>
+                        )}
                       </small>
                     </div>
                   </div>
