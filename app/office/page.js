@@ -5302,31 +5302,42 @@ export default function Office() {
                           .map(email => (
                             <ListGroup.Item 
                               key={email.id}
-                              action
-                              onClick={() => handleEmailSelect(email)}
                               className={`d-flex justify-content-between align-items-center py-3 ${!email.read ? 'fw-bold' : ''}`}
                             >
-                              <div className="d-flex align-items-center">
-                                <div className="me-2" onClick={(e) => handleStarEmail(email.id, e)}>
+                              <div 
+                                className="d-flex align-items-center w-100"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => handleEmailSelect(email)}
+                              >
+                                <div 
+                                  className="me-2" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStarEmail(email.id, e);
+                                  }}
+                                >
                                   {email.starred ? <FaStar className="text-warning" /> : <FaRegStar />}
-                      </div>
+                                </div>
                                 <div>
                                   <div className="sender">{email.from}</div>
                                   <div className="subject">{email.subject}</div>
-                      </div>
-                      </div>
+                                </div>
+                              </div>
                               <div className="d-flex align-items-center">
                                 <div className="time me-3 text-muted small">
                                   {email.time}
-                      </div>
-                                <Button 
-                                  variant="link" 
-                                  className="p-0 text-danger"
-                                  onClick={(e) => handleDeleteEmail(email.id, e)}
+                                </div>
+                                <div 
+                                  className="text-danger" 
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteEmail(email.id, e);
+                                  }}
                                 >
                                   <FaTrash />
-                                </Button>
-                    </div>
+                                </div>
+                              </div>
                             </ListGroup.Item>
                           ))}
                       </ListGroup>
