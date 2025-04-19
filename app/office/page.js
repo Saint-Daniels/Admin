@@ -43,6 +43,7 @@ import {
   FaQuestionCircle, FaEye,
   FaInbox, FaArrowLeft, FaReply, FaReplyAll, FaForward, FaChartPie,
   FaCalendarCheck, FaNewspaper, FaRegStar, FaChevronLeft, FaChevronRight,
+  FaUserCheck, FaUserClock,
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -1834,6 +1835,114 @@ export default function Office() {
     console.log(`Performing ${action} on file ${fileId}`);
   };
 
+  // State variables for the app
+  const [meetingStartTime, setMeetingStartTime] = useState(null);
+  const [callClient, setCallClient] = useState(null);
+  // Add state for selected agent
+  const [selectedAgent, setSelectedAgent] = useState(null);
+
+  // First add a new function to handle the e-signature download
+  // Add this after the handleSaveChanges function around line 1579
+
+  const downloadESignature = (application) => {
+    // Create a mock e-signature stamp with client info
+    const generateStamp = () => {
+      // In a real app, this would fetch the actual e-signature from a server
+      // For now, we'll create a simple mock data structure with a timestamp
+      return {
+        clientName: application.clientName,
+        clientId: application.clientId,
+        applicationId: application.id,
+        agentId: application.agentId,
+        timestamp: new Date().toISOString(),
+        verificationCode: `ES-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        signature: "Client Electronic Signature",
+        policyType: "Health Insurance Enrollment",
+        stampId: `STAMP-${Date.now()}`
+      };
+    };
+
+    const stampData = generateStamp();
+    
+    // Create formatted text content for the stamp
+    const stampContent = 
+`INSURANCE MARKETPLACE E-SIGNATURE VERIFICATION
+-----------------------------------------------
+CLIENT NAME: ${stampData.clientName}
+CLIENT ID: ${stampData.clientId}
+APPLICATION ID: ${stampData.applicationId}
+AGENT ID: ${stampData.agentId}
+TIMESTAMP: ${new Date(stampData.timestamp).toLocaleString()}
+VERIFICATION CODE: ${stampData.verificationCode}
+POLICY TYPE: ${stampData.policyType}
+STAMP ID: ${stampData.stampId}
+
+This document certifies that ${stampData.clientName} has provided an electronic 
+signature for the purpose of health insurance enrollment through the authorized 
+marketplace system. This signature is legally binding in accordance with the 
+Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
+`;
+
+    // Create a Blob containing the text data
+    const blob = new Blob([stampContent], { type: 'text/plain' });
+    
+    // Create a URL for the Blob
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary anchor element to trigger the download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `esignature-${application.clientId.toLowerCase()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
+
+  // Add a state for clocking in status around line 1550
+  const [showClockInModal, setShowClockInModal] = useState(false);
+  const [clockedIn, setClockedIn] = useState(false);
+  const [clockInTime, setClockInTime] = useState(null);
+
+  // Add handler function for clocking in
+  const handleClockIn = () => {
+    setClockedIn(true);
+    setClockInTime(new Date());
+    setShowClockInModal(false);
+  };
+
+  // Add CSS styles for mobile responsiveness
+  const mobileStyles = `
+    @media (max-width: 768px) {
+      .home-calendar-row {
+        flex-direction: column;
+      }
+      .analog-clock-container {
+        margin-bottom: 1rem !important;
+      }
+      .analog-clock {
+        width: 100px !important;
+        height: 100px !important;
+      }
+      .calendar-clock-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+      .digital-time h4 {
+        font-size: 1.2rem;
+      }
+      .digital-time p {
+        font-size: 0.8rem;
+      }
+    }
+  `;
+
   return (
     <div className="office-container">
       <style jsx>{`
@@ -1849,6 +1958,73 @@ export default function Office() {
           }
           .enrollment-section {
             order: 2;
+          }
+          
+          /* New styles for mobile view */
+          .workspace-header {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+          
+          .welcome-section {
+            margin-bottom: 15px;
+            width: 100%;
+          }
+          
+          .welcome-section h1 {
+            font-size: 1.5rem;
+          }
+          
+          .quick-actions {
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+          }
+          
+          .status-indicators {
+            margin-bottom: 10px;
+            width: 100%;
+            justify-content: center;
+          }
+          
+          .status-text {
+            display: none;
+          }
+
+          .meeting-room-indicator .ms-1 {
+            display: inline-block !important;
+            margin-left: 0 !important;
+          }
+          
+          /* Calendar styling for mobile */
+          .home-calendar-row {
+            flex-direction: column;
+          }
+          
+          .calendar-card {
+            margin-bottom: 1rem !important;
+          }
+          
+          /* Clock styles for mobile */
+          .analog-clock-container {
+            margin-bottom: 1rem !important;
+          }
+          .analog-clock {
+            width: 100px !important;
+            height: 100px !important;
+          }
+          .calendar-clock-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1rem;
+          }
+          .digital-time h4 {
+            font-size: 1.2rem;
+          }
+          .digital-time p {
+            font-size: 0.8rem;
           }
         }
 
@@ -1923,12 +2099,12 @@ export default function Office() {
         }
       `}</style>
       <Container fluid>
-        <div className="workspace-header">
+        <div className="workspace-header d-flex justify-content-between align-items-center">
           <div className="welcome-section">
             <h1>Office Workspace</h1>
             <p className="text-muted">Welcome back! Here's your overview for today</p>
           </div>
-          <div className="quick-actions">
+          <div className="quick-actions d-flex align-items-center">
             {/* Meeting Room Status */}
             <div className="status-indicators d-flex align-items-center gap-2 me-3">
               {/* Meeting Room Status */}
@@ -1937,6 +2113,7 @@ export default function Office() {
                 size="sm"
                 className={`d-flex align-items-center gap-2 meeting-room-indicator ${isInMeeting ? 'active' : ''}`}
                 onClick={() => setIsInMeeting(!isInMeeting)}
+                title={currentMeetingRoom}
               >
                 <FaVideo className={isInMeeting ? "pulse" : ""} />
                 <span className="status-text">
@@ -1970,6 +2147,19 @@ export default function Office() {
                 }}
                 disabled={isDialing || !isConnected}
                 data-status={agentStatus}
+                title={
+                  agentStatus === 'on_call' ? "On Call" :
+                  agentStatus === 'break' ? "On Break" :
+                  agentStatus === 'lunch' ? "Lunch Break" :
+                  agentStatus === 'meeting' ? "In Meeting" :
+                  agentStatus === 'training' ? "Training" :
+                  agentStatus === 'admin' ? "Admin Work" :
+                  agentStatus === 'technical_issue' ? "System Down" :
+                  agentStatus === 'not_connected' ? "Not Connected" :
+                  agentStatus === 'personal' ? "Personal Time" :
+                  agentStatus.startsWith('wrap_up') ? "Wrap-Up" : 
+                  "Ready"
+                }
               >
                 {agentStatus === 'on_call' ? <FaPhone className="pulse" /> :
                  agentStatus === 'break' || agentStatus === 'lunch' ? <FaCoffee /> :
@@ -2000,235 +2190,17 @@ export default function Office() {
                 )}
               </Button>
             </div>
-
-            {/* Disposition Modal */}
-            <Modal 
-              show={showDispositionModal} 
-              onHide={() => {
-                setShowDispositionModal(false);
-                // Don't end the call if they cancel - keep it active
-              }}
-            >
-              <Modal.Header closeButton>
-                <Modal.Title>Call Disposition</Modal.Title>
-              </Modal.Header>
-              <Modal.Body>
-                <Form>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Disposition Category</Form.Label>
-                    <Form.Select 
-                      value={dispositionCategory}
-                      onChange={(e) => setDispositionCategory(e.target.value)}
-                      className="mb-3"
-                    >
-                      <option value="lead_contact">Lead Contact Results</option>
-                      <option value="qualification">Qualification Outcomes</option>
-                      <option value="sales">Sales / Enrollment Outcomes</option>
-                    </Form.Select>
-
-                    <Form.Label>Select Disposition</Form.Label>
-                    <Form.Select 
-                      value={selectedDisposition} 
-                      onChange={(e) => setSelectedDisposition(e.target.value)}
-                    >
-                      <option value="">Select a disposition</option>
-                      {dispositionCodes[dispositionCategory].map((code) => (
-                        <option key={code.value} value={code.value}>
-                          {code.label}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-
-                  {selectedDisposition && selectedDisposition.startsWith('sale_') && (
-                    <div className="policy-details border rounded p-3 mb-3 bg-light">
-                      <h6 className="mb-3">Policy Details</h6>
-                      {/* TODO: Replace with actual policy data from the sold policy */}
-                      <div className="row">
-                        <div className="col-md-6">
-                          <Form.Group className="mb-2">
-                            <Form.Label className="fw-bold">Plan Name</Form.Label>
-                            <p className="mb-1">{formData.planName || '[Placeholder] Standard Coverage Plan'}</p>
-                          </Form.Group>
-                          <Form.Group className="mb-2">
-                            <Form.Label className="fw-bold">Coverage Type</Form.Label>
-                            <p className="mb-1">{formData.coverageType || '[Placeholder] Individual'}</p>
-                          </Form.Group>
-                          <Form.Group className="mb-2">
-                            <Form.Label className="fw-bold">Deductible</Form.Label>
-                            <p className="mb-1">${formData.deductible || '[Placeholder] 1,000'}</p>
-                          </Form.Group>
-                        </div>
-                        <div className="col-md-6">
-                          <Form.Group className="mb-2">
-                            <Form.Label className="fw-bold">Monthly Premium</Form.Label>
-                            <p className="mb-1">${formData.premium || '[Placeholder] 250'}</p>
-                          </Form.Group>
-                          <Form.Group className="mb-2">
-                            <Form.Label className="fw-bold">Effective Date</Form.Label>
-                            <p className="mb-1">{formData.effectiveDate || '[Placeholder] ' + new Date().toLocaleDateString()}</p>
-                          </Form.Group>
-                          <Form.Group className="mb-2">
-                            <Form.Label className="fw-bold">Policy Status</Form.Label>
-                            <p className="mb-1">
-                              <Badge bg="success">{formData.policyStatus || '[Placeholder] Active'}</Badge>
-                            </p>
-                          </Form.Group>
-                        </div>
-                      </div>
-                      <div className="mt-2 text-muted small">
-                        <FaInfoCircle className="me-1" />
-                        Note: These are placeholder values. Actual policy details will be populated when integrated with the policy management system.
-                      </div>
-                    </div>
-                  )}
-
-                  <Form.Group className="mb-3">
-                    <Form.Label>Notes</Form.Label>
-                    <Form.Control 
-                      as="textarea" 
-                      rows={3} 
-                      placeholder="Add any additional notes about the call..."
-                      value={dispositionNotes}
-                      onChange={(e) => setDispositionNotes(e.target.value)}
-                    />
-                  </Form.Group>
-                </Form>
-
-                {selectedDisposition && selectedDisposition.startsWith('sale_') && (
-                  <div className="alert alert-success mt-3">
-                    <FaCheckCircle className="me-2" />
-                    Sale recorded! Policy details have been saved.
-                  </div>
-                )}
-              </Modal.Body>
-              <Modal.Footer>
-                <Button 
-                  variant="secondary" 
-                  onClick={() => {
-                    setShowDispositionModal(false);
-                    // Don't end the call if they cancel - keep it active
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="primary" 
-                  onClick={() => {
-                    if (selectedDisposition) {
-                      // Get status from disposition
-                      const newStatus = getStatusFromDisposition(dispositionCategory, selectedDisposition);
-                      
-                      // Prepare policy details if it's a sale
-                      const policyDetails = selectedDisposition.startsWith('sale_') ? {
-                        // TODO: Replace with actual policy data from the policy management system
-                        planName: formData.planName || '[Placeholder] Standard Coverage Plan',
-                        coverageType: formData.coverageType || '[Placeholder] Individual',
-                        deductible: formData.deductible || '[Placeholder] 1,000',
-                        premium: formData.premium || '[Placeholder] 250',
-                        effectiveDate: formData.effectiveDate || '[Placeholder] ' + new Date().toLocaleDateString(),
-                        status: formData.policyStatus || '[Placeholder] Active'
-                      } : null;
-                      
-                      // Save the disposition with policy details if applicable
-                      setNotes(prev => [...prev, {
-                        date: new Date().toLocaleString(),
-                        type: 'Status Change',
-                        disposition: dispositionCodes[dispositionCategory]?.find(code => code.value === selectedDisposition)?.label || selectedDisposition,
-                        agent: 'John Doe',
-                        duration: agentStatus === 'on_call' ? formatDuration(callDuration) : 'N/A',
-                        notes: dispositionNotes,
-                        policyDetails: policyDetails
-                      }]);
-                      
-                      // Update active coverage if it's a sale
-                      if (selectedDisposition.startsWith('sale_')) {
-                        setActiveCoverage({
-                          isActive: true,
-                          enrollmentDate: new Date(),
-                          coverageType: formData.coverageType || 'Individual',
-                          provider: 'Insurance Provider'
-                        });
-                        setHasActivePolicy(true);
-                      }
-                      
-                      // Now we can end the call since disposition is complete
-                      if (callTimer) {
-                        clearInterval(callTimer);
-                        setCallTimer(null);
-                      }
-                      
-                      // Reset all call states
-                      setIsCallActive(false);
-                      setIsDialing(false);
-                      setCallStatus('idle');
-                      setCallDuration(0);
-                      
-                      // Set agent status back to available/ready
-                      setAgentStatus('available');
-                      
-                      // Close modal and reset form
-                      setShowDispositionModal(false);
-                      setSelectedDisposition('');
-                      setDispositionNotes('');
-                      setDispositionCategory('lead_contact');
-                      
-                      // Reset phone number
-                      setPhoneNumber('');
-                    }
-                  }}
-                  disabled={!selectedDisposition}
-                >
-                  Submit & End Call
-                </Button>
-              </Modal.Footer>
-            </Modal>
-
-            <div className="profile-dropdown">
+            
+            {/* Profile Icon */}
+            <div className="profile-section">
               <Button 
-                variant="outline-primary" 
-                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                variant="light" 
+                className="rounded-circle p-1" 
+                style={{ width: '40px', height: '40px' }}
+                title="User Profile"
               >
-                <FaUser className="me-2" /> Profile
+                <FaUserCircle size={24} />
               </Button>
-              {showProfileDropdown && (
-                <div className="profile-dropdown-menu">
-                  <div className="profile-header p-3 border-bottom">
-                    <div className="d-flex align-items-center">
-                      <div className="profile-avatar me-3">
-                        {profilePicture ? (
-                          <img src={profilePicture} alt="Profile" className="rounded-circle" />
-                        ) : (
-                          <FaUserCircle size={40} />
-                        )}
-                      </div>
-                      <div>
-                        <h6 className="mb-0">John Doe</h6>
-                        <small className="text-muted">john.doe@example.com</small>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="profile-menu-items">
-                    <a href="#" className="dropdown-item">
-                      <FaUser className="me-2" /> My Profile
-                    </a>
-                    <a href="#" className="dropdown-item">
-                      <FaBell className="me-2" /> Notifications
-                    </a>
-                    <a href="#" className="dropdown-item">
-                      <FaCog className="me-2" /> Settings
-                    </a>
-                    <div className="dropdown-divider"></div>
-                    <a 
-                      href="#" 
-                      className="dropdown-item text-danger"
-                      onClick={() => router.push('/login')}
-                    >
-                      <FaSignOutAlt className="me-2" /> Logout
-                    </a>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -2245,14 +2217,8 @@ export default function Office() {
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')}>
-              <FaChartBar className="me-2" /> Analytics
-            </Nav.Link>
-          </Nav.Item>
-          {/* Add Admin Tab */}
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'admin'} onClick={() => setActiveTab('admin')}>
-              <FaUserShield className="me-2" /> Admin
+            <Nav.Link active={activeTab === 'applications'} onClick={() => setActiveTab('applications')}>
+              <FaUserShield className="me-2" /> Applications
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
@@ -2263,11 +2229,6 @@ export default function Office() {
           <Nav.Item>
             <Nav.Link active={activeTab === 'chat'} onClick={() => setActiveTab('chat')}>
               <FaComments className="me-2" /> Chat
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'email'} onClick={() => setActiveTab('email')}>
-              <FaEnvelope className="me-2" /> Email
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
@@ -2286,11 +2247,6 @@ export default function Office() {
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link active={activeTab === 'gemini'} onClick={() => setActiveTab('gemini')}>
-              <FaRobot className="me-2" /> Gemini
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
             <Nav.Link active={activeTab === 'drive'} onClick={() => setActiveTab('drive')}>
               <FaGoogleDrive className="me-2" /> Drive
             </Nav.Link>
@@ -2298,481 +2254,295 @@ export default function Office() {
         </Nav>
 
         {activeTab === 'home' && (
-          <div className="dashboard-grid">
-            {/* Meetings Section */}
-            <Card className="dashboard-card meetings-section mb-4">
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">
-                  <FaVideo className="me-2" /> Upcoming Schedule
-                </h5>
-                <Button 
-                  variant="primary" 
-                  size="sm"
-                  onClick={() => window.open('https://meet.google.com/abc123', '_blank')}
-                >
-                  <FaVideo className="me-1" /> Main Office
-                </Button>
-              </Card.Header>
-              <Card.Body>
-                <div className="meetings-container">
-                  <div className="meetings-list">
-                    {upcomingMeetings.map((meeting, index) => {
-                      const timeUntil = Math.round((meeting.time - currentTime) / (1000 * 60));
-                      const isStartingSoon = timeUntil <= 30 && timeUntil > 0;
-                      const isInProgress = timeUntil <= 0 && timeUntil > -meeting.duration;
-                      
-                      return (
-                        <div key={index} className={`meeting-item ${meeting.type} ${isStartingSoon ? 'starting-soon' : ''} ${isInProgress ? 'in-progress' : ''}`}>
-                          <div className="meeting-content">
-                            <div className="meeting-header">
-                              <h6>{meeting.title}</h6>
-                              {meeting.title !== "Team Standup" && meeting.title !== "Project Review" && meeting.title !== "Sales Floor" && meeting.type === 'video' && (
-                                <Badge bg="primary" className="meeting-type-badge">
-                                  VIDEO
-                                </Badge>
-                              )}
-                              {meeting.title !== "Client Meeting" && meeting.type === 'in-person' && (
-                                <Badge bg="success" className="meeting-type-badge">
-                                  IN-PERSON
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="meeting-details">
-                              <MeetingTime meeting={meeting} currentTime={currentTime} timeUntil={timeUntil} />
-                              <div className="meeting-participants">
-                                <FaUsers className="me-2" />
-                                {meeting.participants} participants
-                              </div>
-                            </div>
-                          </div>
-                          {meeting.title === "Team Standup" || meeting.title === "Project Review" || meeting.title === "Sales Floor" ? (
-                            <Button 
-                              variant="primary"
-                              size="sm"
-                              className="px-3"
-                              onClick={() => {
-                                if (meeting.meetLink) {
-                                  window.open(meeting.meetLink, '_blank');
-                                }
-                              }}
-                            >
-                              Join Now
-                            </Button>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </Card.Body>
-            </Card>
-
-            {/* Calendar Section */}
-            <Card className="dashboard-card calendar-preview mb-4">
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center gap-4">
+          <Container fluid className="px-0">
+            <Row className="gx-4 gy-4 w-100 mx-0 home-calendar-row">
+              {/* Calendar Section - now on the left */}
+              <Col md={6} className="px-2">
+                <Card className="dashboard-card h-100 w-100" style={{ maxWidth: "100%" }}>
+                  <Card.Header className="d-flex justify-content-between align-items-center">
                     <h5 className="mb-0">
                       <FaCalendar className="me-2" /> Calendar
                     </h5>
-                    <div className="analog-clock" style={{ width: '40px', height: '40px', position: 'relative', border: '2px solid #3b82f6', borderRadius: '50%', backgroundColor: '#f0f7ff' }}>
-                      <div className="clock-marking marking-12" style={{ position: 'absolute', width: '2px', height: '8px', background: '#3b82f6', left: '50%', transform: 'translateX(-50%)', top: '2px' }}></div>
-                      <div className="clock-marking marking-3" style={{ position: 'absolute', width: '8px', height: '2px', background: '#3b82f6', right: '2px', top: '50%', transform: 'translateY(-50%)' }}></div>
-                      <div className="clock-marking marking-6" style={{ position: 'absolute', width: '2px', height: '8px', background: '#3b82f6', left: '50%', transform: 'translateX(-50%)', bottom: '2px' }}></div>
-                      <div className="clock-marking marking-9" style={{ position: 'absolute', width: '8px', height: '2px', background: '#3b82f6', left: '2px', top: '50%', transform: 'translateY(-50%)' }}></div>
-                      <div 
-                        ref={clockHourHandRef}
-                        className="clock-hand hour-hand" 
-                        style={{ 
-                          position: 'absolute',
-                          width: '2px',
-                          height: '12px',
-                          background: '#2563eb',
-                          bottom: '50%',
-                          left: '50%',
-                          transformOrigin: 'bottom',
-                          transform: 'rotate(0deg) translateX(-50%)'
-                        }}
-                      ></div>
-                      <div 
-                        ref={clockMinuteHandRef}
-                        className="clock-hand minute-hand" 
-                        style={{ 
-                          position: 'absolute',
-                          width: '1.5px',
-                          height: '16px',
-                          background: '#3b82f6',
-                          bottom: '50%',
-                          left: '50%',
-                          transformOrigin: 'bottom',
-                          transform: 'rotate(0deg) translateX(-50%)'
-                        }}
-                      ></div>
-                      <div 
-                        ref={clockSecondHandRef}
-                        className="clock-hand second-hand" 
-                        style={{ 
-                          position: 'absolute',
-                          width: '1px',
-                          height: '18px',
-                          background: '#60a5fa',
-                          bottom: '50%',
-                          left: '50%',
-                          transformOrigin: 'bottom',
-                          transform: 'rotate(0deg) translateX(-50%)'
-                        }}
-                      ></div>
-                      <div className="clock-center" style={{ position: 'absolute', width: '4px', height: '4px', background: '#2563eb', borderRadius: '50%', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
-                    </div>
-                  </div>
-                  <div className="d-flex align-items-center gap-2">
-                    <Button 
-                      variant={isTimedIn ? "success" : "outline-secondary"} 
-                      size="sm"
-                      className="d-flex align-items-center gap-2"
-                      onClick={() => {
-                        if (!isTimedIn) {
-                          setIsTimedIn(true);
-                          setTimeInStart(new Date());
-                        } else {
-                          setIsTimedIn(false);
-                          if (timeInStart) {
-                            const endTime = new Date();
-                            const duration = (endTime - timeInStart) / 1000;
-                            setTotalTimeToday(prev => prev + duration);
-                          }
-                          setTimeInStart(null);
-                        }
-                      }}
-                    >
-                      <FaClock className={isTimedIn ? "text-white" : ""} />
-                      <span className="status-text">
-                        {isTimedIn ? "Clock Out" : "Clock In"}
-                      </span>
-                      {isTimedIn && timeInStart && (
-                        <span className="time-duration">
-                          ({formatDuration(Math.floor((new Date() - timeInStart) / 1000))})
-                        </span>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </Card.Header>
-              <Card.Body>
-                <div className="calendar-view">
-                  <div className="calendar-header">
-                    <h6 className="current-month">March 2025</h6>
-                  </div>
-                  <div className="calendar-grid">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                      <div key={day} className="calendar-day-header">{day}</div>
-                    ))}
-                    {calendarDays.map((day, index) => {
-                      if (day === null) return <div key={`empty-${index}`} className="calendar-day" />;
-                      
-                      const hasEvents = [4, 7, 9, 10, 11, 13, 14, 15, 29, 30, 31].includes(day);
-                      const isToday = day === currentTime.getDate() && 
-                        currentTime.getMonth() === 2 && 
-                        currentTime.getFullYear() === 2025;
-                      
-                      return (
-                        <div 
-                          key={day} 
-                          className={`calendar-day ${isToday ? 'today' : ''} ${hasEvents ? 'has-events' : ''}`}
-                          onClick={() => {
-                            if (hasEvents) {
-                              setSelectedDate(day);
-                              setSelectedDateEvents([
-                                {
-                                  title: 'Team Training',
-                                  time: '10:00 AM',
-                                  type: 'Training',
-                                  participants: 12
-                                },
-                                {
-                                  title: 'Department Meeting',
-                                  time: '2:00 PM',
-                                  type: 'Meeting',
-                                  participants: 8
-                                }
-                              ]);
-                              setShowEventsModal(true);
-                            }
-                          }}
-                          style={{ cursor: hasEvents ? 'pointer' : 'default' }}
-                        >
-                          {day}
-                          {hasEvents && <div className="event-indicator"></div>}
+                    <div className="d-flex align-items-center">
+                      {/* Small blue clock at the top */}
+                      <div className="analog-clock-container me-3">
+                        <div className="analog-clock rounded-circle d-flex align-items-center justify-content-center" 
+                             style={{ 
+                               width: '32px', 
+                               height: '32px', 
+                               border: '2px solid #0d6efd', 
+                               position: 'relative',
+                               background: '#e6f0ff'
+                             }}>
+                          {/* Hour hand */}
+                          <div style={{ 
+                            position: 'absolute', 
+                            width: '1.5px', 
+                            height: '10px', 
+                            background: '#0d6efd', 
+                            bottom: '50%',
+                            left: 'calc(50% - 0.75px)',
+                            transformOrigin: 'bottom center',
+                            transform: `rotate(${(currentTime.getHours() % 12) * 30 + currentTime.getMinutes() * 0.5}deg)`,
+                            zIndex: 2
+                          }}></div>
+                          
+                          {/* Minute hand */}
+                          <div style={{ 
+                            position: 'absolute', 
+                            width: '1px', 
+                            height: '12px', 
+                            background: '#0d6efd', 
+                            bottom: '50%',
+                            left: 'calc(50% - 0.5px)',
+                            transformOrigin: 'bottom center',
+                            transform: `rotate(${currentTime.getMinutes() * 6}deg)`,
+                            zIndex: 1
+                          }}></div>
+                          
+                          {/* Center dot */}
+                          <div style={{ 
+                            position: 'absolute', 
+                            width: '3px', 
+                            height: '3px', 
+                            background: '#0d6efd', 
+                            borderRadius: '50%',
+                            top: 'calc(50% - 1.5px)',
+                            left: 'calc(50% - 1.5px)',
+                            zIndex: 4
+                          }}></div>
                         </div>
-                      );
-                    })}
-                  </div>
-                              </div>
-              </Card.Body>
-            </Card>
+                      </div>
+                      {clockedIn ? (
+                        <Badge bg="success" className="p-2">
+                          <FaUserCheck className="me-1" /> Clocked In
+                        </Badge>
+                      ) : (
+                        <Button 
+                          variant="outline-primary" 
+                          size="sm" 
+                          onClick={() => setShowClockInModal(true)}
+                        >
+                          <FaUserClock className="me-1" /> Clock In
+                        </Button>
+                      )}
+                    </div>
+                  </Card.Header>
+                  <Card.Body className="p-3" style={{ height: "550px" }}>
+                    {/* Calendar view - full width */}
+                    <div className="calendar-view w-100">
+                      <div className="calendar-header d-flex justify-content-between align-items-center mb-3">
+                        <h5 className="current-month mb-0">March 2025</h5>
+                        <div className="digital-time text-muted">
+                          <small>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
+                        </div>
+                      </div>
+                      <div className="calendar-grid" style={{ 
+                        height: "450px", 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(7, 1fr)', 
+                        gap: '4px', 
+                        width: '100%' 
+                      }}>
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                          <div key={day} className="calendar-day-header" style={{ 
+                            fontWeight: 'bold', 
+                            background: '#f8f9fa',
+                            textAlign: 'center',
+                            padding: '8px 0',
+                            fontSize: '14px',
+                            borderRadius: '4px'
+                          }}>{day}</div>
+                        ))}
+                        {calendarDays.map((day, index) => {
+                          if (day === null) return <div key={`empty-${index}`} className="calendar-day" />;
+                          
+                          const hasEvents = [4, 7, 9, 10, 11, 13, 14, 15, 29, 30, 31].includes(day);
+                          const isToday = day === currentTime.getDate() && 
+                            currentTime.getMonth() === 2 && 
+                            currentTime.getFullYear() === 2025;
+                          
+                          return (
+                            <div 
+                              key={day} 
+                              className={`calendar-day ${isToday ? 'today' : ''} ${hasEvents ? 'has-events' : ''}`}
+                              onClick={() => {
+                                if (hasEvents) {
+                                  setSelectedDate(day);
+                                  setSelectedDateEvents([
+                                    {
+                                      title: 'Team Training',
+                                      time: '10:00 AM',
+                                      type: 'Training',
+                                      participants: 12
+                                    },
+                                    {
+                                      title: 'Department Meeting',
+                                      time: '2:00 PM',
+                                      type: 'Meeting',
+                                      participants: 8
+                                    }
+                                  ]);
+                                  setShowEventsModal(true);
+                                }
+                              }}
+                              style={{ 
+                                cursor: hasEvents ? 'pointer' : 'default',
+                                height: '65px',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '4px',
+                                position: 'relative',
+                                padding: '4px',
+                                background: isToday ? '#e6f0ff' : 'white',
+                                boxShadow: isToday ? '0 0 0 2px #0d6efd' : 'none'
+                              }}
+                            >
+                              <div className="calendar-day-number" style={{
+                                fontWeight: 'bold',
+                                fontSize: '14px',
+                                marginBottom: '4px'
+                              }}>{day}</div>
+                              {hasEvents && <div className="event-indicator" style={{
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '50%',
+                                background: '#0d6efd',
+                                position: 'absolute',
+                                bottom: '6px',
+                                left: '50%',
+                                transform: 'translateX(-50%)'
+                              }}></div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Clock In/Out Status - below calendar */}
+                      {clockedIn && (
+                        <div className="status-card p-3 bg-light rounded mt-3 text-center w-100">
+                          <p className="text-muted mb-1">Clocked in at {clockInTime?.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                          <p className="text-muted small mb-0">Working time: {formatDuration(Math.floor((currentTime - clockInTime) / 1000))}</p>
+                        </div>
+                      )}
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              
+              {/* Schedule column - now on the right */}
+              <Col md={6} className="px-2">
+                <Card className="dashboard-card h-100 w-100" style={{ maxWidth: "100%" }}>
+                  <Card.Header className="d-flex justify-content-between align-items-center">
+                    <div className="d-flex align-items-center">
+                      <h5 className="mb-0 me-3">
+                        <FaVideo className="me-2" /> Upcoming Schedule
+                      </h5>
+                      <Button 
+                        variant="outline-primary" 
+                        size="sm"
+                        onClick={() => window.open('https://meet.google.com/abc123', '_blank')}
+                      >
+                        <FaVideo className="me-1" /> Main Office
+                      </Button>
+                    </div>
+                  </Card.Header>
+                  <Card.Body style={{ height: "550px", overflowY: "auto" }} className="p-3">
+                    <div className="meetings-list">
+                      {upcomingMeetings.map((meeting, index) => (
+                        <div key={index} className="meeting-item d-flex align-items-center p-3 mb-3 border rounded shadow-sm" 
+                             style={{ background: index % 2 === 0 ? '#f8f9ff' : 'white' }}>
+                          <div className="meeting-indicator bg-primary rounded-circle me-3" style={{ width: '12px', height: '12px' }}></div>
+                          <div className="meeting-details flex-grow-1">
+                            <h6 className="mb-1 text-primary">{meeting.title}</h6>
+                            <MeetingTime meeting={meeting} currentTime={currentTime} />
+                            <div className="mt-2">
+                              <Badge bg="light" text="dark" className="me-2">
+                                <FaUsers className="me-1" /> {index === 0 ? 5 : index === 1 ? 3 : 8} Participants
+                              </Badge>
+                              <Badge bg="light" text="dark">
+                                <FaClock className="me-1" /> {index === 0 ? 30 : index === 1 ? 45 : 60} min
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="meeting-actions">
+                            <Button
+                              variant="outline-primary"
+                              size="sm"
+                              onClick={() => window.open(meeting.meetLink, '_blank')}
+                              className="text-white"
+                              style={{ backgroundColor: '#0d6efd', borderColor: '#0d6efd' }}
+                            >
+                              <FaVideo className="me-1" /> Join
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Remove View All Meetings button */}
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
 
             {/* Events Modal */}
-            <Modal
-              show={showEventsModal}
-              onHide={() => setShowEventsModal(false)}
-              centered
-            >
+            <Modal show={showEventsModal} onHide={() => setShowEventsModal(false)}>
               <Modal.Header closeButton>
                 <Modal.Title>Events for March {selectedDate}, 2025</Modal.Title>
               </Modal.Header>
               <Modal.Body>
-                <div className="events-list">
-                  {selectedDateEvents.map((event, index) => (
-                    <div key={index} className="event-item p-3 border rounded mb-2">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                          <h6 className="mb-1">{event.title}</h6>
-                              <p className="text-muted mb-1">
-                            <FaClock className="me-1" /> {event.time}
-                          </p>
-                          <div className="d-flex align-items-center">
-                            <FaUsers className="me-1" />
-                            <span className="text-muted">{event.participants} participants</span>
-                              </div>
-                            </div>
-                        <Badge bg="info">{event.type}</Badge>
-                          </div>
+                {selectedDateEvents.map((event, index) => (
+                  <div key={index} className="event-item p-3 mb-3 border rounded shadow-sm" 
+                       style={{ background: index % 2 === 0 ? '#f8f9ff' : 'white' }}>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <h5 className="text-primary mb-2">{event.title}</h5>
+                      <Badge bg={event.type === 'Training' ? 'info' : 'primary'}>{event.type}</Badge>
                     </div>
-                  ))}
+                    <div className="d-flex mb-2">
+                      <div className="me-3">
+                        <FaClock className="me-1 text-muted" /> {event.time}
+                      </div>
+                      <div>
+                        <FaUsers className="me-1 text-muted" /> {event.participants} Participants
+                      </div>
+                    </div>
+                    <div className="d-flex justify-content-end mt-3">
+                      <Button variant="outline-secondary" size="sm" className="me-2">Edit</Button>
+                      <Button variant="primary" size="sm">Join Meeting</Button>
+                    </div>
                   </div>
+                ))}
               </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={() => setShowEventsModal(false)}>
+                  Close
+                </Button>
+                <Button variant="primary">
+                  Add Event
+                </Button>
+              </Modal.Footer>
             </Modal>
 
-            {/* Email Preview Section */}
-            <Card className="dashboard-card mb-4">
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">
-                  <FaEnvelope className="me-2" /> Email
-                </h5>
-                <Button variant="link" onClick={() => router.push('/office/email')}>
-                  View All
+            {/* Clock In Modal */}
+            <Modal show={showClockInModal} onHide={() => setShowClockInModal(false)}>
+              <Modal.Header closeButton>
+                <Modal.Title>Clock In</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                <p>You are about to clock in for today's work session.</p>
+                <p className="mb-0 mt-3"><strong>Current Time:</strong> {currentTime.toLocaleTimeString()}</p>
+                <p><strong>Date:</strong> {currentTime.toLocaleDateString()}</p>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={() => setShowClockInModal(false)}>
+                  Cancel
                 </Button>
-              </Card.Header>
-              <Card.Body>
-                <div className="preview-list">
-                  {recentEmails.map((email, index) => (
-                    <div key={index} className={`preview-item ${email.unread ? 'unread' : ''}`}>
-                      <div className="preview-content">
-                        <h6>{email.subject}</h6>
-                        <p className="text-muted mb-1">{email.from}</p>
-                        <p className="preview-text">{email.preview}</p>
-                      </div>
-                      <span className="preview-time">{email.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </Card.Body>
-            </Card>
-
-            {/* Notes Section */}
-            <Card className="dashboard-card tasks-preview mb-4">
-              <Card.Header className="d-flex justify-content-between align-items-center border-0 bg-transparent">
-                <h5 className="mb-0">
-                  <FaTasks className="me-2" /> Notes
-                </h5>
-                <Button variant="outline-primary" size="sm" className="rounded-pill">
-                  <FaPlus className="me-1" /> New Note
+                <Button variant="primary" onClick={handleClockIn}>
+                  <FaUserCheck className="me-1" /> Confirm Clock In
                 </Button>
-              </Card.Header>
-              <Card.Body className="p-0">
-                <div className="notes-container">
-                  <div className="notes-content p-3">
-                    <div className="notes-grid">
-                      <div className="note-card p-4 border-0 rounded-3 shadow-sm mb-4" style={{ backgroundColor: '#fff9e6' }}>
-                        <div className="d-flex justify-content-between align-items-start mb-3">
-                          <h6 className="mb-0">Initial Greeting Script</h6>
-                          <div className="note-actions">
-                            <div className="dropdown">
-                              <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
-                                <FaEllipsisV />
-                              </Button>
-                              <ul className="dropdown-menu">
-                                <li><a className="dropdown-item" href="#"><FaEdit className="me-2" /> Edit Note</a></li>
-                                <li><a className="dropdown-item" href="#"><FaPalette className="me-2" /> Change Color</a></li>
-                                <li><a className="dropdown-item" href="#"><FaTrash className="me-2" /> Delete Note</a></li>
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-muted small mb-3">Updated 2h ago</p>
-                        <div className="note-content">
-                          <p className="mb-3">"Hello, this is [Your Name] calling from [Company Name]. How are you today? I'm reaching out to discuss your current insurance coverage and explore how we might be able to help you save money while maintaining or improving your coverage."</p>
-                        </div>
-                      </div>
-
-                      <div className="note-card p-3 border-0 rounded-3 shadow-sm mb-3" style={{ backgroundColor: '#e6f3ff' }}>
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <h6 className="mb-0">Objection Handling Script</h6>
-                          <div className="note-actions">
-                            <div className="dropdown">
-                              <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
-                                <FaEllipsisV />
-                              </Button>
-                              <ul className="dropdown-menu">
-                                <li><a className="dropdown-item" href="#"><FaEdit className="me-2" /> Edit Note</a></li>
-                                <li><a className="dropdown-item" href="#"><FaPalette className="me-2" /> Change Color</a></li>
-                                <li><a className="dropdown-item" href="#"><FaTrash className="me-2" /> Delete Note</a></li>
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-muted small mb-2">Updated 1d ago</p>
-                        <div className="note-content">
-                          <p className="mb-2">"I understand your concern about [specific objection]. Many of our clients had similar concerns before they saw how our solutions could help them. Would you be open to a brief conversation about how we've helped others in similar situations?"</p>
-                        </div>
-                      </div>
-
-                      <div className="note-card p-3 border-0 rounded-3 shadow-sm" style={{ backgroundColor: '#e6ffe6' }}>
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <h6 className="mb-0">Closing Script</h6>
-                          <div className="note-actions">
-                            <div className="dropdown">
-                              <Button variant="link" size="sm" className="text-muted p-0" data-bs-toggle="dropdown">
-                                <FaEllipsisV />
-                              </Button>
-                              <ul className="dropdown-menu">
-                                <li><a className="dropdown-item" href="#"><FaEdit className="me-2" /> Edit Note</a></li>
-                                <li><a className="dropdown-item" href="#"><FaPalette className="me-2" /> Change Color</a></li>
-                                <li><a className="dropdown-item" href="#"><FaTrash className="me-2" /> Delete Note</a></li>
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-muted small mb-2">Updated 3d ago</p>
-                        <div className="note-content">
-                          <p className="mb-2">"Based on our conversation, I believe we can provide you with [specific benefit]. Would you like to proceed with setting up a time to review the details and get started? I can schedule a follow-up call for [specific time] to go over everything in detail."</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card.Body>
-            </Card>
-
-            {/* AI Assistant Section */}
-            <Card className="dashboard-card mb-4">
-              <Card.Header>
-                  <h5 className="mb-0">
-                  <FaRobot className="me-2" /> AI Assistant
-                  </h5>
-              </Card.Header>
-              <Card.Body>
-                <div className="ai-assistant-preview">
-                  <p>Ask me anything about your workspace or get help with tasks</p>
-                  <div className="ai-chat-container">
-                    <div className="ai-message">
-                      <div className="ai-avatar">
-                        <FaRobot />
-                    </div>
-                      <div className="ai-message-content">
-                        Hello! I'm your AI assistant. How can I help you today?
-                      </div>
-                          </div>
-                    {messages.map((message, index) => (
-                      <div key={index} className="ai-message">
-                        <div className="ai-avatar">
-                          <FaRobot />
-                      </div>
-                        <div className="ai-message-content">
-                          {message}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  <div className="input-group">
-                    <input
-                            type="text"
-                      className="form-control"
-                      placeholder="Type your question here..."
-                      value={aiInput}
-                      onChange={(e) => setAiInput(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          handleAiSubmit();
-                        }
-                      }}
-                    />
-                    <button 
-                      className="btn btn-primary" 
-                      type="button"
-                      onClick={handleAiSubmit}
-                    >
-                            <FaPaperPlane />
-                    </button>
-                        </div>
-                </div>
-              </Card.Body>
-            </Card>
-
-            {/* Drive Preview Section */}
-            <Card className="dashboard-card">
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaGoogleDrive className="me-2" /> Drive
-                  </h5>
-                  <Button variant="outline-primary" size="sm">
-                    <FaPlus className="me-1" /> New
-                  </Button>
-                </div>
-              </Card.Header>
-              <Card.Body>
-                <div className="drive-search mb-3">
-                  <Form.Control
-                    type="search"
-                    placeholder="Search in Drive..."
-                    className="form-control-sm"
-                  />
-                </div>
-                <div className="drive-folders mb-3">
-                  <div className="d-flex gap-2 mb-2">
-                    <Button variant="outline-secondary" size="sm" className="drive-folder-btn">
-                      <FaFolder className="me-1" /> My Drive
-                    </Button>
-                    <Button variant="outline-secondary" size="sm" className="drive-folder-btn">
-                      <FaUsers className="me-1" /> Shared
-                    </Button>
-                    <Button variant="outline-secondary" size="sm" className="drive-folder-btn">
-                      <FaStar className="me-1" /> Starred
-                    </Button>
-                  </div>
-                </div>
-                <div className="drive-files">
-                  {[
-                    { name: 'Q4 Sales Report.xlsx', type: 'excel', size: '2.4 MB', modified: '2h ago' },
-                    { name: 'Client Presentation.pptx', type: 'powerpoint', size: '4.8 MB', modified: '1d ago' },
-                    { name: 'Contract Draft.pdf', type: 'pdf', size: '1.2 MB', modified: '3d ago' },
-                    { name: 'Team Meeting Notes.docx', type: 'word', size: '856 KB', modified: '5d ago' }
-                  ].map((file, index) => (
-                    <div key={index} className="drive-file-item d-flex align-items-center p-2 rounded">
-                      <div className="file-icon me-3">
-                        {file.type === 'excel' && <FaFileExcel className="text-success" />}
-                        {file.type === 'powerpoint' && <FaFilePowerpoint className="text-danger" />}
-                        {file.type === 'pdf' && <FaFilePdf className="text-danger" />}
-                        {file.type === 'word' && <FaFileWord className="text-primary" />}
-                      </div>
-                      <div className="file-info flex-grow-1">
-                        <div className="file-name">{file.name}</div>
-                        <div className="file-meta text-muted small">
-                          {file.size} • {file.modified}
-                        </div>
-                      </div>
-                      <div className="file-actions">
-                        <Button variant="link" size="sm" className="text-muted">
-                          <FaEllipsisV />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card.Body>
-            </Card>
-          </div>
+              </Modal.Footer>
+            </Modal>
+          </Container>
         )}
 
         {activeTab === 'dialer' && (
@@ -4723,7 +4493,7 @@ export default function Office() {
         {activeTab === 'chat' && renderChatSection()}
 
         {/* --- Admin Tab Content --- */}
-        {activeTab === 'admin' && (
+        {activeTab === 'applications' && (
           <Card className="dashboard-card mb-4">
             <Card.Header>
               <h5 className="mb-0">
@@ -4831,7 +4601,7 @@ export default function Office() {
                 <div className="d-flex justify-content-between align-items-center mt-3">
                   <div>
                     Showing {indexOfFirstApplication + 1} to {Math.min(indexOfLastApplication, filteredApplications.length)} of {filteredApplications.length} applications
-                  </div>
+              </div>
                   <div>
                     <Button 
                       variant="outline-secondary" 
@@ -4876,7 +4646,7 @@ export default function Office() {
                     >
                       Next <FaChevronRight />
                     </Button>
-                  </div>
+            </div>
                 </div>
               )}
             </Card.Body>
@@ -4907,20 +4677,20 @@ export default function Office() {
                     </Form.Group>
                   </Col>
                 </Row>
-                <Row>
-                  <Col md={6}>
+                      <Row>
+                        <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label>Application ID</Form.Label>
                       <Form.Control type="text" value={selectedApplication.id} readOnly />
                     </Form.Group>
-                  </Col>
-                  <Col md={6}>
+                        </Col>
+                        <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label>Agent ID</Form.Label>
                       <Form.Control type="text" value={selectedApplication.agentId} readOnly />
                     </Form.Group>
-                  </Col>
-                </Row>
+                        </Col>
+                      </Row>
                       <Row>
                         <Col md={6}>
                     <Form.Group className="mb-3">
@@ -4969,6 +4739,24 @@ export default function Office() {
                      readOnly
                    />
                  </Form.Group>
+
+                 {/* E-Signature Download Section */}
+                 {selectedApplication.hasESignature && (
+                   <div className="mt-4 p-3 border rounded bg-light">
+                     <div className="d-flex justify-content-between align-items-center">
+                       <div>
+                         <h6 className="mb-1">E-Signature Verification</h6>
+                         <p className="mb-0 text-muted">Download the e-signature cloud stamp for marketplace submission</p>
+                      </div>
+                       <Button 
+                         variant="primary" 
+                         onClick={() => downloadESignature(selectedApplication)}
+                       >
+                         <FaDownload className="me-1" /> Download E-Signature
+                       </Button>
+                     </div>
+                   </div>
+                 )}
               </Form>
             ) : (
               <p>No application selected.</p>
@@ -4988,94 +4776,210 @@ export default function Office() {
 
         {/* --- Agents Tab Content --- */}
         {activeTab === 'agents' && (
-          <Card className="dashboard-card mb-4">
+          <div>
+            <Card className="dashboard-card mb-4">
                     <Card.Header>
-              <h5 className="mb-0">
-                <FaUsers className="me-2" /> Agent Management
-              </h5>
+                <h5 className="mb-0">
+                  <FaUserTie className="me-2" /> Agent Management
+                </h5>
                     </Card.Header>
                     <Card.Body>
-              <Row className="mb-4">
-                {/* RingCentral Admin Link */}
-                <Col md={6} className="mb-3 mb-md-0">
-                  <h6 className="mb-2">RingCentral Administration</h6>
-                  <Button 
-                    variant="primary" 
-                    href="https://service.ringcentral.com" // Replace with actual admin URL if different
-                    target="_blank" // Open in new tab
-                    rel="noopener noreferrer"
-                  >
-                    <FaExternalLinkAlt className="me-2" /> Connect to RingCentral Admin
-                  </Button>
-                  <p className="text-muted small mt-2">Access the RingCentral admin portal to manage users, settings, and analytics.</p>
-                </Col>
-
-                {/* Call Log Search */}
-                <Col md={6}>
-                  <h6 className="mb-2">Search Call Logs</h6>
-                  <Form.Group>
-                    <div className="input-group">
-                      <Form.Control
-                        type="text"
-                        placeholder="Search by agent name, client, or phone number..."
-                        value={callLogSearchQuery}
-                        onChange={(e) => setCallLogSearchQuery(e.target.value)}
+                <Row className="mb-3">
+                  <Col md={6}>
+                    <InputGroup>
+                      <Form.Control 
+                        placeholder="Search agents..."
                       />
                       <Button variant="outline-secondary">
                         <FaSearch />
                       </Button>
-                            </div>
-                  </Form.Group>
-                  <p className="text-muted small mt-2">Find specific call recordings and details.</p>
-                </Col>
-              </Row>
-
-              {/* Agent List Table */}
-              <h6 className="mb-3">Active Agents</h6>
-              <Table striped bordered hover responsive size="sm">
-                <thead>
-                  <tr>
-                    <th>Agent Name</th>
-                    <th>Agent ID</th>
-                    <th>Connection Status</th>
-                    <th>Activity Status</th>
-                    <th>Last Activity</th>
-                    {/* Add more columns if needed, e.g., Actions */}
-                  </tr>
-                </thead>
-                <tbody>
-                  {agentsData.map((agent) => (
-                    <tr key={agent.id}>
-                      <td><FaUserTie className="me-2" />{agent.name}</td>
-                      <td>{agent.id}</td>
-                      <td>
-                        <Badge bg={agent.connectionStatus === 'Connected' ? 'success' : 'secondary'} className="d-flex align-items-center">
-                          {agent.connectionStatus === 'Connected' ? <FaLink className="me-1" /> : <FaUnlink className="me-1" />}
-                          {agent.connectionStatus}
-                                </Badge>
-                      </td>
-                      <td>
-                        <Badge bg={
-                          agent.activityStatus === 'Ready' ? 'success' :
-                          agent.activityStatus === 'On Call' ? 'danger' :
-                          agent.activityStatus === 'On Break' ? 'warning' :
-                          'secondary'
-                        }>
-                          {agent.activityStatus}
-                                </Badge>
-                      </td>
-                      <td>{agent.lastActivity}</td>
-                      {/* Example Actions Column 
-                      <td>
-                        <Button variant="outline-info" size="xs" title="View Agent Details"><FaEye /></Button>
-                      </td>
-                      */}
+                    </InputGroup>
+                  </Col>
+                  <Col md={6} className="text-end">
+                    <Button variant="primary" className="me-2">
+                      <FaPlus className="me-1" /> Add Agent
+                    </Button>
+                    <Button variant="outline-primary">
+                      <FaFilter className="me-1" /> Filter
+                    </Button>
+                  </Col>
+                </Row>
+                
+                <Table striped bordered hover responsive>
+                  <thead>
+                    <tr>
+                      <th>Agent ID</th>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Status</th>
+                      <th>Applications</th>
+                      <th>Conversion Rate</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </Table>
+                  </thead>
+                  <tbody>
+                    {[
+                      { id: 'AGT-501', name: 'John Smith', email: 'john.smith@example.com', status: 'Active', applications: 42, conversionRate: '28%' },
+                      { id: 'AGT-502', name: 'Sarah Johnson', email: 'sarah.johnson@example.com', status: 'Active', applications: 38, conversionRate: '31%' },
+                      { id: 'AGT-503', name: 'Michael Brown', email: 'michael.brown@example.com', status: 'On Leave', applications: 27, conversionRate: '22%' },
+                      { id: 'AGT-504', name: 'Emily Davis', email: 'emily.davis@example.com', status: 'Active', applications: 45, conversionRate: '35%' },
+                      { id: 'AGT-505', name: 'Robert Wilson', email: 'robert.wilson@example.com', status: 'Inactive', applications: 15, conversionRate: '18%' }
+                    ].map((agent, index) => (
+                      <tr key={index}>
+                        <td>{agent.id}</td>
+                        <td>{agent.name}</td>
+                        <td>{agent.email}</td>
+                        <td>
+                          <Badge bg={agent.status === 'Active' ? 'success' : agent.status === 'On Leave' ? 'warning' : 'secondary'}>
+                            {agent.status}
+                                </Badge>
+                        </td>
+                        <td>{agent.applications}</td>
+                        <td>{agent.conversionRate}</td>
+                        <td>
+                          <Button 
+                            variant="outline-primary" 
+                            size="sm" 
+                            className="me-1"
+                            onClick={() => setSelectedAgent(agent)}
+                          >
+                            <FaEye /> View
+                          </Button>
+                          <Button variant="outline-secondary" size="sm">
+                            <FaEdit />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
                     </Card.Body>
                   </Card>
+
+            {/* Agent Details Section with Analytics - Will show when an agent is selected */}
+            {selectedAgent && (
+              <Row>
+                <Col md={4}>
+                  <Card className="dashboard-card mb-4">
+                    <Card.Header>
+                      <h5 className="mb-0">Agent Profile</h5>
+                    </Card.Header>
+                    <Card.Body>
+                      <div className="text-center mb-4">
+                        <div className="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: '120px', height: '120px' }}>
+                          <FaUserCircle size={80} className="text-secondary" />
+                      </div>
+                        <h4>{selectedAgent.name}</h4>
+                        <p className="text-muted mb-2">{selectedAgent.id}</p>
+                        <Badge bg={selectedAgent.status === 'Active' ? 'success' : selectedAgent.status === 'On Leave' ? 'warning' : 'secondary'} className="mb-3">
+                          {selectedAgent.status}
+                        </Badge>
+                      </div>
+                      
+                      <ListGroup variant="flush">
+                        <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                          <span>Email</span>
+                          <span className="text-muted">{selectedAgent.email}</span>
+                        </ListGroup.Item>
+                        <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                          <span>Phone</span>
+                          <span className="text-muted">(555) 123-4567</span>
+                        </ListGroup.Item>
+                        <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                          <span>Hire Date</span>
+                          <span className="text-muted">Jan 15, 2023</span>
+                        </ListGroup.Item>
+                        <ListGroup.Item className="d-flex justify-content-between align-items-center">
+                          <span>Supervisor</span>
+                          <span className="text-muted">Jennifer Thomas</span>
+                        </ListGroup.Item>
+                      </ListGroup>
+                    </Card.Body>
+                    <Card.Footer className="text-center">
+                      <Button variant="outline-primary" size="sm" className="me-2">
+                        <FaEdit className="me-1" /> Edit Profile
+                      </Button>
+                      <Button variant="outline-secondary" size="sm">
+                        <FaKey className="me-1" /> Reset Password
+                      </Button>
+                    </Card.Footer>
+                  </Card>
+                </Col>
+
+                <Col md={8}>
+                  <Card className="dashboard-card mb-4">
+                    <Card.Header>
+                      <h5 className="mb-0">Performance Analytics</h5>
+                    </Card.Header>
+                    <Card.Body>
+                      <Row className="mb-4">
+                        <Col md={3}>
+                          <div className="analytics-card text-center p-3 border rounded">
+                            <h3 className="text-primary mb-1">{selectedAgent.applications}</h3>
+                            <p className="text-muted mb-0">Total Applications</p>
+                          </div>
+                        </Col>
+                        <Col md={3}>
+                          <div className="analytics-card text-center p-3 border rounded">
+                            <h3 className="text-success mb-1">{selectedAgent.conversionRate}</h3>
+                            <p className="text-muted mb-0">Conversion Rate</p>
+                          </div>
+                        </Col>
+                        <Col md={3}>
+                          <div className="analytics-card text-center p-3 border rounded">
+                            <h3 className="text-info mb-1">18.5</h3>
+                            <p className="text-muted mb-0">Avg. Call Time (min)</p>
+                          </div>
+                        </Col>
+                        <Col md={3}>
+                          <div className="analytics-card text-center p-3 border rounded">
+                            <h3 className="text-warning mb-1">4.8</h3>
+                            <p className="text-muted mb-0">Customer Rating</p>
+                          </div>
+                        </Col>
+                      </Row>
+                      
+                      <h6 className="mb-3">Monthly Performance</h6>
+                      <div className="performance-chart mb-4" style={{ height: '250px', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <p className="text-muted">Performance chart visualization would be here</p>
+                      </div>
+                      
+                      <h6 className="mb-3">Recent Applications</h6>
+                      <Table striped hover responsive>
+                        <thead>
+                          <tr>
+                            <th>Application ID</th>
+                            <th>Client Name</th>
+                            <th>Submission Date</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { id: 'APP-001', clientName: 'Alice Wonderland', date: '2024-07-28', status: 'Approved' },
+                            { id: 'APP-008', clientName: 'Bob Builder', date: '2024-07-25', status: 'Pending' },
+                            { id: 'APP-015', clientName: 'Charlie Brown', date: '2024-07-22', status: 'Approved' },
+                            { id: 'APP-023', clientName: 'Diana Prince', date: '2024-07-20', status: 'Declined' }
+                          ].map((app, index) => (
+                            <tr key={index}>
+                              <td>{app.id}</td>
+                              <td>{app.clientName}</td>
+                              <td>{app.date}</td>
+                              <td>
+                                <Badge bg={app.status === 'Approved' ? 'success' : app.status === 'Pending' ? 'warning' : 'danger'}>
+                                  {app.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            )}
+          </div>
         )}
         {/* --- End Agents Tab Content --- */}
 
@@ -5141,7 +5045,7 @@ export default function Office() {
                         <Badge bg={req.category === 'IT' ? 'info' : 'primary'} pill>
                           {req.category === 'IT' ? <FaUserCog className="me-1"/> : <FaBriefcase className="me-1"/>}
                           {req.category}
-                        </Badge>
+                          </Badge>
                       </td>
                       <td style={{ maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{req.request}</td>
                       <td>{new Date(req.dateSubmitted).toLocaleString()}</td>
@@ -5163,14 +5067,14 @@ export default function Office() {
                           title="View Details & Update"
                         >
                           <FaEye /> View / Update
-                        </Button>
+                    </Button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
-                    </Card.Body>
-                  </Card>
+              </Card.Body>
+            </Card>
         )}
         {/* --- End Support Tab Content --- */}
 
@@ -5194,8 +5098,8 @@ export default function Office() {
                       <Form.Label>Agent ID</Form.Label>
                       <Form.Control type="text" value={selectedSupportRequest.agentId} readOnly />
                     </Form.Group>
-                  </Col>
-                </Row>
+          </Col>
+        </Row>
                 <Row>
                    <Col md={6}>
                     <Form.Group className="mb-3">
@@ -5315,7 +5219,7 @@ export default function Office() {
               <Card>
                 <Card.Header className="bg-white">
                   <div className="d-flex justify-content-between align-items-center">
-                    <div className="d-flex align-items-center">
+            <div className="d-flex align-items-center">
               <Form.Control
                         type="search" 
                         placeholder="Search emails..." 
@@ -5325,7 +5229,7 @@ export default function Office() {
                       <Button variant="outline-secondary" size="sm">
                         <FaSearch />
               </Button>
-            </div>
+              </div>
                     <div>
                       <Button variant="outline-secondary" size="sm" className="me-2">
                         <FaFilter /> Filter
@@ -5333,8 +5237,8 @@ export default function Office() {
                       <Button variant="outline-secondary" size="sm">
                         <FaSync /> Refresh
                       </Button>
-          </div>
-                  </div>
+            </div>
+                </div>
                 </Card.Header>
                 
                 <Card.Body className="p-0">
@@ -5355,16 +5259,16 @@ export default function Office() {
                           <Button variant="outline-danger" size="sm" onClick={(e) => handleDeleteEmail(selectedEmail.id, e)}>
                             <FaTrash />
                           </Button>
-            </div>
+              </div>
           </div>
 
                       <div className="email-header d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
                   <div>
                           <strong>From:</strong> {selectedEmail.from}
-                    </div>
+            </div>
                         <div>
                           <small className="text-muted">{selectedEmail.time}</small>
-                    </div>
+          </div>
                   </div>
                       
                       <div className="email-content p-2">
@@ -5404,10 +5308,10 @@ export default function Office() {
                                   <div className="subject">{email.subject}</div>
                                 </div>
                               </div>
-                              <div className="d-flex align-items-center">
+              <div className="d-flex align-items-center">
                                 <div className="time me-3 text-muted small">
                                   {email.time}
-                                </div>
+                </div>
                                 <div 
                                   className="text-danger" 
                                   style={{ cursor: 'pointer' }}
@@ -5417,12 +5321,12 @@ export default function Office() {
                                   }}
                                 >
                                   <FaTrash />
-                                </div>
-                              </div>
+              </div>
+            </div>
                             </ListGroup.Item>
                           ))}
                       </ListGroup>
-                  </div>
+          </div>
                 )}
                 </Card.Body>
               </Card>
@@ -5433,7 +5337,7 @@ export default function Office() {
 
         {/* --- Marketing Tab Content --- */}
         {activeTab === 'marketing' && (
-          <div>
+                  <div>
             <Card className="dashboard-card mb-4">
               <Card.Header>
                 <h5 className="mb-0">
@@ -5466,13 +5370,13 @@ export default function Office() {
                       <tr key={campaign.id}>
                         <td>{campaign.name}</td>
                         <td>
-                          <Badge bg={
+                      <Badge bg={
                             campaign.status === 'Active' ? 'success' :
                             campaign.status === 'Scheduled' ? 'info' :
                             campaign.status === 'Completed' ? 'secondary' : 'warning'
-                          }>
+                      }>
                             {campaign.status}
-                          </Badge>
+                      </Badge>
                         </td>
                         <td>{campaign.startDate} - {campaign.endDate}</td>
                         <td>{campaign.audience}</td>
@@ -5516,7 +5420,7 @@ export default function Office() {
                           <div>
                             <h6 className="mb-0">{template.name}</h6>
                             <small className="text-muted">{template.type} • Modified: {template.lastModified}</small>
-            </div>
+                    </div>
                           <div className="d-flex align-items-center">
                             <Badge bg="secondary" className="me-2">Used {template.usageCount} times</Badge>
                             <Button variant="outline-secondary" size="sm" className="me-1">
@@ -5525,7 +5429,7 @@ export default function Office() {
                             <Button variant="outline-primary" size="sm">
                               <FaEye />
           </Button>
-                          </div>
+                  </div>
                         </ListGroup.Item>
                       ))}
                     </ListGroup>
@@ -5548,7 +5452,7 @@ export default function Office() {
                         <option>Last Quarter</option>
                         <option>Year to Date</option>
                       </Form.Select>
-          </div>
+                </div>
                     
                     <Row className="text-center g-3 mb-3">
                       <Col md={4}>
@@ -5582,28 +5486,28 @@ export default function Office() {
                       <Button variant="outline-primary" size="sm">
                         <FaCalendarCheck className="me-1" /> Schedule
           </Button>
-                    </div>
+                      </div>
                     
                     <ListGroup>
                       <ListGroup.Item className="d-flex justify-content-between align-items-center">
               <div>
                           <span className="fw-bold">Email Blast: Summer Health Tips</span>
                           <p className="mb-0 small text-muted">Scheduled for July 30, 2024</p>
-              </div>
+                      </div>
                         <Badge bg="info">Scheduled</Badge>
                       </ListGroup.Item>
                       <ListGroup.Item className="d-flex justify-content-between align-items-center">
               <div>
                           <span className="fw-bold">Social Media Campaign: Family Coverage</span>
                           <p className="mb-0 small text-muted">Scheduled for August 5, 2024</p>
-              </div>
+                      </div>
                         <Badge bg="info">Scheduled</Badge>
                       </ListGroup.Item>
                       <ListGroup.Item className="d-flex justify-content-between align-items-center">
               <div>
                           <span className="fw-bold">Newsletter: August Health Updates</span>
                           <p className="mb-0 small text-muted">Scheduled for August 10, 2024</p>
-              </div>
+                      </div>
                         <Badge bg="info">Scheduled</Badge>
                       </ListGroup.Item>
                     </ListGroup>
@@ -5611,192 +5515,187 @@ export default function Office() {
                 </Card>
               </Col>
             </Row>
-            </div>
+                  </div>
         )}
         {/* --- End Marketing Tab Content --- */}
 
         {/* --- Gemini Tab Content --- */}
-        {activeTab === 'gemini' && (
-          <Card className="dashboard-card mb-4">
-            <Card.Header>
-              <h5 className="mb-0">
-                <FaRobot className="me-2" /> Gemini AI Assistant
-              </h5>
-            </Card.Header>
-            <Card.Body>
-              <div className="gemini-chat-container" style={{ height: '60vh', display: 'flex', flexDirection: 'column' }}>
-                <div className="gemini-messages" style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-                  {geminiHistory.map((message, index) => (
-                    <div 
-                      key={index} 
-                      className={`message ${message.role === 'assistant' ? 'assistant' : 'user'}`}
-                      style={{ 
-                        marginBottom: '1rem', 
-                        padding: '0.75rem', 
-                        borderRadius: '8px',
-                        backgroundColor: message.role === 'assistant' ? '#e3f2fd' : '#f0f4c3',
-                        marginLeft: message.role === 'assistant' ? '0' : 'auto',
-                        marginRight: message.role === 'assistant' ? 'auto' : '0',
-                        maxWidth: '80%',
-                        width: 'fit-content'
-                      }}
-                    >
-                      <div className="message-content">{message.content}</div>
-                    </div>
-                  ))}
-                  {isGeminiLoading && (
-                    <div className="message assistant" style={{ padding: '0.75rem', borderRadius: '8px', backgroundColor: '#e3f2fd', width: 'fit-content' }}>
-                      <div className="message-content">
-                        <FaSpinner className="spin me-2" /> Gemini is thinking...
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="gemini-input">
-                  <InputGroup>
-                    <Form.Control
-                      as="textarea"
-                      value={geminiPrompt}
-                      onChange={(e) => setGeminiPrompt(e.target.value)}
-                      placeholder="Ask Gemini something..."
-                      style={{ resize: 'none', height: '80px' }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleGeminiSubmit();
-                        }
-                      }}
-                    />
-                    <Button 
-                      variant="primary" 
-                      onClick={handleGeminiSubmit}
-                      disabled={!geminiPrompt.trim() || isGeminiLoading}
-                    >
-                      {isGeminiLoading ? <FaSpinner className="spin" /> : <FaPaperPlane />}
-                    </Button>
-                  </InputGroup>
-                  <small className="text-muted mt-1">Press Enter to send. Shift+Enter for a new line.</small>
-                </div>
-              </div>
-            </Card.Body>
-          </Card>
-        )}
-        {/* --- End Gemini Tab Content --- */}
+        {/* Removed Gemini Tab Content */}
 
         {/* --- Google Drive Tab Content --- */}
         {activeTab === 'drive' && (
-          <Card className="dashboard-card mb-4">
-            <Card.Header>
-              <h5 className="mb-0">
-                <FaGoogleDrive className="me-2" /> Google Drive
-              </h5>
-            </Card.Header>
-            <Card.Body>
-              <div className="drive-header d-flex justify-content-between align-items-center mb-3">
-                <div className="breadcrumb-nav">
-                  <Button variant="link" className="p-0 me-2" onClick={() => setCurrentDriveFolder('My Drive')}>
-                    My Drive
-                  </Button>
-                  {currentDriveFolder !== 'My Drive' && (
-                    <>
-                      <FaChevronRight className="me-2" />
-                      <span>{currentDriveFolder}</span>
-                    </>
-                  )}
-                </div>
-                <div className="drive-actions">
-                  <Button variant="outline-primary" size="sm" className="me-2">
-                    <FaUpload className="me-1" /> Upload
-                  </Button>
-                  <Button variant="outline-primary" size="sm" className="me-2">
-                    <FaFolder className="me-1" /> New Folder
-                  </Button>
-                  <InputGroup className="d-inline-flex" style={{ width: '200px' }}>
-                    <Form.Control
-                      size="sm"
-                      placeholder="Search in Drive"
-                    />
-                    <Button variant="outline-secondary" size="sm">
-                      <FaSearch />
-                    </Button>
-                  </InputGroup>
-                </div>
+          <Row>
+            <Col md={8}>
+              <Card className="dashboard-card mb-4">
+                <Card.Header>
+                  <h5 className="mb-0">
+                    <FaGoogleDrive className="me-2" /> Google Drive
+                  </h5>
+                </Card.Header>
+                <Card.Body>
+                  <div className="drive-header d-flex justify-content-between align-items-center mb-3">
+                    <div className="breadcrumb-nav">
+                      <Button variant="link" className="p-0 me-2" onClick={() => setCurrentDriveFolder('My Drive')}>
+                        My Drive
+                      </Button>
+                      {currentDriveFolder !== 'My Drive' && (
+                        <>
+                          <FaChevronRight className="me-2" />
+                          <span>{currentDriveFolder}</span>
+                        </>
+                )}
               </div>
-              
-              <Table hover responsive>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Owner</th>
-                    <th>Last Modified</th>
-                    <th>Size</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {driveFiles.map((file) => (
-                    <tr key={file.id}>
-                      <td>
-                        <div className="d-flex align-items-center">
-                          {file.type === 'folder' ? (
-                            <FaFolder className="me-2 text-warning" />
-                          ) : file.type === 'document' ? (
-                            <FaFileWord className="me-2 text-primary" />
-                          ) : file.type === 'pdf' ? (
-                            <FaFilePdf className="me-2 text-danger" />
-                          ) : file.type === 'spreadsheet' ? (
-                            <FaFileExcel className="me-2 text-success" />
-                          ) : (
-                            <FaFileAlt className="me-2 text-secondary" />
-                          )}
-                          {file.type === 'folder' ? (
+                    <div className="drive-actions">
+                      <Button variant="outline-primary" size="sm" className="me-2">
+                        <FaUpload className="me-1" /> Upload
+          </Button>
+                      <Button variant="outline-primary" size="sm" className="me-2">
+                        <FaFolder className="me-1" /> New Folder
+                      </Button>
+                      <InputGroup className="d-inline-flex" style={{ width: '200px' }}>
+                        <Form.Control
+                          size="sm"
+                          placeholder="Search in Drive"
+                        />
+                        <Button variant="outline-secondary" size="sm">
+                          <FaSearch />
+                        </Button>
+                      </InputGroup>
+            </div>
+          </div>
+                  
+                  <Table hover responsive>
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Owner</th>
+                        <th>Last Modified</th>
+                        <th>Size</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {driveFiles.map((file) => (
+                        <tr key={file.id}>
+                          <td>
+                            <div className="d-flex align-items-center">
+                              {file.type === 'folder' ? (
+                                <FaFolder className="me-2 text-warning" />
+                              ) : file.type === 'document' ? (
+                                <FaFileWord className="me-2 text-primary" />
+                              ) : file.type === 'pdf' ? (
+                                <FaFilePdf className="me-2 text-danger" />
+                              ) : file.type === 'spreadsheet' ? (
+                                <FaFileExcel className="me-2 text-success" />
+                              ) : (
+                                <FaFileAlt className="me-2 text-secondary" />
+                              )}
+                              {file.type === 'folder' ? (
+            <Button 
+                                  variant="link" 
+                                  className="p-0 text-decoration-none text-dark"
+                                  onClick={() => handleFolderClick(file.id, file.name)}
+            >
+                                  {file.name}
+            </Button>
+                              ) : (
+                                file.name
+                              )}
+                            </div>
+                          </td>
+                          <td>{file.owner}</td>
+                          <td>{file.lastModified}</td>
+                          <td>{file.size}</td>
+                          <td>
+          <Button 
+                              variant="link" 
+                              className="p-1" 
+                              onClick={() => handleFileAction(file.id, 'download')}
+                              title="Download"
+                            >
+                              <FaDownload />
+          </Button>
                             <Button 
                               variant="link" 
-                              className="p-0 text-decoration-none text-dark"
-                              onClick={() => handleFolderClick(file.id, file.name)}
+                              className="p-1" 
+                              onClick={() => handleFileAction(file.id, 'share')}
+                              title="Share"
                             >
-                              {file.name}
+                              <FaUsers />
                             </Button>
-                          ) : (
-                            file.name
-                          )}
+                            <Button 
+                              variant="link" 
+                              className="p-1" 
+                              onClick={() => handleFileAction(file.id, 'more')}
+                              title="More options"
+                            >
+                              <FaEllipsisV />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={4}>
+              <Card className="dashboard-card mb-4">
+                <Card.Header className="d-flex justify-content-between align-items-center">
+                  <h5 className="mb-0">
+                    <FaFileAlt className="me-2" /> Scripts
+                  </h5>
+                  <Button variant="outline-primary" size="sm">
+                    <FaPlus className="me-1" /> New Script
+          </Button>
+                </Card.Header>
+                <Card.Body>
+                  <div className="notes-container">
+                    <div className="notes-grid">
+                      <div className="note-card p-3 border-0 rounded-3 shadow-sm mb-3" style={{ backgroundColor: '#fff9e6' }}>
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <h6 className="mb-0">Initial Greeting Script</h6>
+                          <div className="dropdown">
+                            <Button variant="link" size="sm" className="text-muted p-0">
+                              <FaEllipsisV />
+                            </Button>
+                          </div>
                         </div>
-                      </td>
-                      <td>{file.owner}</td>
-                      <td>{file.lastModified}</td>
-                      <td>{file.size}</td>
-                      <td>
-                        <Button 
-                          variant="link" 
-                          className="p-1" 
-                          onClick={() => handleFileAction(file.id, 'download')}
-                          title="Download"
-                        >
-                          <FaDownload />
-                        </Button>
-                        <Button 
-                          variant="link" 
-                          className="p-1" 
-                          onClick={() => handleFileAction(file.id, 'share')}
-                          title="Share"
-                        >
-                          <FaUsers />
-                        </Button>
-                        <Button 
-                          variant="link" 
-                          className="p-1" 
-                          onClick={() => handleFileAction(file.id, 'more')}
-                          title="More options"
-                        >
-                          <FaEllipsisV />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </Card.Body>
-          </Card>
+                        <p className="text-muted small mb-2">Updated 2h ago</p>
+                        <p className="mb-0">"Hello, this is [Your Name] calling from [Company Name]. How are you today? I'm reaching out to discuss your current insurance coverage and explore how we might be able to help you save money while maintaining or improving your coverage."</p>
+                      </div>
+                      
+                      <div className="note-card p-3 border-0 rounded-3 shadow-sm mb-3" style={{ backgroundColor: '#e6f3ff' }}>
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <h6 className="mb-0">Objection Handling Script</h6>
+                          <div className="dropdown">
+                            <Button variant="link" size="sm" className="text-muted p-0">
+                              <FaEllipsisV />
+                            </Button>
+              </div>
+            </div>
+                        <p className="text-muted small mb-2">Updated 1d ago</p>
+                        <p className="mb-0">"I understand your concern about [specific objection]. Many of our clients had similar concerns before they saw how our solutions could help them. Would you be open to a brief conversation about how we've helped others in similar situations?"</p>
+              </div>
+                      
+                      <div className="note-card p-3 border-0 rounded-3 shadow-sm" style={{ backgroundColor: '#e6ffe6' }}>
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <h6 className="mb-0">Closing Script</h6>
+                          <div className="dropdown">
+                            <Button variant="link" size="sm" className="text-muted p-0">
+                              <FaEllipsisV />
+                            </Button>
+            </div>
+              </div>
+                        <p className="text-muted small mb-2">Updated 3d ago</p>
+                        <p className="mb-0">"Based on our conversation, I believe we can provide you with [specific benefit]. Would you like to proceed with setting up a time to review the details and get started? I can schedule a follow-up call for [specific time] to go over everything in detail."</p>
+            </div>
+          </div>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
         )}
         {/* --- End Google Drive Tab Content --- */}
         
