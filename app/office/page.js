@@ -47,6 +47,8 @@ import {
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
+import { db } from '../firebase/config';
+import { collection, getDocs, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 
 export default function Office() {
   const router = useRouter();
@@ -1538,19 +1540,104 @@ export default function Office() {
   const [showSalesModal, setShowSalesModal] = useState(false);
 
   // State for Admin Tab
-  const [applications, setApplications] = useState([
-    // Mock Data - Replace with actual data fetching later
-    { id: 'APP-001', clientName: 'Alice Wonderland', clientId: 'CLT-1001', agentId: 'AGT-501', submissionDate: '2024-07-28', status: 'Pending', hasRecording: true, hasESignature: true, details: { /* more fields */ } },
-    { id: 'APP-002', clientName: 'Bob The Builder', clientId: 'CLT-1002', agentId: 'AGT-502', submissionDate: '2024-07-27', status: 'Pending', hasRecording: false, hasESignature: true, details: { /* more fields */ } },
-    { id: 'APP-003', clientName: 'Charlie Chaplin', clientId: 'CLT-1003', agentId: 'AGT-501', submissionDate: '2024-07-26', status: 'Confirmed', hasRecording: true, hasESignature: false, details: { /* more fields */ } },
-    { id: 'APP-004', clientName: 'Diana Prince', clientId: 'CLT-1004', agentId: 'AGT-503', submissionDate: '2024-07-25', status: 'Pending', hasRecording: true, hasESignature: true, details: { /* more fields */ } },
-  ]);
+  const [applications, setApplications] = useState([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(true);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [applicationSearchTerm, setApplicationSearchTerm] = useState('');
   const [applicationTimeframe, setApplicationTimeframe] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const applicationsPerPage = 25;
+  const applicationsPerPage = 10;
+
+  // Filter applications based on search term and timeframe
+  const filteredApplications = useMemo(() => {
+    return applications.filter(app => {
+      const matchesSearch = 
+        app.clientName?.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
+        app.clientId?.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
+        app.id?.toLowerCase().includes(applicationSearchTerm.toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      if (applicationTimeframe === 'all') return true;
+
+      const submissionDate = new Date(app.submissionDate);
+      const now = new Date();
+
+      switch (applicationTimeframe) {
+        case 'daily':
+          return submissionDate.toDateString() === now.toDateString();
+        case 'weekly':
+          const weekAgo = new Date(now.setDate(now.getDate() - 7));
+          return submissionDate >= weekAgo;
+        case 'monthly':
+          const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
+          return submissionDate >= monthAgo;
+        case 'yearly':
+          const yearAgo = new Date(now.setFullYear(now.getFullYear() - 1));
+          return submissionDate >= yearAgo;
+        default:
+          return true;
+      }
+    });
+  }, [applications, applicationSearchTerm, applicationTimeframe]);
+
+  // Calculate pagination
+  const indexOfLastApplication = currentPage * applicationsPerPage;
+  const indexOfFirstApplication = indexOfLastApplication - applicationsPerPage;
+  const currentApplications = filteredApplications.slice(indexOfFirstApplication, indexOfLastApplication);
+  const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage);
+
+  // Fetch applications from Firestore
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        setIsLoadingApplications(true);
+        console.log('Starting to fetch applications from Firestore...');
+        
+        // Log the database instance
+        console.log('Firestore db instance:', db);
+        
+        const applicationsRef = collection(db, 'applications');
+        console.log('Collection reference:', applicationsRef);
+        
+        const q = query(applicationsRef, orderBy('submissionDate', 'desc'));
+        console.log('Query:', q);
+        
+        const querySnapshot = await getDocs(q);
+        console.log('Query snapshot:', querySnapshot);
+        console.log('Number of documents:', querySnapshot.docs.length);
+        
+        if (querySnapshot.empty) {
+          console.log('No documents found in the applications collection');
+        }
+        
+        const applicationsData = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          console.log('Document ID:', doc.id);
+          console.log('Document data:', data);
+          return {
+            id: doc.id,
+            ...data
+          };
+        });
+        
+        console.log('Final applications data:', applicationsData);
+        setApplications(applicationsData);
+      } catch (error) {
+        console.error('Error fetching applications:', error);
+        console.error('Error details:', {
+          message: error.message,
+          code: error.code,
+          stack: error.stack
+        });
+      } finally {
+        setIsLoadingApplications(false);
+      }
+    };
+
+    fetchApplications();
+  }, []);
 
   // --- Admin Tab Functions ---
   const handleViewApplication = (app) => {
@@ -1558,23 +1645,45 @@ export default function Office() {
     setShowAdminModal(true);
   };
 
-  const handleConfirmApplication = (appId) => {
-    setApplications(prevApps =>
-      prevApps.map(app =>
-        app.id === appId ? { ...app, status: 'Confirmed' } : app
-      )
-    );
+  const handleConfirmApplication = async (appId) => {
+    try {
+      // Update the application status in Firestore
+      const applicationRef = doc(db, 'applications', appId);
+      await updateDoc(applicationRef, {
+        status: 'Confirmed',
+        updatedAt: new Date().toISOString()
+      });
+
+      // Update local state
+      setApplications(prevApps =>
+        prevApps.map(app =>
+          app.id === appId ? { ...app, status: 'Confirmed' } : app
+        )
+      );
+    } catch (error) {
+      console.error('Error confirming application:', error);
+    }
   };
 
-  const handleSaveChanges = () => {
-    // TODO: Implement logic to save edited application details
-    // For now, just update the state if selectedApplication was modified locally
+  const handleSaveChanges = async () => {
     if (selectedApplication) {
-       setApplications(prevApps =>
-         prevApps.map(app =>
-           app.id === selectedApplication.id ? selectedApplication : app
-         )
-       );
+      try {
+        // Update the application in Firestore
+        const applicationRef = doc(db, 'applications', selectedApplication.id);
+        await updateDoc(applicationRef, {
+          ...selectedApplication,
+          updatedAt: new Date().toISOString()
+        });
+
+        // Update local state
+        setApplications(prevApps =>
+          prevApps.map(app =>
+            app.id === selectedApplication.id ? selectedApplication : app
+          )
+        );
+      } catch (error) {
+        console.error('Error saving application changes:', error);
+      }
     }
     setShowAdminModal(false);
     setSelectedApplication(null);
@@ -1714,73 +1823,6 @@ export default function Office() {
       return () => clearInterval(intervalId);
     }
   }, []);
-
-  // Filter applications based on search term and timeframe
-  const filteredApplications = useMemo(() => {
-    let filtered = [...applications];
-    
-    // Filter by search term
-    if (applicationSearchTerm) {
-      const searchLower = applicationSearchTerm.toLowerCase();
-      filtered = filtered.filter(app => 
-        app.clientName.toLowerCase().includes(searchLower) ||
-        app.clientId.toLowerCase().includes(searchLower) ||
-        app.id.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    // Filter by timeframe
-    if (applicationTimeframe !== 'all') {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      filtered = filtered.filter(app => {
-        const submissionDate = new Date(app.submissionDate);
-        
-        switch (applicationTimeframe) {
-          case 'daily':
-            return submissionDate >= today;
-          case 'weekly':
-            const weekStart = new Date(today);
-            weekStart.setDate(today.getDate() - today.getDay());
-            return submissionDate >= weekStart;
-          case 'monthly':
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-            return submissionDate >= monthStart;
-          case 'yearly':
-            const yearStart = new Date(today.getFullYear(), 0, 1);
-            return submissionDate >= yearStart;
-          default:
-            return true;
-        }
-      });
-    }
-    
-    return filtered;
-  }, [applications, applicationSearchTerm, applicationTimeframe]);
-
-  // Pagination logic
-  const indexOfLastApplication = currentPage * applicationsPerPage;
-  const indexOfFirstApplication = indexOfLastApplication - applicationsPerPage;
-  const currentApplications = filteredApplications.slice(indexOfFirstApplication, indexOfLastApplication);
-  const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage);
-
-  // Change page handler
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  // Handle previous page
-  const handlePreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  // Handle next page
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
 
   // State for Google Drive Tab
   const [driveFiles, setDriveFiles] = useState([
@@ -1942,6 +1984,21 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
       }
     }
   `;
+
+  // Pagination handlers
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   return (
     <div className="office-container">
@@ -3435,20 +3492,11 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                               )}
                             </Button>
                             <Button 
-                              variant="primary" 
+                              variant="success" 
                               size="sm"
-                              onClick={() => handleSave('submit')}
-                              disabled={isSubmitting}
+                              onClick={handleSunfireSubmit}
                             >
-                              {isSubmitting ? (
-                                <>
-                                  <FaSpinner className="me-1 spin" /> Submitting...
-                                </>
-                              ) : (
-                                <>
-                                  <FaSave className="me-1" /> Submit Application
-                                </>
-                              )}
+                              <FaCheckCircle className="me-2" /> HealthSherpa
                             </Button>
                           </div>
                         </div>
@@ -3736,10 +3784,9 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                         </Button>
                             <div>
                           <Button 
-                            variant="secondary" 
-                            className="me-2" 
+                            variant="outline-primary"
                             onClick={() => handleSave('draft')}
-                            disabled={savingStatus === 'saving' || isSubmitting}
+                            disabled={savingStatus === 'saving' || isDraftSaving}
                           >
                             {savingStatus === 'saving' && !isSubmitting ? (
                               <>
@@ -3770,7 +3817,7 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                               </>
                             ) : (
                               <>
-                                <FaCheckCircle className="me-2" /> Submit Application
+                                <FaSave className="me-2" /> Submit Application
                               </>
                             )}
                               </Button>
@@ -4544,14 +4591,25 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                   </tr>
                 </thead>
                 <tbody>
-                  {currentApplications.length > 0 ? (
-                    currentApplications.map((app) => (
+                  {isLoadingApplications ? (
+                    <tr>
+                      <td colSpan="9" className="text-center">
+                        <div className="d-flex justify-content-center align-items-center">
+                          <div className="spinner-border text-primary me-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          Loading applications...
+                        </div>
+                      </td>
+                    </tr>
+                  ) : applications.length > 0 ? (
+                    applications.map((app) => (
                       <tr key={app.id}>
-                        <td>{app.clientName}</td>
-                        <td>{app.clientId}</td>
+                        <td>{app.clientName || 'N/A'}</td>
+                        <td>{app.clientId || 'N/A'}</td>
                         <td>{app.id}</td>
-                        <td>{app.agentId}</td>
-                        <td>{app.submissionDate}</td>
+                        <td>{app.agentId || 'N/A'}</td>
+                        <td>{app.submissionDate || 'N/A'}</td>
                         <td className="text-center">
                           {app.hasRecording ? <FaCheckCircle color="green" /> : <FaTimesCircle color="gray" />}
                         </td>
@@ -4560,7 +4618,7 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                         </td>
                         <td>
                           <Badge bg={app.status === 'Confirmed' ? 'success' : 'warning'}>
-                            {app.status}
+                            {app.status || 'Pending'}
                           </Badge>
                         </td>
                         <td>
@@ -4573,7 +4631,7 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                           >
                             <FaEdit />
                           </Button>
-                          {app.status === 'Pending' && (
+                          {(!app.status || app.status === 'Pending') && (
                             <Button
                               variant="outline-success"
                               size="sm"
@@ -4589,7 +4647,10 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                   ) : (
                     <tr>
                       <td colSpan="9" className="text-center">
-                        No applications found matching your criteria.
+                        <div className="d-flex flex-column align-items-center">
+                          <FaInbox size={24} className="text-muted mb-2" />
+                          No applications found in the database.
+                        </div>
                       </td>
                     </tr>
                   )}

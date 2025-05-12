@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, Table, Nav, Tab, Badge, Modal, Spinner } from 'react-bootstrap';
 import { 
   FaPhone, FaUser, FaEnvelope, FaCalendar, FaChartLine, FaUsers, 
@@ -22,14 +22,12 @@ import {
   FaGoogle, FaSpinner, FaMemory
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
-import Chat from '@/components/Chat';
+import ApplicationsTab from '../components/ApplicationsTab';
 
 export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('home');
-  const [searchQuery, setSearchQuery] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [systemStatus, setSystemStatus] = useState({
     server: 'healthy',
     database: 'healthy',
@@ -48,26 +46,6 @@ export default function AdminDashboard() {
     diskUsage: 58,
     networkLoad: 32
   });
-  const [recentActivities] = useState([
-    {
-      type: 'user_action',
-      user: 'John Doe',
-      action: 'Updated profile',
-      timestamp: '5 minutes ago'
-    },
-    {
-      type: 'system_alert',
-      message: 'High CPU usage detected',
-      severity: 'warning',
-      timestamp: '15 minutes ago'
-    },
-    {
-      type: 'security_alert',
-      message: 'Failed login attempts',
-      severity: 'critical',
-      timestamp: '30 minutes ago'
-    }
-  ]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -76,229 +54,6 @@ export default function AdminDashboard() {
 
     return () => clearInterval(timer);
   }, []);
-
-  const renderSystemStatus = () => (
-    <Card className="dashboard-card mb-4">
-      <Card.Header>
-        <h5 className="mb-0">
-          <FaServer className="me-2" /> System Status
-        </h5>
-      </Card.Header>
-      <Card.Body>
-        <Row>
-          <Col md={3}>
-            <div className="status-item">
-              <FaServer className="me-2 text-primary" />
-              <span>Server: </span>
-              <Badge bg={systemStatus.server === 'healthy' ? 'success' : 'danger'}>
-                {systemStatus.server}
-              </Badge>
-            </div>
-          </Col>
-          <Col md={3}>
-            <div className="status-item">
-              <FaDatabase className="me-2 text-primary" />
-              <span>Database: </span>
-              <Badge bg={systemStatus.database === 'healthy' ? 'success' : 'danger'}>
-                {systemStatus.database}
-              </Badge>
-            </div>
-          </Col>
-          <Col md={3}>
-            <div className="status-item">
-              <FaGlobe className="me-2 text-primary" />
-              <span>API: </span>
-              <Badge bg={systemStatus.api === 'healthy' ? 'success' : 'danger'}>
-                {systemStatus.api}
-              </Badge>
-            </div>
-          </Col>
-          <Col md={3}>
-            <div className="status-item">
-              <FaCloud className="me-2 text-primary" />
-              <span>Cache: </span>
-              <Badge bg={systemStatus.cache === 'healthy' ? 'success' : 'danger'}>
-                {systemStatus.cache}
-              </Badge>
-            </div>
-          </Col>
-        </Row>
-      </Card.Body>
-    </Card>
-  );
-
-  const renderUserStats = () => (
-    <Card className="dashboard-card mb-4">
-      <Card.Header>
-        <h5 className="mb-0">
-          <FaUsers className="me-2" /> User Statistics
-        </h5>
-      </Card.Header>
-      <Card.Body>
-        <Row>
-          <Col md={3}>
-            <div className="stat-box">
-              <h3>{userStats.totalUsers}</h3>
-              <p>Total Users</p>
-            </div>
-          </Col>
-          <Col md={3}>
-            <div className="stat-box">
-              <h3>{userStats.activeUsers}</h3>
-              <p>Active Users</p>
-            </div>
-          </Col>
-          <Col md={3}>
-            <div className="stat-box">
-              <h3>{userStats.newUsersToday}</h3>
-              <p>New Today</p>
-            </div>
-          </Col>
-          <Col md={3}>
-            <div className="stat-box">
-              <h3>{userStats.premiumUsers}</h3>
-              <p>Premium Users</p>
-            </div>
-          </Col>
-        </Row>
-      </Card.Body>
-    </Card>
-  );
-
-  const renderSystemMetrics = () => (
-    <Card className="dashboard-card mb-4">
-      <Card.Header>
-        <h5 className="mb-0">
-          <FaChartLine className="me-2" /> System Metrics
-        </h5>
-      </Card.Header>
-      <Card.Body>
-        <Row>
-          <Col md={3}>
-            <div className="metric-box">
-              <div className="metric-title">
-                <FaDesktop className="me-2" /> CPU Usage
-              </div>
-              <div className="progress">
-                <div 
-                  className="progress-bar" 
-                  role="progressbar" 
-                  style={{ width: `${systemMetrics.cpuUsage}%` }}
-                  aria-valuenow={systemMetrics.cpuUsage} 
-                  aria-valuemin="0" 
-                  aria-valuemax="100"
-                >
-                  {systemMetrics.cpuUsage}%
-                </div>
-              </div>
-            </div>
-          </Col>
-          <Col md={3}>
-            <div className="metric-box">
-              <div className="metric-title">
-                <FaMemory className="me-2" /> Memory Usage
-              </div>
-              <div className="progress">
-                <div 
-                  className="progress-bar" 
-                  role="progressbar" 
-                  style={{ width: `${systemMetrics.memoryUsage}%` }}
-                  aria-valuenow={systemMetrics.memoryUsage} 
-                  aria-valuemin="0" 
-                  aria-valuemax="100"
-                >
-                  {systemMetrics.memoryUsage}%
-                </div>
-              </div>
-            </div>
-          </Col>
-          <Col md={3}>
-            <div className="metric-box">
-              <div className="metric-title">
-                <FaDatabase className="me-2" /> Disk Usage
-              </div>
-              <div className="progress">
-                <div 
-                  className="progress-bar" 
-                  role="progressbar" 
-                  style={{ width: `${systemMetrics.diskUsage}%` }}
-                  aria-valuenow={systemMetrics.diskUsage} 
-                  aria-valuemin="0" 
-                  aria-valuemax="100"
-                >
-                  {systemMetrics.diskUsage}%
-                </div>
-              </div>
-            </div>
-          </Col>
-          <Col md={3}>
-            <div className="metric-box">
-              <div className="metric-title">
-                <FaNetworkWired className="me-2" /> Network Load
-              </div>
-              <div className="progress">
-                <div 
-                  className="progress-bar" 
-                  role="progressbar" 
-                  style={{ width: `${systemMetrics.networkLoad}%` }}
-                  aria-valuenow={systemMetrics.networkLoad} 
-                  aria-valuemin="0" 
-                  aria-valuemax="100"
-                >
-                  {systemMetrics.networkLoad}%
-                </div>
-              </div>
-            </div>
-          </Col>
-        </Row>
-      </Card.Body>
-    </Card>
-  );
-
-  const renderRecentActivity = () => (
-    <Card className="dashboard-card mb-4">
-      <Card.Header>
-        <h5 className="mb-0">
-          <FaHistory className="me-2" /> Recent Activity
-        </h5>
-      </Card.Header>
-      <Card.Body>
-        <div className="activity-list">
-          {recentActivities.map((activity, index) => (
-            <div key={index} className={`activity-item ${activity.type}`}>
-              {activity.type === 'user_action' && (
-                <>
-                  <FaUser className="activity-icon" />
-                  <div className="activity-content">
-                    <strong>{activity.user}</strong> {activity.action}
-                    <div className="activity-time">{activity.timestamp}</div>
-                  </div>
-                </>
-              )}
-              {activity.type === 'system_alert' && (
-                <>
-                  <FaExclamationTriangle className="activity-icon text-warning" />
-                  <div className="activity-content">
-                    <strong>System Alert:</strong> {activity.message}
-                    <div className="activity-time">{activity.timestamp}</div>
-                  </div>
-                </>
-              )}
-              {activity.type === 'security_alert' && (
-                <>
-                  <FaShieldAlt className="activity-icon text-danger" />
-                  <div className="activity-content">
-                    <strong>Security Alert:</strong> {activity.message}
-                    <div className="activity-time">{activity.timestamp}</div>
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card.Body>
-    </Card>
-  );
 
   return (
     <Container fluid className="admin-dashboard">
@@ -328,6 +83,11 @@ export default function AdminDashboard() {
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
+          <Nav.Link active={activeTab === 'applications'} onClick={() => setActiveTab('applications')}>
+            <FaFileAlt className="me-2" /> Applications
+          </Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
           <Nav.Link active={activeTab === 'users'} onClick={() => setActiveTab('users')}>
             <FaUsers className="me-2" /> Users
           </Nav.Link>
@@ -346,11 +106,146 @@ export default function AdminDashboard() {
 
       {activeTab === 'home' && (
         <div className="dashboard-content">
-          {renderSystemStatus()}
-          {renderUserStats()}
-          {renderSystemMetrics()}
-          {renderRecentActivity()}
+          <Row>
+            <Col md={3}>
+              <Card className="mb-4">
+                <Card.Body>
+                  <h6 className="card-title">System Status</h6>
+                  <div className="system-status">
+                    <div className="status-item">
+                      <FaServer className="me-2" />
+                      <span>Server: </span>
+                      <Badge bg={systemStatus.server === 'healthy' ? 'success' : 'danger'}>
+                        {systemStatus.server}
+                      </Badge>
+                    </div>
+                    <div className="status-item">
+                      <FaDatabase className="me-2" />
+                      <span>Database: </span>
+                      <Badge bg={systemStatus.database === 'healthy' ? 'success' : 'danger'}>
+                        {systemStatus.database}
+                      </Badge>
+                    </div>
+                    <div className="status-item">
+                      <FaNetworkWired className="me-2" />
+                      <span>API: </span>
+                      <Badge bg={systemStatus.api === 'healthy' ? 'success' : 'danger'}>
+                        {systemStatus.api}
+                      </Badge>
+                    </div>
+                    <div className="status-item">
+                      <FaMemory className="me-2" />
+                      <span>Cache: </span>
+                      <Badge bg={systemStatus.cache === 'healthy' ? 'success' : 'danger'}>
+                        {systemStatus.cache}
+                      </Badge>
+                    </div>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3}>
+              <Card className="mb-4">
+                <Card.Body>
+                  <h6 className="card-title">User Statistics</h6>
+                  <div className="user-stats">
+                    <div className="stat-item">
+                      <FaUsers className="me-2" />
+                      <span>Total Users: {userStats.totalUsers}</span>
+                    </div>
+                    <div className="stat-item">
+                      <FaUserCircle className="me-2" />
+                      <span>Active Users: {userStats.activeUsers}</span>
+                    </div>
+                    <div className="stat-item">
+                      <FaUserPlus className="me-2" />
+                      <span>New Today: {userStats.newUsersToday}</span>
+                    </div>
+                    <div className="stat-item">
+                      <FaStar className="me-2" />
+                      <span>Premium Users: {userStats.premiumUsers}</span>
+                    </div>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3}>
+              <Card className="mb-4">
+                <Card.Body>
+                  <h6 className="card-title">System Metrics</h6>
+                  <div className="system-metrics">
+                    <div className="metric-item">
+                      <FaDesktop className="me-2" />
+                      <span>CPU Usage: {systemMetrics.cpuUsage}%</span>
+                    </div>
+                    <div className="metric-item">
+                      <FaMemory className="me-2" />
+                      <span>Memory Usage: {systemMetrics.memoryUsage}%</span>
+                    </div>
+                    <div className="metric-item">
+                      <FaDatabase className="me-2" />
+                      <span>Disk Usage: {systemMetrics.diskUsage}%</span>
+                    </div>
+                    <div className="metric-item">
+                      <FaNetworkWired className="me-2" />
+                      <span>Network Load: {systemMetrics.networkLoad}%</span>
+                    </div>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3}>
+              <Card className="mb-4">
+                <Card.Body>
+                  <h6 className="card-title">Current Time</h6>
+                  <div className="current-time">
+                    <FaClock className="me-2" />
+                    <span>{currentTime.toLocaleTimeString()}</span>
+                  </div>
+                  <div className="current-date mt-2">
+                    <FaCalendar className="me-2" />
+                    <span>{currentTime.toLocaleDateString()}</span>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
         </div>
+      )}
+
+      {activeTab === 'applications' && <ApplicationsTab />}
+
+      {activeTab === 'users' && (
+        <Card className="dashboard-card mb-4">
+          <Card.Header>
+            <h5 className="mb-0">User Management</h5>
+          </Card.Header>
+          <Card.Body>
+            <p>User management content will go here.</p>
+          </Card.Body>
+        </Card>
+      )}
+
+      {activeTab === 'security' && (
+        <Card className="dashboard-card mb-4">
+          <Card.Header>
+            <h5 className="mb-0">Security Settings</h5>
+          </Card.Header>
+          <Card.Body>
+            <p>Security settings content will go here.</p>
+          </Card.Body>
+        </Card>
+      )}
+
+      {activeTab === 'settings' && (
+        <Card className="dashboard-card mb-4">
+          <Card.Header>
+            <h5 className="mb-0">System Settings</h5>
+          </Card.Header>
+          <Card.Body>
+            <p>System settings content will go here.</p>
+          </Card.Body>
+        </Card>
       )}
     </Container>
   );
