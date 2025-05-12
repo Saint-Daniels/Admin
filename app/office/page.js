@@ -272,211 +272,189 @@ export default function Office() {
     ]
   };
 
-  // Add these state variables at the top with other state declarations
-  const [isDraftSaving, setIsDraftSaving] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    dateOfBirth: '',
-    email: '',
-    phone: '',
-    taxFilingStatus: '',
-    maritalStatus: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    mailingAddress: '',
-    mailingCity: '',
-    mailingState: '',
-    mailingZipCode: '',
-    countryOfOrigin: '',
-    stateOfOrigin: '',
-    occupation: '',
-    annualSalary: '',
-    planName: '',
-    deductible: '',
-    premium: '',
-    coverageType: '',
-    spouseFirstName: '',
-    spouseLastName: '',
-    spouseDateOfBirth: '',
-    hasVoiceRecording: false,
-    effectiveDate: '',
-    policyStatus: '',
-    spouseSSN: '',
-    ssn: '',
-    willBeClaimedOnTaxes: '' // Add new field
-  });
+// State declarations
+const [isDraftSaving, setIsDraftSaving] = useState(false);
+const [isSubmitting, setIsSubmitting] = useState(false);
+const [showValidationModal, setShowValidationModal] = useState(false);
+const [validationErrors, setValidationErrors] = useState({});
+const [isMailingSameAsResidential, setIsMailingSameAsResidential] = useState(false);
 
-  // Add these state variables at the top
-  const [showValidationModal, setShowValidationModal] = useState(false);
-  const [validationErrors, setValidationErrors] = useState({});
-  const [isMailingSameAsResidential, setIsMailingSameAsResidential] = useState(false);
+// Initial form data state with lowercase fields
+const [formData, setFormData] = useState({
+  firstname: '',
+  middlename: '',
+  lastname: '',
+  dateofbirth: '',
+  email: '',
+  phone: '',
+  taxfilingstatus: '',
+  maritalstatus: '',
+  address: '',
+  city: '',
+  state: '',
+  zipcode: '',
+  mailingaddress: '',
+  mailingcity: '',
+  mailingstate: '',
+  mailingzipcode: '',
+  countryoforigin: '',
+  stateoforigin: '',
+  occupation: '',
+  annualsalary: '',
+  planname: '',
+  deductible: '',
+  premium: '',
+  coveragetype: '',
+  spousefirstname: '',
+  spouselastname: '',
+  spousedateofbirth: '',
+  hasvoicerecording: false,
+  effectivedate: '',
+  policystatus: '',
+  spousessn: '',
+  ssn: '',
+  willbeclaimedontaxes: ''
+});
 
-  // Update validateForm function
-  const validateForm = () => {
-    const errors = {};
-    
-    // Required fields by section
-    const requiredFields = {
-      personalInfo: {
-        firstName: 'First Name',
-        middleName: 'Middle Name',
-        lastName: 'Last Name',
-        dateOfBirth: 'Date of Birth',
-        email: 'Email',
-        phone: 'Phone Number',
-        taxFilingStatus: 'Tax Filing Status',
-        maritalStatus: 'Marital Status'
-      },
-      addressInfo: {
-        address: 'Street Address',
-        city: 'City',
-        state: 'State',
-        zipCode: 'ZIP Code'
-      },
-      mailingAddress: !isMailingSameAsResidential ? {
-        mailingAddress: 'Mailing Street Address',
-        mailingCity: 'Mailing City',
-        mailingState: 'Mailing State',
-        mailingZipCode: 'Mailing ZIP Code'
-      } : {},
-      originInfo: {
-        countryOfOrigin: 'Country of Origin',
-        stateOfOrigin: 'State/Province of Origin'
-      },
-      employmentInfo: {
-        occupation: 'Occupation',
-        annualSalary: 'Expected Annual Salary'
-      },
-      insuranceInfo: {
-        planName: 'Plan Name',
-        deductible: 'Deductible',
-        premium: 'Premium',
-        coverageType: 'Coverage Type'
-      }
-    };
+// Form validation
+const validateForm = () => {
+  const errors = {};
 
-    // Check each required field
-    Object.entries(requiredFields).forEach(([section, fields]) => {
-      Object.entries(fields).forEach(([field, label]) => {
-        if (!formData[field] || formData[field].toString().trim() === '') {
-          errors[field] = `${label} is required`;
-        }
-      });
-    });
-
-    // Special validation for email format
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
+  const requiredFields = {
+    personalinfo: {
+      firstname: 'First Name',
+      middlename: 'Middle Name',
+      lastname: 'Last Name',
+      dateofbirth: 'Date of Birth',
+      email: 'Email',
+      phone: 'Phone Number',
+      taxfilingstatus: 'Tax Filing Status',
+      maritalstatus: 'Marital Status'
+    },
+    addressinfo: {
+      address: 'Street Address',
+      city: 'City',
+      state: 'State',
+      zipcode: 'ZIP Code'
+    },
+    mailingaddress: !isMailingSameAsResidential ? {
+      mailingaddress: 'Mailing Street Address',
+      mailingcity: 'Mailing City',
+      mailingstate: 'Mailing State',
+      mailingzipcode: 'Mailing ZIP Code'
+    } : {},
+    origininfo: {
+      countryoforigin: 'Country of Origin',
+      stateoforigin: 'State/Province of Origin'
+    },
+    employmentinfo: {
+      occupation: 'Occupation',
+      annualsalary: 'Expected Annual Salary'
+    },
+    insuranceinfo: {
+      planname: 'Plan Name',
+      deductible: 'Deductible',
+      premium: 'Premium',
+      coveragetype: 'Coverage Type'
     }
-
-    // Special validation for phone number format (assuming US format)
-    if (formData.phone && !/^\(\d{3}\) \d{3}-\d{4}$/.test(formData.phone)) {
-      errors.phone = 'Please enter a valid phone number in (XXX) XXX-XXXX format';
-    }
-
-    // Special handling for spouse information if married
-    if (formData.maritalStatus === 'married') {
-      if (!formData.spouseFirstName?.trim()) errors.spouseFirstName = 'Spouse First Name is required';
-      if (!formData.spouseLastName?.trim()) errors.spouseLastName = 'Spouse Last Name is required';
-      if (!formData.spouseDateOfBirth?.trim()) errors.spouseDateOfBirth = 'Spouse Date of Birth is required';
-    }
-
-    // Check for voice recording
-    if (!formData.hasVoiceRecording) {
-      errors.voiceRecording = 'Voice recording verification is required';
-    }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
   };
 
-  // Update handleInputChange to use the new formData state
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Special handling for phone number formatting
-    if (name === 'phone') {
-      const formattedValue = formatPhoneNumber(value);
-      setFormData(prev => ({
-        ...prev,
-        [name]: formattedValue
-      }));
-    } else {
+  Object.entries(requiredFields).forEach(([_, fields]) => {
+    Object.entries(fields).forEach(([field, label]) => {
+      if (!formData[field] || formData[field].toString().trim() === '') {
+        errors[field] = `${label} is required`;
+      }
+    });
+  });
+
+  if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    errors.email = 'Please enter a valid email address';
+  }
+
+  if (formData.phone && !/^\(\d{3}\) \d{3}-\d{4}$/.test(formData.phone)) {
+    errors.phone = 'Please enter a valid phone number in (XXX) XXX-XXXX format';
+  }
+
+  if (formData.maritalstatus === 'married') {
+    if (!formData.spousefirstname?.trim()) errors.spousefirstname = 'Spouse First Name is required';
+    if (!formData.spouselastname?.trim()) errors.spouselastname = 'Spouse Last Name is required';
+    if (!formData.spousedateofbirth?.trim()) errors.spousedateofbirth = 'Spouse Date of Birth is required';
+  }
+
+  if (!formData.hasvoicerecording) {
+    errors.voicerecording = 'Voice recording verification is required';
+  }
+
+  setValidationErrors(errors);
+  return Object.keys(errors).length === 0;
+};
+
+// Input change handler
+const handleInputChange = (e) => {
+  const { name, value } = e.target;
+
+  if (name === 'phone') {
+    const formattedValue = formatPhoneNumber(value); // Assume this function exists
+    setFormData(prev => ({
+      ...prev,
+      [name]: formattedValue
+    }));
+  } else {
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-    }
-  };
+  }
+};
 
-  // Update handleSave function to include validation
-  const handleSave = async (type) => {
-    try {
-      // Set saving status
-      if (type === 'draft') {
+// Save handler
+const handleSave = async (type) => {
+  try {
+    if (type === 'draft') {
       setIsDraftSaving(true);
-        setSavingStatus('saving');
-      } else {
-        setIsSubmitting(true);
-        setSavingStatus('saving');
-      }
-
-      // Generate a new client ID if it's a draft save
-      if (type === 'draft') {
-        const timestamp = new Date().getTime();
-        const randomNum = Math.floor(Math.random() * 1000);
-        const clientId = `CLT-${timestamp}-${randomNum}`;
-        
-        // Update the application ID to client ID in the form header
-        const applicationIdElement = document.querySelector('.application-id-badge');
-        if (applicationIdElement) {
-          applicationIdElement.textContent = `Client ID: ${clientId}`;
-        }
-
-        // Update the agent ID to the current agent
-        const agentIdElement = document.querySelector('.agent-id-badge');
-        if (agentIdElement) {
-          agentIdElement.textContent = `Agent ID: AGT-${Math.floor(Math.random() * 100000)}`;
-        }
-
-        // Update the enrollment title with the client's name if available
-        if (formData.firstName && formData.lastName) {
-          setEnrollmentTitle(`${formData.firstName} ${formData.lastName}'s Enrollment`);
-        }
-      }
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Update status based on save type
-      if (type === 'draft') {
-        setSavingStatus('draft-saved');
-        setIsDraftSaving(false);
-      } else {
-        setSavingStatus('submitted');
-        setIsSubmitting(false);
-      }
-      
-      // Reset status after 3 seconds
-      setTimeout(() => {
-        setSavingStatus('');
-      }, 3000);
-
-    } catch (error) {
-      console.error('Error saving form:', error);
-      setSavingStatus('error');
-      
-      // Reset error status after 3 seconds
-      setTimeout(() => {
-        setSavingStatus('');
-      }, 3000);
+      setSavingStatus('saving');
+    } else {
+      setIsSubmitting(true);
+      setSavingStatus('saving');
     }
-  };
+
+    if (type === 'draft') {
+      const timestamp = new Date().getTime();
+      const randomNum = Math.floor(Math.random() * 1000);
+      const clientId = `CLT-${timestamp}-${randomNum}`;
+
+      const applicationIdElement = document.querySelector('.application-id-badge');
+      if (applicationIdElement) {
+        applicationIdElement.textContent = `Client ID: ${clientId}`;
+      }
+
+      const agentIdElement = document.querySelector('.agent-id-badge');
+      if (agentIdElement) {
+        agentIdElement.textContent = `Agent ID: AGT-${Math.floor(Math.random() * 100000)}`;
+      }
+
+      if (formData.firstname && formData.lastname) {
+        setEnrollmentTitle(`${formData.firstname} ${formData.lastname}'s Enrollment`);
+      }
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    if (type === 'draft') {
+      setSavingStatus('draft-saved');
+      setIsDraftSaving(false);
+    } else {
+      setSavingStatus('submitted');
+      setIsSubmitting(false);
+    }
+
+    setTimeout(() => setSavingStatus(''), 3000);
+  } catch (error) {
+    console.error('Error saving form:', error);
+    setSavingStatus('error');
+    setTimeout(() => setSavingStatus(''), 3000);
+  }
+};
 
   useEffect(() => {
     setIsClient(true);
