@@ -1,4 +1,5 @@
 name: saint-daniels
+project_id: saintdaniels-6144c
 services:
 - name: web
   github:
