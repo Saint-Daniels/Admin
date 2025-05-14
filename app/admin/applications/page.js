@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/app/firebase/auth';
-import { getAuth } from 'firebase/auth';
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState([]);
@@ -10,21 +8,12 @@ export default function ApplicationsPage() {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const { user } = useAuth();
-  const auth = getAuth();
 
   const fetchApplications = async (pageNum) => {
     try {
       setLoading(true);
-      const token = await auth.currentUser?.getIdToken();
-      
       const response = await fetch(
-        `/api/get-applications?page=${pageNum}&limit=10`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        `/api/get-applications?page=${pageNum}&limit=10`
       );
 
       if (!response.ok) {
@@ -43,20 +32,8 @@ export default function ApplicationsPage() {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchApplications(page);
-    }
-  }, [user, page]);
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Please log in to view applications</h1>
-        </div>
-      </div>
-    );
-  }
+    fetchApplications(page);
+  }, [page]);
 
   return (
     <div className="container mx-auto px-4 py-8">
