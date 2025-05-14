@@ -1,54 +1,64 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-
-// Debug: Log environment variables
-console.log('=== ENVIRONMENT VARIABLES CHECK ===');
-console.log('Firebase Config:', {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? '✅ Set' : '❌ Not Set',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ? '✅ Set' : '❌ Not Set',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Not Set',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ? '✅ Set' : '❌ Not Set',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ? '✅ Set' : '❌ Not Set',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ? '✅ Set' : '❌ Not Set'
-});
-
-// Log actual values (without sensitive data)
-console.log('Configuration Details:', {
-  hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  hasMessagingSenderId: !!process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  hasAppId: !!process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-});
+import { collection } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  apiKey: "AIzaSyDr7bC7uZCSllzpz0QF6DVnylrLprwYd84",
+  authDomain: "saintdaniels-6144c.firebaseapp.com",
+  projectId: "saintdaniels-6144c",
+  storageBucket: "saintdaniels-6144c.firebasestorage.app",
+  messagingSenderId: "99705276201",
+  appId: "1:99705276201:web:6695bbbc70012e92071938",
+  measurementId: "G-1CPD7FC0RZ"
 };
 
 let db;
 
 try {
+  console.log('=== FIREBASE INITIALIZATION START ===');
+  console.log('Firebase config:', {
+    projectId: firebaseConfig.projectId,
+    authDomain: firebaseConfig.authDomain,
+    apiKey: firebaseConfig.apiKey ? '***' : undefined
+  });
+
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
-  console.log('✅ Firebase initialized successfully');
+  console.log('✅ Firebase app initialized successfully');
+  console.log('Firebase app instance:', app);
 
   // Initialize Firestore
   db = getFirestore(app);
   console.log('✅ Firestore initialized successfully');
+  console.log('Firestore instance:', db);
+
+  // Test the connection
+  const testCollection = collection(db, 'applications');
+  console.log('✅ Test collection reference created:', testCollection);
+  
+  console.log('=== FIREBASE INITIALIZATION COMPLETE ===');
 } catch (error) {
-  console.error('❌ Firebase initialization error:', error);
+  console.error('❌ CRITICAL: Firebase initialization error:', error);
   console.error('Error details:', {
     code: error.code,
     message: error.message,
-    stack: error.stack
+    stack: error.stack,
+    name: error.name
   });
   throw error;
 }
+
+// Export a function to verify the database connection
+export const verifyDatabaseConnection = async () => {
+  try {
+    if (!db) {
+      throw new Error('Firestore database instance is not initialized');
+    }
+    return true;
+  } catch (error) {
+    console.error('Database connection verification failed:', error);
+    return false;
+  }
+};
 
 export { db }; 

@@ -1,0 +1,10 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write access to all documents in the applications collection
+    match /applications/{document=**} {
+      allow read, write: if true;  // WARNING: This is for testing only. Add proper authentication rules before production.
+    }
+  }
+} 

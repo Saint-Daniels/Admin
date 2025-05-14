@@ -22,7 +22,7 @@ import {
   FaGoogle, FaSpinner, FaMemory
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
-import ApplicationsTab from '../components/ApplicationsTab';
+import ApplicationsTabNew from '../components/ApplicationsTabNew';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -213,7 +213,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'applications' && <ApplicationsTab />}
+      {activeTab === 'applications' && <ApplicationsTabNew key="applications-tab" />}
 
       {activeTab === 'users' && (
         <Card className="dashboard-card mb-4">

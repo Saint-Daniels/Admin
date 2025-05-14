@@ -3,11 +3,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card, Table, Button, Badge, Form, InputGroup, Modal, Spinner, Row, Col } from 'react-bootstrap';
 import { FaSearch, FaEdit, FaCheck, FaCheckCircle, FaTimesCircle, FaInbox } from 'react-icons/fa';
-import { collection, getDocs, query, orderBy, updateDoc, doc, addDoc, where } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-export default function ApplicationsTab() {
-  console.log('ApplicationsTab component rendering');
+export default function ApplicationsTabNew() {
+  console.log('ApplicationsTabNew component rendering');
   const [applications, setApplications] = useState([]);
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
   const [showAdminModal, setShowAdminModal] = useState(false);
@@ -17,22 +17,64 @@ export default function ApplicationsTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const applicationsPerPage = 10;
 
-  // Add logging for applications state changes
+  // Fetch applications from Firestore
   useEffect(() => {
-    console.log('Applications state updated:', applications);
-  }, [applications]);
+    const fetchApplications = async () => {
+      try {
+        setIsLoadingApplications(true);
+        console.log('=== STARTING FIRESTORE FETCH ===');
+        
+        if (!db) {
+          console.error('❌ Firestore db instance is null or undefined');
+          throw new Error('Firestore database instance is not initialized');
+        }
+        
+        const applicationsRef = collection(db, 'applications');
+        console.log('Fetching from applications collection...');
+        
+        const q = query(applicationsRef, orderBy('timestamp', 'desc'));
+        const snapshot = await getDocs(q);
+        console.log('Total documents found:', snapshot.size);
+        
+        if (snapshot.empty) {
+          console.log('No documents found in applications collection');
+          setApplications([]);
+          return;
+        }
+        
+        const applicationsData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          console.log('Document ID:', doc.id);
+          console.log('Raw Document Data:', data);
+          return {
+            id: doc.id,
+            ...data,
+            timestamp: data.timestamp || data.applicationDate || new Date().toISOString()
+          };
+        });
+        
+        console.log('Successfully loaded', applicationsData.length, 'applications');
+        setApplications(applicationsData);
+        
+      } catch (error) {
+        console.error('Error fetching applications:', error);
+        setApplications([]);
+      } finally {
+        setIsLoadingApplications(false);
+      }
+    };
+
+    fetchApplications();
+  }, []);
 
   // Filter applications based on search term and timeframe
   const filteredApplications = useMemo(() => {
     console.log('Filtering applications. Total count:', applications.length);
     const filtered = applications.filter(app => {
-      // Convert search term to lowercase for case-insensitive search
       const searchTerm = applicationSearchTerm.toLowerCase().trim();
       
-      // If search term is empty, show all applications
       if (!searchTerm) return true;
 
-      // Search in multiple fields
       const matchesSearch = 
         (app.firstName?.toLowerCase().includes(searchTerm)) ||
         (app.lastName?.toLowerCase().includes(searchTerm)) ||
@@ -45,7 +87,6 @@ export default function ApplicationsTab() {
 
       if (!matchesSearch) return false;
 
-      // Apply timeframe filter if search matches
       if (applicationTimeframe === 'all') return true;
 
       const submissionDate = new Date(app.applicationDate || app.timestamp);
@@ -71,68 +112,10 @@ export default function ApplicationsTab() {
     return filtered;
   }, [applications, applicationSearchTerm, applicationTimeframe]);
 
-  // Calculate pagination
   const indexOfLastApplication = currentPage * applicationsPerPage;
   const indexOfFirstApplication = indexOfLastApplication - applicationsPerPage;
   const currentApplications = filteredApplications.slice(indexOfFirstApplication, indexOfLastApplication);
   const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage);
-
-  // Fetch applications from Firestore
-  useEffect(() => {
-    const fetchApplications = async () => {
-      try {
-        setIsLoadingApplications(true);
-        console.log('=== STARTING FIRESTORE FETCH ===');
-        
-        // Verify db instance
-        if (!db) {
-          console.error('❌ Firestore db instance is null or undefined');
-          throw new Error('Firestore database instance is not initialized');
-        }
-        
-        // Get the applications collection
-        const applicationsRef = collection(db, 'applications');
-        console.log('Fetching from applications collection...');
-        
-        // Create a query to order by timestamp
-        const q = query(applicationsRef, orderBy('timestamp', 'desc'));
-        
-        // Get documents with the query
-        const snapshot = await getDocs(q);
-        console.log('Total documents found:', snapshot.size);
-        
-        if (snapshot.empty) {
-          console.log('No documents found in applications collection');
-          setApplications([]);
-          return;
-        }
-        
-        // Process all documents and log their raw data
-        const applicationsData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          console.log('Document ID:', doc.id);
-          console.log('Raw Document Data:', data);
-          return {
-            id: doc.id,
-            ...data,
-            // Ensure we have a timestamp for sorting
-            timestamp: data.timestamp || data.applicationDate || new Date().toISOString()
-          };
-        });
-        
-        console.log('Successfully loaded', applicationsData.length, 'applications');
-        setApplications(applicationsData);
-        
-      } catch (error) {
-        console.error('Error fetching applications:', error);
-        setApplications([]);
-      } finally {
-        setIsLoadingApplications(false);
-      }
-    };
-
-    fetchApplications();
-  }, []);
 
   const handleViewApplication = (app) => {
     setSelectedApplication(app);
@@ -273,7 +256,6 @@ export default function ApplicationsTab() {
             </tbody>
           </Table>
 
-          {/* Pagination */}
           {filteredApplications.length > 0 && (
             <div className="d-flex justify-content-between align-items-center mt-3">
               <div>
@@ -303,7 +285,6 @@ export default function ApplicationsTab() {
         </Card.Body>
       </Card>
 
-      {/* Application Details Modal */}
       <Modal show={showAdminModal} onHide={() => setShowAdminModal(false)} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>

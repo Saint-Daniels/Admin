@@ -48,7 +48,7 @@ import {
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
 import { db } from '../firebase/config';
-import { collection, getDocs, query, orderBy, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, updateDoc, doc, addDoc, serverTimestamp, limit } from 'firebase/firestore';
 
 export default function Office() {
   const router = useRouter();
@@ -410,6 +410,9 @@ const handleInputChange = (e) => {
 // Save handler
 const handleSave = async (type) => {
   try {
+    console.log('Starting form submission process...');
+    console.log('Form data:', formData);
+
     if (type === 'draft') {
       setIsDraftSaving(true);
       setSavingStatus('saving');
@@ -418,27 +421,37 @@ const handleSave = async (type) => {
       setSavingStatus('saving');
     }
 
-    if (type === 'draft') {
-      const timestamp = new Date().getTime();
-      const randomNum = Math.floor(Math.random() * 1000);
-      const clientId = `CLT-${timestamp}-${randomNum}`;
+    // Generate a unique ID for the application
+    const timestamp = new Date().getTime();
+    const randomNum = Math.floor(Math.random() * 1000);
+    const clientId = `CLT-${timestamp}-${randomNum}`;
+    console.log('Generated client ID:', clientId);
 
-      const applicationIdElement = document.querySelector('.application-id-badge');
-      if (applicationIdElement) {
-        applicationIdElement.textContent = `Client ID: ${clientId}`;
-      }
-
-      const agentIdElement = document.querySelector('.agent-id-badge');
-      if (agentIdElement) {
-        agentIdElement.textContent = `Agent ID: AGT-${Math.floor(Math.random() * 100000)}`;
-      }
-
-      if (formData.firstname && formData.lastname) {
-        setEnrollmentTitle(`${formData.firstname} ${formData.lastname}'s Enrollment`);
-      }
+    // Update the application ID in the form header
+    const applicationIdElement = document.querySelector('.application-id-badge');
+    if (applicationIdElement) {
+      applicationIdElement.textContent = `Client ID: ${clientId}`;
     }
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Prepare the application data
+    const applicationData = {
+      ...formData,
+      clientId,
+      clientName: `${formData.firstname} ${formData.lastname}`.trim(),
+      submissionDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: type === 'draft' ? 'Draft' : 'Submitted',
+      hasRecording: formData.hasVoiceRecording || false,
+      hasESignature: formData.hasESignature || false
+    };
+    console.log('Prepared application data:', applicationData);
+
+    // Write to Firestore
+    console.log('Attempting to write to Firestore...');
+    const applicationsRef = collection(db, 'applications');
+    const docRef = await addDoc(applicationsRef, applicationData);
+    console.log('Successfully wrote to Firestore. Document ID:', docRef.id);
 
     if (type === 'draft') {
       setSavingStatus('draft-saved');
@@ -446,6 +459,11 @@ const handleSave = async (type) => {
     } else {
       setSavingStatus('submitted');
       setIsSubmitting(false);
+    }
+
+    // Update enrollment title if name is available
+    if (formData.firstname && formData.lastname) {
+      setEnrollmentTitle(`${formData.firstname} ${formData.lastname}'s Enrollment`);
     }
 
     setTimeout(() => setSavingStatus(''), 3000);
@@ -1529,36 +1547,94 @@ const handleSave = async (type) => {
 
   // Filter applications based on search term and timeframe
   const filteredApplications = useMemo(() => {
-    return applications.filter(app => {
-      const matchesSearch = 
-        app.clientName?.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
-        app.clientId?.toLowerCase().includes(applicationSearchTerm.toLowerCase()) ||
-        app.id?.toLowerCase().includes(applicationSearchTerm.toLowerCase());
+    console.log('=== FILTERING APPLICATIONS ===');
+    console.log('Search term:', applicationSearchTerm);
+    console.log('Timeframe:', applicationTimeframe);
+    console.log('Total applications before filtering:', applications.length);
 
-      if (!matchesSearch) return false;
+    let filtered = [...applications]; // Create a new array to avoid mutating the original
 
-      if (applicationTimeframe === 'all') return true;
+    // Search filter
+    if (applicationSearchTerm) {
+      const searchLower = applicationSearchTerm.toLowerCase().trim();
+      console.log('Searching for:', searchLower);
+      
+      filtered = filtered.filter(app => {
+        // Get all searchable fields
+        const searchableFields = [
+          app.firstName,
+          app.lastName,
+          app.middleName,
+          app.email,
+          app.phone,
+          app.ssn,
+          app.client_id,
+          app.lead_id,
+          app.clientName, // Add clientName as it might be stored separately
+          `${app.firstName} ${app.lastName}`, // Full name combination
+          `${app.firstName} ${app.middleName} ${app.lastName}` // Full name with middle name
+        ].map(field => (field || '').toLowerCase());
 
-      const submissionDate = new Date(app.submissionDate);
+        // Log the searchable fields for debugging
+        console.log('Searchable fields for document:', {
+          id: app.id,
+          fields: searchableFields
+        });
+
+        // Check if any field contains the search term
+        const matches = searchableFields.some(field => field.includes(searchLower));
+        console.log('Document matches search:', {
+          id: app.id,
+          matches
+        });
+
+        return matches;
+      });
+    }
+
+    // Timeframe filter
+    if (applicationTimeframe !== 'all') {
       const now = new Date();
+      const cutoff = new Date();
 
       switch (applicationTimeframe) {
-        case 'daily':
-          return submissionDate.toDateString() === now.toDateString();
-        case 'weekly':
-          const weekAgo = new Date(now.setDate(now.getDate() - 7));
-          return submissionDate >= weekAgo;
-        case 'monthly':
-          const monthAgo = new Date(now.setMonth(now.getMonth() - 1));
-          return submissionDate >= monthAgo;
-        case 'yearly':
-          const yearAgo = new Date(now.setFullYear(now.getFullYear() - 1));
-          return submissionDate >= yearAgo;
-        default:
-          return true;
+        case 'today':
+          cutoff.setHours(0, 0, 0, 0);
+          break;
+        case 'week':
+          cutoff.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          cutoff.setMonth(now.getMonth() - 1);
+          break;
+        case 'year':
+          cutoff.setFullYear(now.getFullYear() - 1);
+          break;
       }
-    });
+
+      filtered = filtered.filter(app => {
+        const appDate = new Date(app.applicationDate || app.submissionDate || app.timestamp);
+        return appDate >= cutoff;
+      });
+    }
+
+    console.log('Filtered applications count:', filtered.length);
+    console.log('Filtered applications:', filtered);
+    return filtered;
   }, [applications, applicationSearchTerm, applicationTimeframe]);
+
+  // Add logging for search term changes
+  useEffect(() => {
+    console.log('Search term changed:', applicationSearchTerm);
+  }, [applicationSearchTerm]);
+
+  // Add logging for applications state
+  useEffect(() => {
+    console.log('Applications state:', {
+      total: applications.length,
+      applications: applications
+    });
+  }, [applications]);
 
   // Calculate pagination
   const indexOfLastApplication = currentPage * applicationsPerPage;
@@ -1571,37 +1647,75 @@ const handleSave = async (type) => {
     const fetchApplications = async () => {
       try {
         setIsLoadingApplications(true);
-        console.log('Starting to fetch applications from Firestore...');
+        console.log('=== STARTING FIRESTORE FETCH ===');
         
-        // Log the database instance
-        console.log('Firestore db instance:', db);
-        
-        const applicationsRef = collection(db, 'applications');
-        console.log('Collection reference:', applicationsRef);
-        
-        const q = query(applicationsRef, orderBy('submissionDate', 'desc'));
-        console.log('Query:', q);
-        
-        const querySnapshot = await getDocs(q);
-        console.log('Query snapshot:', querySnapshot);
-        console.log('Number of documents:', querySnapshot.docs.length);
-        
-        if (querySnapshot.empty) {
-          console.log('No documents found in the applications collection');
+        if (!db) {
+          console.error('❌ Firestore db instance is null or undefined');
+          throw new Error('Firestore database instance is not initialized');
         }
         
-        const applicationsData = querySnapshot.docs.map(doc => {
+        const applicationsRef = collection(db, 'applications');
+        console.log('Fetching from applications collection...');
+        
+        // First, let's check what's in the collection
+        const allDocs = await getDocs(applicationsRef);
+        console.log('Raw collection contents:', allDocs.docs.map(doc => ({
+          id: doc.id,
+          data: doc.data()
+        })));
+        
+        // Now fetch with ordering
+        const q = query(applicationsRef, orderBy('timestamp', 'desc'));
+        console.log('Query created:', q);
+        
+        const snapshot = await getDocs(q);
+        console.log('Total documents found:', snapshot.size);
+        
+        if (snapshot.empty) {
+          console.log('No documents found in applications collection');
+          setApplications([]);
+          return;
+        }
+        
+        const applicationsData = snapshot.docs.map(doc => {
           const data = doc.data();
-          console.log('Document ID:', doc.id);
-          console.log('Document data:', data);
-          return {
+          console.log('Processing document:', {
             id: doc.id,
-            ...data
+            rawData: data
+          });
+          
+          // Ensure we have all required fields with fallbacks
+          const processedData = {
+            id: doc.id,
+            firstName: data.firstname || '',
+            lastName: data.lastname || '',
+            middleName: data.middlename || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            dateOfBirth: data.dateofbirth || '',
+            countryOfOrigin: data.countryoforigin || '',
+            stateOfOrigin: data.stateoforigin || '',
+            status: data.status || 'Pending',
+            applicationDate: data.timestamp || new Date().toISOString(),
+            ssn: data.ssn || '',
+            client_id: data.client_id || '',
+            lead_id: data.lead_id || '',
+            ...data // Include any other fields
           };
+          
+          console.log('Processed document data:', processedData);
+          return processedData;
         });
         
-        console.log('Final applications data:', applicationsData);
+        console.log('Successfully loaded', applicationsData.length, 'applications');
+        console.log('First application sample:', applicationsData[0]);
+        
+        // Update state with the processed applications
         setApplications(applicationsData);
+        
+        // Log the current state after update
+        console.log('Current applications state:', applicationsData);
+        
       } catch (error) {
         console.error('Error fetching applications:', error);
         console.error('Error details:', {
@@ -1609,6 +1723,7 @@ const handleSave = async (type) => {
           code: error.code,
           stack: error.stack
         });
+        setApplications([]);
       } finally {
         setIsLoadingApplications(false);
       }
@@ -1616,6 +1731,16 @@ const handleSave = async (type) => {
 
     fetchApplications();
   }, []);
+
+  // Add logging for applications state changes
+  useEffect(() => {
+    console.log('Applications state updated:', applications);
+  }, [applications]);
+
+  // Add logging for filtered applications
+  useEffect(() => {
+    console.log('Filtered applications updated:', filteredApplications);
+  }, [filteredApplications]);
 
   // --- Admin Tab Functions ---
   const handleViewApplication = (app) => {
@@ -2131,6 +2256,49 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
         .meeting-room-indicator.active {
           background-color: #0bb5d8;
           box-shadow: 0 0 0 2px rgba(13, 202, 240, 0.25);
+        }
+
+        .application-card {
+          transition: all 0.2s ease-in-out;
+          border: 1px solid #e9ecef;
+        }
+
+        .application-card:hover {
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          transform: translateY(-2px);
+        }
+
+        .application-details p {
+          color: #6c757d;
+          font-size: 0.9rem;
+        }
+
+        .application-details i {
+          width: 16px;
+        }
+
+        .applications-list {
+          max-height: calc(100vh - 300px);
+          overflow-y: auto;
+          padding-right: 10px;
+        }
+
+        .applications-list::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .applications-list::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 3px;
+        }
+
+        .applications-list::-webkit-scrollbar-thumb {
+          background: #888;
+          border-radius: 3px;
+        }
+
+        .applications-list::-webkit-scrollbar-thumb:hover {
+          background: #555;
         }
       `}</style>
       <Container fluid>
@@ -4526,166 +4694,145 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
               </h5>
             </Card.Header>
             <Card.Body>
-              <Row className="mb-3">
-                <Col md={6}>
-                  <InputGroup>
-                    <Form.Control
-                      placeholder="Search by name, client ID or application ID..."
-                      value={applicationSearchTerm}
-                      onChange={(e) => setApplicationSearchTerm(e.target.value)}
-                    />
-                    <Button variant="outline-secondary">
-                      <FaSearch />
-                    </Button>
-                  </InputGroup>
-                </Col>
-                <Col md={6}>
-                  <Form.Select 
-                    value={applicationTimeframe}
-                    onChange={(e) => setApplicationTimeframe(e.target.value)}
-                    aria-label="Filter by timeframe"
-                  >
-                    <option value="all">All Applications</option>
-                    <option value="daily">Today</option>
-                    <option value="weekly">This Week</option>
-                    <option value="monthly">This Month</option>
-                    <option value="yearly">This Year</option>
-                  </Form.Select>
-                </Col>
-              </Row>
-              
-              <Table striped bordered hover responsive>
-                <thead>
-                  <tr>
-                    <th>Client Name</th>
-                    <th>Client ID</th>
-                    <th>Application ID</th>
-                    <th>Agent ID</th>
-                    <th>Submitted</th>
-                    <th>Recording</th>
-                    <th>E-Signature</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingApplications ? (
-                    <tr>
-                      <td colSpan="9" className="text-center">
-                        <div className="d-flex justify-content-center align-items-center">
-                          <div className="spinner-border text-primary me-2" role="status">
-                            <span className="visually-hidden">Loading...</span>
-                          </div>
-                          Loading applications...
-                        </div>
-                      </td>
-                    </tr>
-                  ) : applications.length > 0 ? (
-                    applications.map((app) => (
-                      <tr key={app.id}>
-                        <td>{app.clientName || 'N/A'}</td>
-                        <td>{app.clientId || 'N/A'}</td>
-                        <td>{app.id}</td>
-                        <td>{app.agentId || 'N/A'}</td>
-                        <td>{app.submissionDate || 'N/A'}</td>
-                        <td className="text-center">
-                          {app.hasRecording ? <FaCheckCircle color="green" /> : <FaTimesCircle color="gray" />}
-                        </td>
-                        <td className="text-center">
-                          {app.hasESignature ? <FaCheckCircle color="green" /> : <FaTimesCircle color="gray" />}
-                        </td>
-                        <td>
-                          <Badge bg={app.status === 'Confirmed' ? 'success' : 'warning'}>
-                            {app.status || 'Pending'}
-                          </Badge>
-                        </td>
-                        <td>
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            className="me-2"
-                            onClick={() => handleViewApplication(app)}
-                            title="View Details"
-                          >
-                            <FaEdit />
-                          </Button>
-                          {(!app.status || app.status === 'Pending') && (
-                            <Button
-                              variant="outline-success"
-                              size="sm"
-                              onClick={() => handleConfirmApplication(app.id)}
-                              title="Confirm Application"
-                            >
-                              <FaCheck /> Confirm
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="9" className="text-center">
-                        <div className="d-flex flex-column align-items-center">
-                          <FaInbox size={24} className="text-muted mb-2" />
-                          No applications found in the database.
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </Table>
-              
-              {/* Pagination Controls */}
+              <div className="mb-3">
+                <Row>
+                  <Col md={6}>
+                    <Form.Group>
+                      <InputGroup>
+                        <Form.Control
+                          type="text"
+                          placeholder="Search by name, email, phone, or SSN..."
+                          value={applicationSearchTerm}
+                          onChange={(e) => setApplicationSearchTerm(e.target.value)}
+                        />
+                        <Button variant="outline-secondary">
+                          <FaSearch />
+                        </Button>
+                      </InputGroup>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group>
+                      <Form.Select
+                        value={applicationTimeframe}
+                        onChange={(e) => setApplicationTimeframe(e.target.value)}
+                      >
+                        <option value="all">All Applications</option>
+                        <option value="daily">Today</option>
+                        <option value="weekly">This Week</option>
+                        <option value="monthly">This Month</option>
+                        <option value="yearly">This Year</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </div>
+
+              {isLoadingApplications ? (
+                <div className="text-center py-5">
+                  <Spinner animation="border" role="status" className="me-2">
+                    <span className="visually-hidden">Loading...</span>
+                  </Spinner>
+                  Loading applications...
+                </div>
+              ) : currentApplications.length > 0 ? (
+                <div className="applications-list">
+                  {currentApplications.map((app) => (
+                    <Card key={app.id} className="mb-3 application-card">
+                      <Card.Body>
+                        <Row>
+                          <Col md={8}>
+                            <h6 className="mb-3">
+                              {`${app.firstName || ''} ${app.middleName || ''} ${app.lastName || ''}`.trim() || 'N/A'}
+                            </h6>
+                            <div className="application-details">
+                              <p className="mb-1">
+                                <FaEnvelope className="me-2 text-muted" />
+                                {app.email || 'N/A'}
+                              </p>
+                              <p className="mb-1">
+                                <FaPhone className="me-2 text-muted" />
+                                {app.phone || 'N/A'}
+                              </p>
+                              <p className="mb-1">
+                                <FaCalendar className="me-2 text-muted" />
+                                DOB: {app.dateOfBirth || 'N/A'}
+                              </p>
+                              <p className="mb-1">
+                                <FaMapMarkerAlt className="me-2 text-muted" />
+                                {app.countryOfOrigin || 'N/A'}, {app.stateOfOrigin || 'N/A'}
+                              </p>
+                            </div>
+                          </Col>
+                          <Col md={4} className="text-end">
+                            <div className="mb-2">
+                              <Badge bg={app.status === 'Confirmed' ? 'success' : 'warning'}>
+                                {app.status || 'Pending'}
+                              </Badge>
+                            </div>
+                            <p className="text-muted mb-3">
+                              <small>
+                                Submitted: {new Date(app.applicationDate || app.timestamp).toLocaleDateString()}
+                              </small>
+                            </p>
+                            <div>
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                className="me-2"
+                                onClick={() => handleViewApplication(app)}
+                              >
+                                <FaEdit /> View
+                              </Button>
+                              {(!app.status || app.status === 'Pending') && (
+                                <Button
+                                  variant="outline-success"
+                                  size="sm"
+                                  onClick={() => handleConfirmApplication(app.id)}
+                                >
+                                  <FaCheck /> Confirm
+                                </Button>
+                              )}
+                            </div>
+                          </Col>
+                        </Row>
+                      </Card.Body>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-5">
+                  <div className="d-flex flex-column align-items-center">
+                    <FaInbox size={24} className="text-muted mb-2" />
+                    No applications found in database.
+                  </div>
+                </div>
+              )}
+
               {filteredApplications.length > 0 && (
                 <div className="d-flex justify-content-between align-items-center mt-3">
                   <div>
                     Showing {indexOfFirstApplication + 1} to {Math.min(indexOfLastApplication, filteredApplications.length)} of {filteredApplications.length} applications
               </div>
                   <div>
-                    <Button 
-                      variant="outline-secondary" 
-                      size="sm" 
-                      onClick={handlePreviousPage} 
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                       disabled={currentPage === 1}
                       className="me-2"
                     >
-                      <FaChevronLeft /> Previous
+                      Previous
                     </Button>
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      // Show pages around current page
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-                      
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "primary" : "outline-secondary"}
-                          size="sm"
-                          onClick={() => paginate(pageNum)}
-                          className="mx-1"
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-                    <Button 
-                      variant="outline-secondary" 
-                      size="sm" 
-                      onClick={handleNextPage} 
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                       disabled={currentPage === totalPages}
-                      className="ms-2"
                     >
-                      Next <FaChevronRight />
+                      Next
                     </Button>
-            </div>
+                  </div>
                 </div>
               )}
             </Card.Body>
