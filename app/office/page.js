@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Container, Row, Col, Card, Button, Form, Table, Nav, Tab, Badge, Modal, Spinner, ListGroup, InputGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Form, Table, Nav, Tab, Badge, Modal, Spinner, ListGroup, InputGroup, Alert, Dropdown } from 'react-bootstrap';
 import { 
   // Navigation and UI icons
   FaPhone, FaUser, FaEnvelope, FaCalendar, FaChartLine, FaUsers, 
@@ -44,11 +44,14 @@ import {
   FaInbox, FaArrowLeft, FaReply, FaReplyAll, FaForward, FaChartPie,
   FaCalendarCheck, FaNewspaper, FaRegStar, FaChevronLeft, FaChevronRight,
   FaUserCheck, FaUserClock,
+  FaSignature, FaIdCard,
+  FaGlobe, FaSnapchat, FaTiktok, FaInstagram, FaFacebook,
+  FaGift,
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
 import { db } from '../firebase/config';
-import { collection, getDocs, query, orderBy, updateDoc, doc, addDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, updateDoc, doc, addDoc, serverTimestamp, limit, where } from 'firebase/firestore';
 
 export default function Office() {
   const router = useRouter();
@@ -281,39 +284,40 @@ const [isMailingSameAsResidential, setIsMailingSameAsResidential] = useState(fal
 
 // Initial form data state with lowercase fields
 const [formData, setFormData] = useState({
-  firstname: '',
-  middlename: '',
-  lastname: '',
-  dateofbirth: '',
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  dateOfBirth: '',
   email: '',
   phone: '',
-  taxfilingstatus: '',
-  maritalstatus: '',
+  taxFilingStatus: '',
+  maritalStatus: '',
   address: '',
   city: '',
   state: '',
-  zipcode: '',
-  mailingaddress: '',
-  mailingcity: '',
-  mailingstate: '',
-  mailingzipcode: '',
-  countryoforigin: '',
-  stateoforigin: '',
+  zipCode: '',
+  mailingAddress: '',
+  mailingCity: '',
+  mailingState: '',
+  mailingZipCode: '',
+  countryOfOrigin: '',
+  stateOfOrigin: '',
   occupation: '',
-  annualsalary: '',
-  planname: '',
+  annualSalary: '',
+  planName: '',
   deductible: '',
   premium: '',
-  coveragetype: '',
-  spousefirstname: '',
-  spouselastname: '',
-  spousedateofbirth: '',
-  hasvoicerecording: false,
-  effectivedate: '',
-  policystatus: '',
-  spousessn: '',
+  coverageType: '',
+  spouseFirstName: '',
+  spouseLastName: '',
+  spouseDateOfBirth: '',
+  hasVoiceRecording: false,
+  effectiveDate: '',
+  policyId: '',
+  spouseSSN: '',
   ssn: '',
-  willbeclaimedontaxes: '',
+  willBeClaimedOnTaxes: '',
+  isWebLead: false,
   // Add all other fields you use in the form, with default values
 });
 
@@ -322,41 +326,41 @@ const validateForm = () => {
   const errors = {};
 
   const requiredFields = {
-    personalinfo: {
-      firstname: 'First Name',
-      middlename: 'Middle Name',
-      lastname: 'Last Name',
-      dateofbirth: 'Date of Birth',
+    personalInfo: {
+      firstName: 'First Name',
+      middleName: 'Middle Name',
+      lastName: 'Last Name',
+      dateOfBirth: 'Date of Birth',
       email: 'Email',
       phone: 'Phone Number',
-      taxfilingstatus: 'Tax Filing Status',
-      maritalstatus: 'Marital Status'
+      taxFilingStatus: 'Tax Filing Status',
+      maritalStatus: 'Marital Status'
     },
-    addressinfo: {
+    addressInfo: {
       address: 'Street Address',
       city: 'City',
       state: 'State',
-      zipcode: 'ZIP Code'
+      zipCode: 'ZIP Code'
     },
-    mailingaddress: !isMailingSameAsResidential ? {
-      mailingaddress: 'Mailing Street Address',
-      mailingcity: 'Mailing City',
-      mailingstate: 'Mailing State',
-      mailingzipcode: 'Mailing ZIP Code'
+    mailingAddress: !isMailingSameAsResidential ? {
+      mailingAddress: 'Mailing Street Address',
+      mailingCity: 'Mailing City',
+      mailingState: 'Mailing State',
+      mailingZipCode: 'Mailing ZIP Code'
     } : {},
-    origininfo: {
-      countryoforigin: 'Country of Origin',
-      stateoforigin: 'State/Province of Origin'
+    originInfo: {
+      countryOfOrigin: 'Country of Origin',
+      stateOfOrigin: 'State/Province of Origin'
     },
-    employmentinfo: {
+    employmentInfo: {
       occupation: 'Occupation',
-      annualsalary: 'Expected Annual Salary'
+      annualSalary: 'Expected Annual Salary'
     },
-    insuranceinfo: {
-      planname: 'Plan Name',
+    insuranceInfo: {
+      planName: 'Plan Name',
       deductible: 'Deductible',
       premium: 'Premium',
-      coveragetype: 'Coverage Type'
+      coverageType: 'Coverage Type'
     }
   };
 
@@ -376,14 +380,24 @@ const validateForm = () => {
     errors.phone = 'Please enter a valid phone number in (XXX) XXX-XXXX format';
   }
 
-  if (formData.maritalstatus === 'married') {
-    if (!formData.spousefirstname?.trim()) errors.spousefirstname = 'Spouse First Name is required';
-    if (!formData.spouselastname?.trim()) errors.spouselastname = 'Spouse Last Name is required';
-    if (!formData.spousedateofbirth?.trim()) errors.spousedateofbirth = 'Spouse Date of Birth is required';
+  if (formData.maritalStatus === 'married') {
+    if (!formData.spouseFirstName?.trim()) errors.spouseFirstName = 'Spouse First Name is required';
+    if (!formData.spouseLastName?.trim()) errors.spouseLastName = 'Spouse Last Name is required';
+    if (!formData.spouseDateOfBirth?.trim()) errors.spouseDateOfBirth = 'Spouse Date of Birth is required';
   }
 
-  if (!formData.hasvoicerecording) {
-    errors.voicerecording = 'Voice recording verification is required';
+  if (!formData.hasVoiceRecording) {
+    errors.voiceRecording = 'Voice recording verification is required';
+  }
+
+  // Add deductible validation
+  if (formData.deductible) {
+    const deductibleValue = parseInt(formData.deductible.replace(/[^0-9]/g, ''));
+    if (isNaN(deductibleValue)) {
+      errors.deductible = 'Please enter a valid number';
+    } else if (deductibleValue > 10000) {
+      errors.deductible = 'Deductible cannot exceed $10,000';
+    }
   }
 
   setValidationErrors(errors);
@@ -395,7 +409,16 @@ const handleInputChange = (e) => {
   const { name, value } = e.target;
 
   if (name === 'phone') {
-    const formattedValue = formatPhoneNumber(value); // Assume this function exists
+    const formattedValue = formatPhoneNumber(value);
+    setFormData(prev => ({
+      ...prev,
+      [name]: formattedValue
+    }));
+  } else if (name === 'deductible') {
+    // Remove any non-numeric characters
+    const numericValue = value.replace(/[^0-9]/g, '');
+    // Format as currency
+    const formattedValue = numericValue ? `$${parseInt(numericValue).toLocaleString()}` : '';
     setFormData(prev => ({
       ...prev,
       [name]: formattedValue
@@ -428,21 +451,16 @@ const handleSave = async (type) => {
     const clientId = `CLT-${timestamp}-${randomNum}`;
     console.log('Generated client ID:', clientId);
 
-    // Update the application ID in the form header
-    const applicationIdElement = document.querySelector('.application-id-badge');
-    if (applicationIdElement) {
-      applicationIdElement.textContent = `Client ID: ${clientId}`;
-    }
-
     // Prepare the application data
     const applicationData = {
       ...formData,
       clientId,
-      clientName: `${formData.firstname} ${formData.lastname}`.trim(),
+      clientName: `${formData.firstName} ${formData.lastName}`.trim(),
       submissionDate: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: type === 'draft' ? 'Draft' : 'Submitted',
+      enrollmentDate: type === 'draft' ? null : new Date().toISOString(),
       hasRecording: formData.hasVoiceRecording || false,
       hasESignature: formData.hasESignature || false
     };
@@ -460,18 +478,26 @@ const handleSave = async (type) => {
     } else {
       setSavingStatus('submitted');
       setIsSubmitting(false);
+      // Update form data with new enrollment date and status
+      setFormData(prev => ({
+        ...prev,
+        enrollmentDate: new Date().toISOString(),
+        status: 'Submitted'
+      }));
     }
 
     // Update enrollment title if name is available
-    if (formData.firstname && formData.lastname) {
-      setEnrollmentTitle(`${formData.firstname} ${formData.lastname}'s Enrollment`);
+    if (formData.firstName && formData.lastName) {
+      setEnrollmentTitle(`${formData.firstName} ${formData.lastName}'s Enrollment`);
     }
-
-    setTimeout(() => setSavingStatus(''), 3000);
   } catch (error) {
-    console.error('Error saving form:', error);
+    console.error('Error saving application:', error);
     setSavingStatus('error');
-    setTimeout(() => setSavingStatus(''), 3000);
+    if (type === 'draft') {
+      setIsDraftSaving(false);
+    } else {
+      setIsSubmitting(false);
+    }
   }
 };
 
@@ -705,29 +731,7 @@ const handleSave = async (type) => {
     { from: 'Mike Johnson', subject: 'Document Review', preview: 'Can you check this...', time: '1d ago', unread: false }
   ];
 
-  const upcomingMeetings = [
-    { 
-      title: 'Team Standup', 
-      time: new Date(new Date().setHours(10, 0)), 
-      participants: 5,
-      type: 'video',
-      meetLink: 'https://meet.google.com/abc123'
-    },
-    { 
-      title: 'Project Review', 
-      time: new Date(new Date().setHours(14, 0)), 
-      participants: 8,
-      type: 'video',
-      meetLink: 'https://meet.google.com/def456'
-    },
-    { 
-      title: 'Sales Floor', 
-      time: new Date(new Date().setHours(16, 0)), 
-      participants: 8,
-      type: 'video',
-      meetLink: 'https://meet.google.com/def456'
-    }
-  ];
+  const upcomingMeetings = [];
 
   const recentTasks = [
     { 
@@ -862,8 +866,9 @@ const handleSave = async (type) => {
     client.phone.includes(searchQuery)
   );
 
-  // Get first day of month
-  const firstDayOfMonth = new Date(2025, 2, 1);
+  // Get first day of month dynamically
+  const now = new Date();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startingDayIndex = firstDayOfMonth.getDay();
   
   // Generate calendar days array with empty slots for proper alignment
@@ -2158,7 +2163,11 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
       zipCode: app.zipcode || app.zipCode || '',
       ssn: app.ssn || '',
       occupation: app.occupation || '',
-      annualSalary: app.annualSalary || app.expectedSalary || ''
+      annualSalary: app.annualSalary || app.expectedSalary || '',
+      agentId: app.agent_id || app.agentId || 'N/A',
+      clientId: app.client_id || app.clientId || 'N/A',
+      status: app.status || 'N/A',
+      enrollmentDate: app.enrollmentDate || app.timestamp || null
     }));
     setShowSearchResults(false);
     setEnrollmentSearch('');
@@ -2233,6 +2242,288 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
       zipCode: suggestion.zipcode
     }));
     setAddressSuggestions([]);
+  };
+
+  // Add these state variables at the top with other useState declarations
+  const [showLeadSourceModal, setShowLeadSourceModal] = useState(false);
+  const [showMessagingModal, setShowMessagingModal] = useState(false);
+  const [messageSearch, setMessageSearch] = useState('');
+  const [messageSearchResults, setMessageSearchResults] = useState([]);
+
+  // Add this function to handle message search
+  const handleMessageSearch = async (searchTerm) => {
+    setMessageSearch(searchTerm);
+    if (searchTerm.length < 2) {
+      setMessageSearchResults([]);
+      return;
+    }
+
+    try {
+      // Search in both clients and agents collections
+      const clientsRef = collection(db, 'clients');
+      const agentsRef = collection(db, 'agents');
+      
+      const [clientsSnapshot, agentsSnapshot] = await Promise.all([
+        query(clientsRef, where('firstName', '>=', searchTerm), where('firstName', '<=', searchTerm + '\uf8ff')),
+        query(agentsRef, where('firstName', '>=', searchTerm), where('firstName', '<=', searchTerm + '\uf8ff'))
+      ]);
+
+      const clients = clientsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        type: 'client'
+      }));
+
+      const agents = agentsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        type: 'agent'
+      }));
+
+      setMessageSearchResults([...clients, ...agents]);
+    } catch (error) {
+      console.error('Error searching for messages:', error);
+    }
+  };
+
+  // Add this function to start a new chat
+  const handleStartNewChat = (user) => {
+    const chatData = {
+      id: 'new',
+      clientId: user.id,
+      clientName: `${user.firstName} ${user.lastName}`,
+      phone: user.phone,
+      email: user.email,
+      type: user.type,
+      messages: []
+    };
+    handleOpenChat(chatData);
+    setShowMessagingModal(false);
+  };
+
+  // Add state for new message input
+  const [newMessage, setNewMessage] = useState('');
+
+  // Add this state near the other useState declarations
+  const [showMergeDropdown, setShowMergeDropdown] = useState(false);
+
+  // Add state for rewards tab
+  const [rewardsActiveSearch, setRewardsActiveSearch] = useState('');
+  const [rewardsRestoredSearch, setRewardsRestoredSearch] = useState('');
+  const [activeClients, setActiveClients] = useState([]);
+  const [restoredClients, setRestoredClients] = useState([]);
+  const [rewardsInactiveSearch, setRewardsInactiveSearch] = useState('');
+  const [inactiveClients, setInactiveClients] = useState([]);
+
+  // Fetch and filter clients for rewards tab
+  useEffect(() => {
+    if (activeTab === 'rewards') {
+      const fetchClients = async () => {
+        const applicationsRef = collection(db, 'applications');
+        const snapshot = await getDocs(applicationsRef);
+        const allClients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Active clients: status is Active, has clientId
+        setActiveClients(allClients.filter(c => (c.status === 'Active' || c.status === 'active') && c.clientId));
+        // Restored clients: has a lapse/restoration history (assume a field 'restorationHistory' or similar)
+        setRestoredClients(allClients.filter(c => Array.isArray(c.restorationHistory) && c.restorationHistory.length > 0 && c.clientId));
+        // Inactive clients: status is Inactive, has clientId
+        setInactiveClients(allClients.filter(c => (c.status === 'Inactive' || c.status === 'inactive') && c.clientId));
+      };
+      fetchClients();
+    }
+  }, [activeTab]);
+
+  // Campaign-based rewards example
+  const campaignRewards = [
+    {
+      id: 'campaign1',
+      name: 'Free Phone for Extended Coverage',
+      description: 'Offer a free phone to clients who extend their coverage by 12 months.',
+    },
+    {
+      id: 'campaign2',
+      name: 'Gift Card for Referral',
+      description: 'Give a $50 gift card to clients who refer a friend that enrolls.',
+    },
+  ];
+  const [showAssignRewardModal, setShowAssignRewardModal] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [selectedRewardClient, setSelectedRewardClient] = useState(null);
+
+  // Add state for new event date modal
+  const [showNewEventDateModal, setShowNewEventDateModal] = useState(false);
+  const [newEventDate, setNewEventDate] = useState('');
+
+  // Add state for new event fields
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventStartTime, setNewEventStartTime] = useState('');
+  const [newEventEndTime, setNewEventEndTime] = useState('');
+  const [newEventDescription, setNewEventDescription] = useState('');
+  // Replace newEventLocation with newEventMeetingLink
+  const [newEventMeetingLink, setNewEventMeetingLink] = useState('');
+
+  // Remove placeholder meetings
+  const [events, setEvents] = useState([]);
+
+  // Function to add a new event
+  const addEvent = (event) => {
+    setEvents([...events, event]);
+  };
+
+  // Function to delete an event
+  const deleteEvent = (index) => {
+    const newEvents = events.filter((_, i) => i !== index);
+    setEvents(newEvents);
+  };
+
+  // Function to modify an event
+  const modifyEvent = (index, updatedEvent) => {
+    const newEvents = [...events];
+    newEvents[index] = updatedEvent;
+    setEvents(newEvents);
+  };
+
+  // Add state for scheduled events
+  const [scheduledEvents, setScheduledEvents] = useState([]);
+  const [accessToken, setAccessToken] = useState('');
+
+  // Function to fetch events from Google Calendar API
+  const fetchScheduledEvents = async () => {
+    try {
+      // If no access token, get a new one
+      if (!accessToken) {
+        console.log('No access token, refreshing...');
+        const newToken = await refreshAccessToken();
+        if (!newToken) {
+          console.error('Failed to get new access token');
+          setScheduledEvents([]);
+          return;
+        }
+      }
+
+      // First, get the list of calendars
+      console.log('Fetching calendar list...');
+      const calendarsResponse = await fetch(
+        'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      if (!calendarsResponse.ok) {
+        console.error('Failed to fetch calendar list:', await calendarsResponse.text());
+        setScheduledEvents([]);
+        return;
+      }
+
+      const calendars = await calendarsResponse.json();
+      console.log('Available calendars:', calendars);
+
+      // Use the primary calendar or the first available calendar
+      const calendarId = 'primary';
+      
+      console.log('Fetching events from calendar:', calendarId);
+      const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?maxResults=3&orderBy=startTime&singleEvents=true&timeMin=${new Date().toISOString()}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        console.log('Token expired, refreshing...');
+        const newToken = await refreshAccessToken();
+        if (!newToken) {
+          console.error('Failed to refresh token');
+          setScheduledEvents([]);
+          return;
+        }
+        // Retry the request with new token
+        return fetchScheduledEvents();
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Calendar API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        throw new Error(`Calendar API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Events fetched successfully:', data);
+      setScheduledEvents(data.items || []);
+    } catch (error) {
+      console.error('Error in fetchScheduledEvents:', error);
+      setScheduledEvents([]);
+    }
+  };
+
+  // Set up periodic token refresh
+  useEffect(() => {
+    const refreshInterval = setInterval(async () => {
+      await refreshAccessToken();
+    }, 45 * 60 * 1000); // Refresh every 45 minutes
+
+    return () => clearInterval(refreshInterval);
+  }, []);
+
+  // Fetch events on component mount and daily
+  useEffect(() => {
+    fetchScheduledEvents();
+    const interval = setInterval(fetchScheduledEvents, 86400000); // 24 hours
+    return () => clearInterval(interval);
+  }, []);
+
+  const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
+  const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+  const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+  const refreshAccessToken = async () => {
+    try {
+      console.log('Attempting to refresh token...');
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
+          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+          refresh_token: process.env.GOOGLE_REFRESH_TOKEN || '',
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Token refresh failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: data
+        });
+        throw new Error(`Failed to refresh token: ${data.error_description || data.error || 'Unknown error'}`);
+      }
+
+      console.log('Token refreshed successfully');
+      setAccessToken(data.access_token);
+      return data.access_token;
+    } catch (error) {
+      console.error('Error in refreshAccessToken:', {
+        message: error.message,
+        stack: error.stack
+      });
+      return null;
+    }
   };
 
   return (
@@ -2557,6 +2848,11 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
+            <Nav.Link active={activeTab === 'rewards'} onClick={() => setActiveTab('rewards')}>
+              <FaGift className="me-2" /> Rewards
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
             <Nav.Link active={activeTab === 'settings'} onClick={() => setActiveTab('settings')}>
               <FaCog className="me-2" /> Settings
             </Nav.Link>
@@ -2667,9 +2963,14 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                     {/* Calendar view - full width */}
                     <div className="calendar-view w-100">
                       <div className="calendar-header d-flex justify-content-between align-items-center mb-3">
-                        <h5 className="current-month mb-0">March 2025</h5>
-                        <div className="digital-time text-muted">
-                          <small>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
+                        <h5 className="current-month mb-0">{now.toLocaleString('default', { month: 'long', year: 'numeric' })}</h5>
+                        <div className="d-flex align-items-center">
+                          <Button variant="outline-primary" size="sm" className="me-2" onClick={() => setShowNewEventDateModal(true)}>
+                            <FaPlus />
+                          </Button>
+                          <div className="digital-time text-muted">
+                            <small>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
+                          </div>
                         </div>
                       </div>
                       <div className="calendar-grid" style={{ 
@@ -2692,37 +2993,23 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                         {calendarDays.map((day, index) => {
                           if (day === null) return <div key={`empty-${index}`} className="calendar-day" />;
                           
-                          const hasEvents = [4, 7, 9, 10, 11, 13, 14, 15, 29, 30, 31].includes(day);
+                          const dayEvents = events.filter(event => new Date(event.date).getDate() === day);
                           const isToday = day === currentTime.getDate() && 
-                            currentTime.getMonth() === 2 && 
-                            currentTime.getFullYear() === 2025;
+                            currentTime.getMonth() === now.getMonth() && 
+                            currentTime.getFullYear() === now.getFullYear();
                           
                           return (
                             <div 
                               key={day} 
-                              className={`calendar-day ${isToday ? 'today' : ''} ${hasEvents ? 'has-events' : ''}`}
+                              className={`calendar-day ${isToday ? 'today' : ''} ${dayEvents.length > 0 ? 'has-events' : ''}`}
                               onClick={() => {
-                                if (hasEvents) {
-                                  setSelectedDate(day);
-                                  setSelectedDateEvents([
-                                    {
-                                      title: 'Team Training',
-                                      time: '10:00 AM',
-                                      type: 'Training',
-                                      participants: 12
-                                    },
-                                    {
-                                      title: 'Department Meeting',
-                                      time: '2:00 PM',
-                                      type: 'Meeting',
-                                      participants: 8
-                                    }
-                                  ]);
+                                if (dayEvents.length > 0) {
+                                  setSelectedDateEvents(dayEvents);
                                   setShowEventsModal(true);
                                 }
                               }}
                               style={{ 
-                                cursor: hasEvents ? 'pointer' : 'default',
+                                cursor: dayEvents.length > 0 ? 'pointer' : 'default',
                                 height: '65px',
                                 border: '1px solid #e5e7eb',
                                 borderRadius: '4px',
@@ -2737,7 +3024,7 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                                 fontSize: '14px',
                                 marginBottom: '4px'
                               }}>{day}</div>
-                              {hasEvents && <div className="event-indicator" style={{
+                              {dayEvents.length > 0 && <div className="event-indicator" style={{
                                 width: '6px',
                                 height: '6px',
                                 borderRadius: '50%',
@@ -2783,37 +3070,10 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                   </Card.Header>
                   <Card.Body style={{ height: "550px", overflowY: "auto" }} className="p-3">
                     <div className="meetings-list">
-                      {upcomingMeetings.map((meeting, index) => (
-                        <div key={index} className="meeting-item d-flex align-items-center p-3 mb-3 border rounded shadow-sm" 
-                             style={{ background: index % 2 === 0 ? '#f8f9ff' : 'white' }}>
-                          <div className="meeting-indicator bg-primary rounded-circle me-3" style={{ width: '12px', height: '12px' }}></div>
-                          <div className="meeting-details flex-grow-1">
-                            <h6 className="mb-1 text-primary">{meeting.title}</h6>
-                            <MeetingTime meeting={meeting} currentTime={currentTime} />
-                            <div className="mt-2">
-                              <Badge bg="light" text="dark" className="me-2">
-                                <FaUsers className="me-1" /> {index === 0 ? 5 : index === 1 ? 3 : 8} Participants
-                              </Badge>
-                              <Badge bg="light" text="dark">
-                                <FaClock className="me-1" /> {index === 0 ? 30 : index === 1 ? 45 : 60} min
-                              </Badge>
-                            </div>
-                          </div>
-                          <div className="meeting-actions">
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              onClick={() => window.open(meeting.meetLink, '_blank')}
-                              className="text-white"
-                              style={{ backgroundColor: '#0d6efd', borderColor: '#0d6efd' }}
-                            >
-                              <FaVideo className="me-1" /> Join
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {/* Remove View All Meetings button */}
+                      <div className="text-center text-muted py-5">
+                        <p className="mb-2">No upcoming events scheduled</p>
+                        <small>Use the + button in the calendar to add new events</small>
+                      </div>
                     </div>
                   </Card.Body>
                 </Card>
@@ -2823,27 +3083,27 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
             {/* Events Modal */}
             <Modal show={showEventsModal} onHide={() => setShowEventsModal(false)}>
               <Modal.Header closeButton>
-                <Modal.Title>Events for March {selectedDate}, 2025</Modal.Title>
+                <Modal.Title>Events for {selectedDate}</Modal.Title>
               </Modal.Header>
               <Modal.Body>
                 {selectedDateEvents.map((event, index) => (
                   <div key={index} className="event-item p-3 mb-3 border rounded shadow-sm" 
                        style={{ background: index % 2 === 0 ? '#f8f9ff' : 'white' }}>
                     <div className="d-flex justify-content-between align-items-center">
-                      <h5 className="text-primary mb-2">{event.title}</h5>
+                      <h5 className="mb-0">{event.title}</h5>
                       <Badge bg={event.type === 'Training' ? 'info' : 'primary'}>{event.type}</Badge>
                     </div>
                     <div className="d-flex mb-2">
                       <div className="me-3">
-                        <FaClock className="me-1 text-muted" /> {event.time}
+                        <FaClock className="me-1 text-muted" /> {event.startTime} - {event.endTime}
                       </div>
                       <div>
                         <FaUsers className="me-1 text-muted" /> {event.participants} Participants
                       </div>
                     </div>
                     <div className="d-flex justify-content-end mt-3">
-                      <Button variant="outline-secondary" size="sm" className="me-2">Edit</Button>
-                      <Button variant="primary" size="sm">Join Meeting</Button>
+                      <Button variant="outline-secondary" size="sm" className="me-2" onClick={() => modifyEvent(index, event)}>Edit</Button>
+                      <Button variant="danger" size="sm" onClick={() => deleteEvent(index)}>Delete</Button>
                     </div>
                   </div>
                 ))}
@@ -2852,7 +3112,7 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                 <Button variant="secondary" onClick={() => setShowEventsModal(false)}>
                   Close
                 </Button>
-                <Button variant="primary">
+                <Button variant="primary" onClick={() => setShowNewEventDateModal(true)}>
                   Add Event
                 </Button>
               </Modal.Footer>
@@ -3056,13 +3316,32 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                   <Card.Header>
                     <div className="d-flex justify-content-between align-items-center">
                       <div>
-                        <h4 className="mb-2">{enrollmentTitle}</h4>
+                        {/* Enrollment Title and Merge Dropdown */}
+                        <div className="d-flex flex-column align-items-start mb-3">
+                          <h4 className="mb-1">{enrollmentTitle}</h4>
+                          <Dropdown show={showMergeDropdown} onToggle={() => setShowMergeDropdown(!showMergeDropdown)}>
+                            <Dropdown.Toggle as="div" className="d-flex gap-3 mt-2 p-0 border-0 bg-transparent" style={{cursor: 'pointer'}} id="merge-dropdown">
+                              <Badge bg="info" className="agent-id-badge">
+                                <FaUser className="me-1" /> Agent ID: {formData.agentId || 'N/A'}
+                              </Badge>
+                            </Dropdown.Toggle>
+                            <Dropdown.Menu>
+                              {formData.agentId ? (
+                                <Dropdown.Item onClick={() => {/* show agent profile logic here */}}>
+                                  Show Agent Profile
+                                </Dropdown.Item>
+                              ) : (
+                                <Dropdown.Item disabled>Agent Not Assigned</Dropdown.Item>
+                              )}
+                            </Dropdown.Menu>
+                          </Dropdown>
+                        </div>
                         <div className="d-flex gap-3 mt-2">
                           <Badge bg="info" className="agent-id-badge">
-                            <FaUser className="me-1" /> Agent ID: AGT-78945
+                            <FaUser className="me-1" /> Agent ID: {formData.agentId || 'N/A'}
                           </Badge>
                           <Badge bg="primary" className="client-id-badge">
-                            <FaFileAlt className="me-1" /> Client ID: CLT-2024-00321
+                            <FaFileAlt className="me-1" /> Client ID: {formData.clientId || 'N/A'}
                           </Badge>
                         </div>
                       </div>
@@ -3072,39 +3351,40 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                         onClick={() => {
                           // Reset form data
                           setFormData({
-                            firstname: '',
-                            middlename: '',
-                            lastname: '',
-                            dateofbirth: '',
+                            firstName: '',
+                            middleName: '',
+                            lastName: '',
+                            dateOfBirth: '',
                             email: '',
                             phone: '',
-                            taxfilingstatus: '',
-                            maritalstatus: '',
+                            taxFilingStatus: '',
+                            maritalStatus: '',
                             address: '',
                             city: '',
                             state: '',
-                            zipcode: '',
-                            mailingaddress: '',
-                            mailingcity: '',
-                            mailingstate: '',
-                            mailingzipcode: '',
-                            countryoforigin: '',
-                            stateoforigin: '',
+                            zipCode: '',
+                            mailingAddress: '',
+                            mailingCity: '',
+                            mailingState: '',
+                            mailingZipCode: '',
+                            countryOfOrigin: '',
+                            stateOfOrigin: '',
                             occupation: '',
-                            annualsalary: '',
-                            planname: '',
+                            annualSalary: '',
+                            planName: '',
                             deductible: '',
                             premium: '',
-                            coveragetype: '',
-                            spousefirstname: '',
-                            spouselastname: '',
-                            spousedateofbirth: '',
-                            hasvoicerecording: false,
-                            effectivedate: '',
-                            policystatus: '',
-                            spousessn: '',
+                            coverageType: '',
+                            spouseFirstName: '',
+                            spouseLastName: '',
+                            spouseDateOfBirth: '',
+                            hasVoiceRecording: false,
+                            effectiveDate: '',
+                            policyId: '',
+                            spouseSSN: '',
                             ssn: '',
-                            willbeclaimedontaxes: '',
+                            willBeClaimedOnTaxes: '',
+                            isWebLead: false,
                             // Add all other fields you use in the form, with default values
                           });
                           setEnrollmentTitle('Untitled Enrollment');
@@ -3166,13 +3446,45 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                       <div className="section mb-4">
                         <h6 className="mb-3">Lead Source</h6>
                         <div className="lead-source-indicator p-3 border rounded">
-                          <div className="d-flex align-items-center">
-                            <div className="lead-source-icon me-3">
-                              <FaUserPlus size={24} className="text-primary" />
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div className="d-flex align-items-center">
+                              <div className="lead-source-icon me-3">
+                                {formData.leadSource === 'web' && <FaGlobe size={24} className="text-primary" />}
+                                {formData.leadSource === 'snapchat' && <FaSnapchat size={24} className="text-yellow" />}
+                                {formData.leadSource === 'tiktok' && <FaTiktok size={24} className="text-dark" />}
+                                {formData.leadSource === 'instagram' && <FaInstagram size={24} className="text-danger" />}
+                                {formData.leadSource === 'facebook' && <FaFacebook size={24} className="text-primary" />}
+                                {formData.leadSource === 'google' && <FaGoogle size={24} className="text-danger" />}
+                                {formData.leadSource === 'community' && <FaUsers size={24} className="text-success" />}
+                                {formData.leadSource === 'referral' && <FaUserFriends size={24} className="text-info" />}
+                                {!formData.leadSource && <FaUserPlus size={24} className="text-primary" />}
+                              </div>
+                              <div>
+                                <h6 className="mb-1">
+                                  {formData.leadSource ? 
+                                    formData.leadSource.charAt(0).toUpperCase() + formData.leadSource.slice(1) : 
+                                    'Direct Lead'}
+                                </h6>
+                                <p className="text-muted mb-0">
+                                  {formData.leadSource ? 
+                                    `Added through ${formData.leadSource}` : 
+                                    'Added through direct contact'}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <h6 className="mb-1">Direct Lead</h6>
-                              <p className="text-muted mb-0">Added through direct contact</p>
+                            <div className="text-end">
+                              <Badge bg="secondary" className="mb-2">
+                                Lead ID: {formData.lead_id || formData.leadId || 'N/A'}
+                              </Badge>
+                              <div className="d-flex gap-2 justify-content-end">
+                                <Button 
+                                  variant="outline-secondary" 
+                                  size="sm"
+                                  onClick={() => setShowLeadSourceModal(true)}
+                                >
+                                  <FaEdit className="me-1" /> Change Source
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -3207,11 +3519,7 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                                 value={formData.middleName}
                                 onChange={handleInputChange}
                                 placeholder="Enter middle name"
-                                isInvalid={!!validationErrors.middleName}
                               />
-                              {validationErrors.middleName && (
-                                <Form.Text className="text-danger">{validationErrors.middleName}</Form.Text>
-                              )}
                             </Form.Group>
                           </Col>
                           <Col md={4}>
@@ -3266,15 +3574,25 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                           <Col md={3}>
                             <Form.Group className="mb-3">
                               <Form.Label>Phone</Form.Label>
-                              <Form.Control 
-                                type="tel"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleInputChange}
-                                placeholder="(XXX) XXX-XXXX"
-                                maxLength="14"
-                                isInvalid={!!validationErrors.phone}
-                              />
+                              <div className="d-flex align-items-center gap-2">
+                                <Form.Control 
+                                  type="tel"
+                                  name="phone"
+                                  value={formData.phone}
+                                  onChange={handleInputChange}
+                                  placeholder="(XXX) XXX-XXXX"
+                                  maxLength="14"
+                                  isInvalid={!!validationErrors.phone}
+                                />
+                                <Button
+                                  variant="outline-primary"
+                                  size="sm"
+                                  onClick={() => setShowMessagingModal(true)}
+                                  title="Open Chat"
+                                >
+                                  <FaComments />
+                                </Button>
+                              </div>
                               {validationErrors.phone && (
                                 <Form.Text className="text-danger">{validationErrors.phone}</Form.Text>
                               )}
@@ -3868,10 +4186,10 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                                 isInvalid={!!validationErrors.coverageType}
                               >
                                 <option value="">Select coverage type</option>
-                                <option value="individual">Individual</option>
-                                <option value="family">Family</option>
-                                <option value="employee">Employee</option>
-                                <option value="employee_plus_one">Employee + 1</option>
+                                <option value="ACA">ACA</option>
+                                <option value="Medicare">Medicare</option>
+                                <option value="Vision">Vision</option>
+                                <option value="Dental">Dental</option>
                               </Form.Select>
                               {validationErrors.coverageType && (
                                 <Form.Text className="text-danger">{validationErrors.coverageType}</Form.Text>
@@ -3883,14 +4201,31 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                           <Col md={6}>
                             <Form.Group className="mb-3">
                               <Form.Label>Deductible</Form.Label>
-                              <Form.Control
-                                type="text"
-                                name="deductible"
-                                value={formData.deductible}
-                                onChange={handleInputChange}
-                                placeholder="Enter deductible amount"
-                                isInvalid={!!validationErrors.deductible}
-                              />
+                              <div className="d-flex align-items-center gap-2">
+                                <Form.Control
+                                  type="text"
+                                  name="deductible"
+                                  value={formData.deductible}
+                                  onChange={handleInputChange}
+                                  placeholder="Enter deductible amount"
+                                  isInvalid={!!validationErrors.deductible}
+                                />
+                                {formData.deductible && (
+                                  <div className="deductible-indicator">
+                                    {(() => {
+                                      const deductibleValue = parseInt(formData.deductible.replace(/[^0-9]/g, ''));
+                                      if (deductibleValue === 0) {
+                                        return <span className="badge bg-success">$0 Deductible</span>;
+                                      } else if (deductibleValue > 0 && deductibleValue <= 2000) {
+                                        return <span className="badge bg-info">Low Deductible</span>;
+                                      } else if (deductibleValue > 2000) {
+                                        return <span className="badge bg-warning">High Deductible</span>;
+                                      }
+                                      return null;
+                                    })()}
+                                  </div>
+                                )}
+                              </div>
                               {validationErrors.deductible && (
                                 <Form.Text className="text-danger">{validationErrors.deductible}</Form.Text>
                               )}
@@ -3902,10 +4237,11 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                               <Form.Control
                                 type="text"
                                 name="premium"
-                                value={formData.premium}
+                                value={formData.isWebLead ? '0' : formData.premium}
                                 onChange={handleInputChange}
                                 placeholder="Enter premium amount"
                                 isInvalid={!!validationErrors.premium}
+                                disabled={formData.isWebLead}
                               />
                               {validationErrors.premium && (
                                 <Form.Text className="text-danger">{validationErrors.premium}</Form.Text>
@@ -3931,42 +4267,42 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                           </Col>
                           <Col md={6}>
                             <Form.Group className="mb-3">
-                              <Form.Label>Policy Status</Form.Label>
-                              <Form.Select
-                                name="policyStatus"
-                                value={formData.policyStatus}
+                              <Form.Label>Policy ID</Form.Label>
+                              <Form.Control
+                                type="text"
+                                name="policyId"
+                                value={formData.policyId}
                                 onChange={handleInputChange}
-                                isInvalid={!!validationErrors.policyStatus}
-                              >
-                                <option value="">Select policy status</option>
-                                <option value="active">Active</option>
-                                <option value="pending">Pending</option>
-                                <option value="cancelled">Cancelled</option>
-                              </Form.Select>
-                              {validationErrors.policyStatus && (
-                                <Form.Text className="text-danger">{validationErrors.policyStatus}</Form.Text>
+                                placeholder="Enter policy ID"
+                                isInvalid={!!validationErrors.policyId}
+                              />
+                              {validationErrors.policyId && (
+                                <Form.Text className="text-danger">{validationErrors.policyId}</Form.Text>
                               )}
                             </Form.Group>
                           </Col>
                         </Row>
                       </div>
 
-                      {/* Recording Verification */}
+                      {/* Recording Verification Section */}
                       <div className="section mb-4">
-                        <h6 className="mb-3 d-flex justify-content-between align-items-center">
-                          <span>Recording Verification</span>
-                          <div className="d-flex gap-2">
-                            <Button 
-                              variant="primary" 
-                              size="sm"
-                              onClick={() => setShowVerificationModal(true)}
-                              disabled={isRecording}
-                            >
-                              <FaMicrophone className="me-2" /> Start New Recording
-                            </Button>
-                                </div>
-                        </h6>
-                        <div className="recording-status p-3 border rounded">
+                        <h6 className="mb-3">Recording Verification</h6>
+                        <div className="d-flex gap-3 mb-3">
+                          <Button 
+                            variant={isRecording ? "danger" : "primary"}
+                            onClick={handleRecordingSave}
+                            disabled={!isRecording}
+                          >
+                            {isRecording ? "Stop Recording" : "Start Recording"}
+                          </Button>
+                          <Button 
+                            variant="outline-primary"
+                            onClick={() => setShowRecordingHistory(true)}
+                          >
+                            <FaHistory className="me-1" /> Recording History
+                          </Button>
+                        </div>
+                        <div className="recording-status p-3 border rounded mb-3">
                           <div className="d-flex align-items-center">
                             <div className="recording-icon me-3">
                               {isRecording ? (
@@ -3986,9 +4322,47 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                               <p className="text-muted mb-0">
                                 {isRecording ? 'Recording verification script...' : 
                                  recordingSaved ? 'Verification completed successfully' : 
-                                 'Click "Start New Recording" to begin verification'}
+                                 'Click "Start Recording" to begin verification'}
                               </p>
                             </div>
+                          </div>
+                        </div>
+
+                        {/* E-Signature Field */}
+                        <div className="mt-3 border-top pt-3">
+                          <h6 className="text-muted mb-2">E-Signature Verification</h6>
+                          <div className="border rounded p-3 bg-light">
+                            {formData.signatureurl ? (
+                              <div>
+                                <div className="mb-2">
+                                  <Badge bg="success">Verified</Badge>
+                                  <span className="ms-2 text-muted">
+                                    Signed on {new Date(formData.timestamp?.seconds * 1000).toLocaleString()}
+                                  </span>
+                                </div>
+                                <div className="d-flex align-items-center gap-3">
+                                  <img 
+                                    src={formData.signatureurl} 
+                                    alt="E-Signature" 
+                                    style={{ maxHeight: '50px' }}
+                                    className="img-fluid"
+                                  />
+                                  <div>
+                                    <p className="mb-1">
+                                      <strong>Signer:</strong> {formData.firstName} {formData.lastName}
+                                    </p>
+                                    <p className="mb-0 text-muted small">
+                                      IP: {formData.ipAddress || 'Not recorded'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-center text-muted py-2">
+                                <FaSignature className="mb-2" style={{ fontSize: '24px' }} />
+                                <p className="mb-0">No e-signature available</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -4182,6 +4556,32 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                             ))}
                           </div>
                         </div>
+                      </div>
+                      {/* Enrollment Information */}
+                      <div className="section mb-4">
+                        <h6 className="mb-3">Enrollment Information</h6>
+                        <Row>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Enrollment Date</Form.Label>
+                              <Form.Control
+                                type="text"
+                                value={formData.enrollmentDate ? new Date(formData.enrollmentDate).toLocaleDateString() : 'Not Submitted'}
+                                readOnly
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={6}>
+                            <Form.Group className="mb-3">
+                              <Form.Label>Status</Form.Label>
+                              <Form.Control
+                                type="text"
+                                value={formData.status || 'Not Submitted'}
+                                readOnly
+                              />
+                            </Form.Group>
+                          </Col>
+                        </Row>
                       </div>
                     </Form>
                   </Card.Body>
@@ -5819,26 +6219,9 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                       </div>
                     
                     <ListGroup>
-                      <ListGroup.Item className="d-flex justify-content-between align-items-center">
-              <div>
-                          <span className="fw-bold">Email Blast: Summer Health Tips</span>
-                          <p className="mb-0 small text-muted">Scheduled for July 30, 2024</p>
-                      </div>
-                        <Badge bg="info">Scheduled</Badge>
-                      </ListGroup.Item>
-                      <ListGroup.Item className="d-flex justify-content-between align-items-center">
-              <div>
-                          <span className="fw-bold">Social Media Campaign: Family Coverage</span>
-                          <p className="mb-0 small text-muted">Scheduled for August 5, 2024</p>
-                      </div>
-                        <Badge bg="info">Scheduled</Badge>
-                      </ListGroup.Item>
-                      <ListGroup.Item className="d-flex justify-content-between align-items-center">
-              <div>
-                          <span className="fw-bold">Newsletter: August Health Updates</span>
-                          <p className="mb-0 small text-muted">Scheduled for August 10, 2024</p>
-                      </div>
-                        <Badge bg="info">Scheduled</Badge>
+                      <ListGroup.Item className="text-center text-muted py-3">
+                        <p className="mb-0">No upcoming events scheduled</p>
+                        <small>Use the + button in the calendar above to add new events</small>
                       </ListGroup.Item>
                     </ListGroup>
                   </Card.Body>
@@ -6069,6 +6452,306 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
         </Modal>
         
       </Container>
+
+      {/* Add all modals at the end of the container */}
+      <Modal show={showMessagingModal} onHide={() => setShowMessagingModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>New Message</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-4">
+            <Form.Label>Search for Client or Agent</Form.Label>
+            <div className="input-group">
+              <Form.Control
+                type="text"
+                placeholder="Search by name, ID, or phone..."
+                value={messageSearch}
+                onChange={(e) => handleMessageSearch(e.target.value)}
+              />
+              <Button variant="primary">
+                <FaSearch />
+              </Button>
+            </div>
+          </Form.Group>
+
+          {messageSearchResults.length > 0 && (
+            <div className="search-results">
+              <h6 className="mb-3">Search Results</h6>
+              <ListGroup>
+                {messageSearchResults.map(user => (
+                  <ListGroup.Item 
+                    key={user.id}
+                    className="d-flex justify-content-between align-items-center"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => handleStartNewChat(user)}
+                  >
+                    <div>
+                      <strong>{user.firstName} {user.lastName}</strong>
+                      <div className="text-muted small">
+                        {user.type === 'client' ? 'Client' : 'Agent'} • {user.phone || 'No phone'}
+                      </div>
+                    </div>
+                    <Badge bg={user.type === 'client' ? 'primary' : 'success'}>
+                      {user.type === 'client' ? 'Client' : 'Agent'}
+                    </Badge>
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            </div>
+          )}
+
+          {messageSearch && messageSearchResults.length === 0 && (
+            <div className="text-center text-muted py-4">
+              <FaSearch className="mb-2" style={{ fontSize: '24px' }} />
+              <p>No results found</p>
+            </div>
+          )}
+        </Modal.Body>
+      </Modal>
+
+      {/* Other modals */}
+      <Modal show={showLeadSourceModal} onHide={() => setShowLeadSourceModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Change Lead Source</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>Select Lead Source</Form.Label>
+            <Form.Select
+              value={formData.leadSource || ''}
+              onChange={(e) => {
+                setFormData(prev => ({
+                  ...prev,
+                  leadSource: e.target.value
+                }));
+                setShowLeadSourceModal(false);
+              }}
+            >
+              <option value="">Direct Lead</option>
+              <option value="web">Web</option>
+              <option value="snapchat">Snapchat</option>
+              <option value="tiktok">TikTok</option>
+              <option value="instagram">Instagram</option>
+              <option value="facebook">Facebook</option>
+              <option value="google">Google Ads</option>
+              <option value="community">Community</option>
+              <option value="referral">Referral</option>
+            </Form.Select>
+          </Form.Group>
+        </Modal.Body>
+      </Modal>
+
+      {/* Messaging Modal */}
+      <Modal show={showMessagingModal} onHide={() => setShowMessagingModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Chat with {formData.firstName} {formData.lastName}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="chat-container" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+            {/* Chat Messages */}
+            <div className="chat-messages flex-grow-1 overflow-auto mb-3 p-3 border rounded">
+              {formData.messages && formData.messages.length > 0 ? (
+                formData.messages.map((message, index) => (
+                  <div 
+                    key={index} 
+                    className={`message mb-3 ${message.sender === 'agent' ? 'text-end' : ''}`}
+                  >
+                    <div 
+                      className={`d-inline-block p-2 rounded ${
+                        message.sender === 'agent' 
+                          ? 'bg-primary text-white' 
+                          : 'bg-light'
+                      }`}
+                    >
+                      <div className="message-content">{message.content}</div>
+                      <small className="text-muted">
+                        {new Date(message.timestamp?.seconds * 1000).toLocaleString()}
+                      </small>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-muted py-4">
+                  <FaComments className="mb-2" style={{ fontSize: '24px' }} />
+                  <p>No messages yet. Start the conversation!</p>
+                </div>
+              )}
+            </div>
+
+            {/* Message Input */}
+            <div className="chat-input">
+              <Form.Group>
+                <div className="input-group">
+                  <Form.Control
+                    type="text"
+                    placeholder="Type your message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSendMessage();
+                      }
+                    }}
+                  />
+                  <Button 
+                    variant="primary"
+                    onClick={handleSendMessage}
+                    disabled={!newMessage.trim()}
+                  >
+                    <FaPaperPlane />
+                  </Button>
+                </div>
+              </Form.Group>
+            </div>
+          </div>
+        </Modal.Body>
+      </Modal>
+
+      {activeTab === 'rewards' && (
+        <Card className="dashboard-card mb-4 mx-3">
+          <Card.Header>
+            <h5 className="mb-0">Rewards Management</h5>
+          </Card.Header>
+          <Card.Body>
+            <p>Process and disperse campaign-based rewards for clients.</p>
+            {/* Campaign Rewards Section */}
+            <div className="available-rewards mb-4">
+              <h5>Available Campaign Rewards</h5>
+              <Table striped hover responsive size="sm">
+                <thead>
+                  <tr>
+                    <th>Campaign</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaignRewards.map((reward) => (
+                    <tr key={reward.id}>
+                      <td>{reward.name}</td>
+                      <td>{reward.description}</td>
+                      <td>
+                        <Button size="sm" variant="outline-primary" onClick={() => { setSelectedCampaign(reward); setShowAssignRewardModal(true); }}>Assign</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+            {/* Assign Reward Modal */}
+            <Modal show={showAssignRewardModal} onHide={() => setShowAssignRewardModal(false)}>
+              <Modal.Header closeButton>
+                <Modal.Title>Assign Reward</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                <Form.Group className="mb-3">
+                  <Form.Label>Select Client</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Search by name, email, or client ID..."
+                    value={selectedRewardClient || ''}
+                    onChange={e => setSelectedRewardClient(e.target.value)}
+                  />
+                  {/* In a real app, this would be a dropdown or autocomplete of clients */}
+                </Form.Group>
+                <p>Reward: <strong>{selectedCampaign?.name}</strong></p>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={() => setShowAssignRewardModal(false)}>Cancel</Button>
+                <Button variant="primary" onClick={() => { /* Grant reward logic here */ setShowAssignRewardModal(false); }}>Grant Reward</Button>
+              </Modal.Footer>
+            </Modal>
+            {/* ... existing code for Active, Restored, and Inactive Clients ... */}
+          </Card.Body>
+        </Card>
+      )}
+
+      {/* New Event Date Modal */}
+      <Modal show={showNewEventDateModal} onHide={() => setShowNewEventDateModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Add Future Event</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Event Title</Form.Label>
+            <Form.Control
+              type="text"
+              value={newEventTitle}
+              onChange={e => setNewEventTitle(e.target.value)}
+              placeholder="Enter event title"
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Event Date</Form.Label>
+            <Form.Control
+              type="date"
+              value={newEventDate}
+              onChange={e => setNewEventDate(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Start Time</Form.Label>
+            <Form.Control
+              type="time"
+              value={newEventStartTime}
+              onChange={e => setNewEventStartTime(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>End Time</Form.Label>
+            <Form.Control
+              type="time"
+              value={newEventEndTime}
+              onChange={e => setNewEventEndTime(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Description</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={newEventDescription}
+              onChange={e => setNewEventDescription(e.target.value)}
+              placeholder="Enter event description"
+            />
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Meeting Link</Form.Label>
+            <Form.Control
+              type="text"
+              value={newEventMeetingLink}
+              onChange={e => setNewEventMeetingLink(e.target.value)}
+              placeholder="Enter Google Meet meeting link"
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowNewEventDateModal(false)}>Cancel</Button>
+          <Button variant="primary" onClick={() => { /* Logic to add event */ setShowNewEventDateModal(false); }}>Add</Button>
+        </Modal.Footer>
+      </Modal>
+
+      {activeTab === 'scheduledEvents' && (
+        <Card className="dashboard-card mb-4">
+          <Card.Header>
+            <h5 className="mb-0">Scheduled Events</h5>
+          </Card.Header>
+          <Card.Body>
+            <p>View and manage your upcoming scheduled events.</p>
+            <ul className="list-group">
+              {scheduledEvents.length > 0 ? (
+                scheduledEvents.slice(0, 3).map((event, index) => (
+                  <li key={index} className="list-group-item">
+                    {event.summary} - {new Date(event.start.dateTime).toLocaleString()}
+                  </li>
+                ))
+              ) : (
+                <li className="list-group-item">No upcoming events scheduled.</li>
+              )}
+            </ul>
+          </Card.Body>
+        </Card>
+      )}
     </div>
   );
 } 

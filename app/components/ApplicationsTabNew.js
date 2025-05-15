@@ -50,11 +50,20 @@ export default function ApplicationsTabNew() {
           let residentialaddress = data.residentialaddress || data.residentialAddress || null;
           if (residentialaddress && typeof residentialaddress === 'object') {
             residentialaddress = {
-              streetaddress: residentialaddress.streetaddress || residentialaddress.streetAddress || '',
+              streetaddress: residentialaddress.streetaddress || '',
               city: residentialaddress.city || '',
               state: residentialaddress.state || '',
               zipcode: residentialaddress.zipcode || '',
               country: residentialaddress.country || ''
+            };
+          } else {
+            // Fallback to top-level fields if residentialaddress is not present
+            residentialaddress = {
+              streetaddress: data.streetaddress || '',
+              city: data.city || '',
+              state: data.state || '',
+              zipcode: data.zipcode || '',
+              country: data.country || ''
             };
           }
           // Normalize mailing address fields
@@ -386,11 +395,11 @@ export default function ApplicationsTabNew() {
                   <h6>Residential Address</h6>
                   {selectedApplication?.residentialaddress ? (
                     <>
-                      <p><strong>Street:</strong> {selectedApplication.residentialaddress.streetaddress || 'N/A'}</p>
-                      <p><strong>City:</strong> {selectedApplication.residentialaddress.city || 'N/A'}</p>
-                      <p><strong>State:</strong> {selectedApplication.residentialaddress.state || 'N/A'}</p>
-                      <p><strong>Zip:</strong> {selectedApplication.residentialaddress.zipcode || 'N/A'}</p>
-                      <p><strong>Country:</strong> {selectedApplication.residentialaddress.country || 'N/A'}</p>
+                      <p><strong>Street:</strong> {selectedApplication.residentialaddress.streetaddress}</p>
+                      <p><strong>City:</strong> {selectedApplication.residentialaddress.city}</p>
+                      <p><strong>State:</strong> {selectedApplication.residentialaddress.state}</p>
+                      <p><strong>Zip:</strong> {selectedApplication.residentialaddress.zipcode}</p>
+                      <p><strong>Country:</strong> {selectedApplication.residentialaddress.country}</p>
                     </>
                   ) : (
                     <p>No residential address data available</p>
