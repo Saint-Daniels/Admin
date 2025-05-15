@@ -46,11 +46,52 @@ export default function ApplicationsTabNew() {
           const data = doc.data();
           console.log('Document ID:', doc.id);
           console.log('Raw Document Data:', data);
-          return {
+          // Normalize residential address field
+          let residentialaddress = data.residentialaddress || data.residentialAddress || null;
+          if (residentialaddress && typeof residentialaddress === 'object') {
+            residentialaddress = {
+              streetaddress: residentialaddress.streetaddress || residentialaddress.streetAddress || '',
+              city: residentialaddress.city || '',
+              state: residentialaddress.state || '',
+              zipcode: residentialaddress.zipcode || '',
+              country: residentialaddress.country || ''
+            };
+          }
+          // Normalize mailing address fields
+          let mailingaddress = data.mailingaddress || data.mailingAddress || null;
+          let mailingStreet = data.mailingStreet || '';
+          let mailingCity = data.mailingCity || '';
+          let mailingState = data.mailingState || '';
+          let mailingZip = data.mailingZip || '';
+          let mailingCountry = data.mailingCountry || '';
+          if (mailingaddress && typeof mailingaddress === 'object') {
+            mailingStreet = mailingaddress.street || mailingaddress.streetaddress || '';
+            mailingCity = mailingaddress.city || '';
+            mailingState = mailingaddress.state || '';
+            mailingZip = mailingaddress.zip || mailingaddress.zipcode || '';
+            mailingCountry = mailingaddress.country || '';
+          }
+          const processedData = {
             id: doc.id,
             ...data,
+            residentialaddress, // always use lowercase key
+            mailingStreet,
+            mailingCity,
+            mailingState,
+            mailingZip,
+            mailingCountry,
             timestamp: data.timestamp || data.applicationDate || new Date().toISOString()
           };
+          console.log('Processed Data:', processedData);
+          console.log('Residential Address in Processed Data:', processedData.residentialaddress);
+          console.log('Mailing Address in Processed Data:', {
+            mailingStreet: processedData.mailingStreet,
+            mailingCity: processedData.mailingCity,
+            mailingState: processedData.mailingState,
+            mailingZip: processedData.mailingZip,
+            mailingCountry: processedData.mailingCountry
+          });
+          return processedData;
         });
         
         console.log('Successfully loaded', applicationsData.length, 'applications');
@@ -118,7 +159,18 @@ export default function ApplicationsTabNew() {
   const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage);
 
   const handleViewApplication = (app) => {
-    setSelectedApplication(app);
+    console.log('Selected Application Data:', app);
+    console.log('Residential Address:', app.residentialaddress);
+    
+    // Create a new object with the exact structure we need
+    const applicationData = {
+      ...app,
+      residentialaddress: app.residentialaddress || null
+    };
+    
+    console.log('Processed Application Data:', applicationData);
+    console.log('Residential Address in Processed Data:', applicationData.residentialaddress);
+    setSelectedApplication(applicationData);
     setShowAdminModal(true);
   };
 
@@ -214,8 +266,8 @@ export default function ApplicationsTabNew() {
                     <td>{app.email || 'N/A'}</td>
                     <td>{app.phone || 'N/A'}</td>
                     <td>{app.dateOfBirth || 'N/A'}</td>
-                    <td>{app.countryOfOrigin || 'N/A'}</td>
-                    <td>{app.stateOfOrigin || 'N/A'}</td>
+                    <td>{app.residentialaddress?.country || app.countryOfOrigin || 'N/A'}</td>
+                    <td>{app.residentialaddress?.state || app.stateOfOrigin || 'N/A'}</td>
                     <td>
                       <Badge bg={app.status === 'Confirmed' ? 'success' : 'warning'}>
                         {app.status || 'Pending'}
@@ -292,66 +344,117 @@ export default function ApplicationsTabNew() {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {console.log('MODAL FINAL selectedApplication:', selectedApplication)}
           {selectedApplication ? (
             <div>
+              <h5 className="mb-3">Personal Information</h5>
               <Row>
                 <Col md={6}>
-                  <h6>Personal Information</h6>
-                  <p><strong>First Name:</strong> {selectedApplication.firstName}</p>
-                  <p><strong>Middle Name:</strong> {selectedApplication.middleName}</p>
-                  <p><strong>Last Name:</strong> {selectedApplication.lastName}</p>
-                  <p><strong>Email:</strong> {selectedApplication.email}</p>
-                  <p><strong>Phone:</strong> {selectedApplication.phone}</p>
-                  <p><strong>Date of Birth:</strong> {selectedApplication.dateOfBirth}</p>
-                  <p><strong>Country of Origin:</strong> {selectedApplication.countryOfOrigin}</p>
-                  <p><strong>State of Origin:</strong> {selectedApplication.stateOfOrigin}</p>
+                  <p><strong>First Name:</strong> {selectedApplication.firstName || selectedApplication.firstname || 'N/A'}</p>
+                  <p><strong>Middle Name:</strong> {selectedApplication.middleName || selectedApplication.middlename || 'N/A'}</p>
+                  <p><strong>Last Name:</strong> {selectedApplication.lastName || selectedApplication.lastname || 'N/A'}</p>
+                  <p><strong>Suffix:</strong> {selectedApplication.suffix || 'N/A'}</p>
+                  <p><strong>Date of Birth:</strong> {selectedApplication.dateOfBirth || selectedApplication.dateofbirth || 'N/A'}</p>
+                  <p><strong>Email:</strong> {selectedApplication.email || 'N/A'}</p>
+                  <p><strong>Phone:</strong> {selectedApplication.phone || 'N/A'}</p>
+                  <p><strong>Client ID:</strong> {selectedApplication.client_id || 'N/A'}</p>
+                  <p><strong>Lead ID:</strong> {selectedApplication.lead_id || 'N/A'}</p>
+                  <p><strong>Marketing ID:</strong> {selectedApplication.marketingID || 'N/A'}</p>
+                  <p><strong>Occupation:</strong> {selectedApplication.occupation || 'N/A'}</p>
+                  <p><strong>Country of Origin:</strong> {selectedApplication.countryOfOrigin || 'N/A'}</p>
+                  <p><strong>State of Origin:</strong> {selectedApplication.stateOfOrigin || 'N/A'}</p>
+                  <p><strong>Status:</strong> {selectedApplication.status || 'N/A'}</p>
+                  <p><strong>Tax Filing Status:</strong> {selectedApplication.taxFilingStatus || 'N/A'}</p>
+                  <p><strong>SSN:</strong> {selectedApplication.ssn || 'N/A'}</p>
+                  <p><strong>Date Submitted:</strong> {selectedApplication.applicationDate ? new Date(selectedApplication.applicationDate).toLocaleString() : (selectedApplication.timestamp ? new Date(selectedApplication.timestamp).toLocaleString() : 'N/A')}</p>
                 </Col>
                 <Col md={6}>
-                  <h6>Application Details</h6>
-                  <p><strong>Application Date:</strong> {new Date(selectedApplication.applicationDate || selectedApplication.timestamp).toLocaleString()}</p>
-                  <p><strong>Status:</strong> {selectedApplication.status || 'Pending'}</p>
-                  <p><strong>SSN:</strong> {selectedApplication.ssn}</p>
-                  <p><strong>Tax Filing Status:</strong> {selectedApplication.taxFilingStatus}</p>
-                  <p><strong>Occupation:</strong> {selectedApplication.occupation}</p>
-                  <p><strong>Expected Salary:</strong> {selectedApplication.expectedSalary}</p>
-                  <p><strong>Deductible:</strong> {selectedApplication.deductible}</p>
+                  <h6>Flags</h6>
+                  <p><strong>Is Married:</strong> {selectedApplication.isMarried === true ? 'Yes' : selectedApplication.isMarried === false ? 'No' : 'N/A'}</p>
+                  <p><strong>Has Children:</strong> {selectedApplication.hasChildren === true ? 'Yes' : selectedApplication.hasChildren === false ? 'No' : 'N/A'}</p>
+                  <p><strong>Is Claimed on Taxes:</strong> {selectedApplication.isClaimedOnTaxes === true ? 'Yes' : selectedApplication.isClaimedOnTaxes === false ? 'No' : 'N/A'}</p>
+                  <p><strong>Has Existing Insurance:</strong> {selectedApplication.hasExistingInsurance === true ? 'Yes' : selectedApplication.hasExistingInsurance === false ? 'No' : 'N/A'}</p>
+                  <p><strong>Same as Residential:</strong> {selectedApplication.sameAsResidential === true ? 'Yes' : selectedApplication.sameAsResidential === false ? 'No' : 'N/A'}</p>
+                  <p><strong>Signature Consent:</strong> {selectedApplication.signatureConsent === true ? 'Yes' : selectedApplication.signatureConsent === false ? 'No' : 'N/A'}</p>
+                  <p><strong>Signature Provided:</strong> {selectedApplication.signature === true ? 'Yes' : selectedApplication.signature === false ? 'No' : 'N/A'}</p>
                 </Col>
               </Row>
               <hr />
+              <h5 className="mb-3">Address Information</h5>
               <Row>
                 <Col md={6}>
                   <h6>Residential Address</h6>
-                  <p><strong>Street:</strong> {selectedApplication.residentialaddress?.streetaddress}</p>
-                  <p><strong>City:</strong> {selectedApplication.residentialaddress?.city}</p>
-                  <p><strong>State:</strong> {selectedApplication.residentialaddress?.state}</p>
-                  <p><strong>Zip:</strong> {selectedApplication.residentialaddress?.zipcode}</p>
-                  <p><strong>Country:</strong> {selectedApplication.residentialaddress?.country}</p>
+                  {selectedApplication?.residentialaddress ? (
+                    <>
+                      <p><strong>Street:</strong> {selectedApplication.residentialaddress.streetaddress || 'N/A'}</p>
+                      <p><strong>City:</strong> {selectedApplication.residentialaddress.city || 'N/A'}</p>
+                      <p><strong>State:</strong> {selectedApplication.residentialaddress.state || 'N/A'}</p>
+                      <p><strong>Zip:</strong> {selectedApplication.residentialaddress.zipcode || 'N/A'}</p>
+                      <p><strong>Country:</strong> {selectedApplication.residentialaddress.country || 'N/A'}</p>
+                    </>
+                  ) : (
+                    <p>No residential address data available</p>
+                  )}
+                  <div className="mt-2">
+                    <Form.Check 
+                      type="checkbox"
+                      label="Same as Residential"
+                      checked={selectedApplication?.sameAsResidential === true}
+                      readOnly
+                      disabled
+                    />
+                  </div>
                 </Col>
                 <Col md={6}>
                   <h6>Mailing Address</h6>
-                  <p><strong>Street:</strong> {selectedApplication.mailingStreet}</p>
-                  <p><strong>City:</strong> {selectedApplication.mailingCity}</p>
-                  <p><strong>State:</strong> {selectedApplication.mailingState}</p>
-                  <p><strong>Zip:</strong> {selectedApplication.mailingZip}</p>
-                  <p><strong>Country:</strong> {selectedApplication.mailingCountry}</p>
+                  <p><strong>Street:</strong> {selectedApplication?.mailingStreet || 'N/A'}</p>
+                  <p><strong>City:</strong> {selectedApplication?.mailingCity || 'N/A'}</p>
+                  <p><strong>State:</strong> {selectedApplication?.mailingState || 'N/A'}</p>
+                  <p><strong>Zip:</strong> {selectedApplication?.mailingZip || 'N/A'}</p>
+                  <p><strong>Country:</strong> {selectedApplication?.mailingCountry || 'N/A'}</p>
                 </Col>
               </Row>
               <hr />
+              <h5 className="mb-3">Insurance & Financial</h5>
               <Row>
                 <Col md={6}>
-                  <h6>Insurance Information</h6>
-                  <p><strong>Has Existing Insurance:</strong> {selectedApplication.hasExistingInsurance ? 'Yes' : 'No'}</p>
+                  <p><strong>Deductible:</strong> {selectedApplication.deductible || 'N/A'}</p>
+                  <p><strong>Expected Salary:</strong> {selectedApplication.expectedSalary || 'N/A'}</p>
                   <p><strong>Existing Insurance Type:</strong> {selectedApplication.existingInsuranceType || 'N/A'}</p>
-                  <p><strong>Health Insurance Provider:</strong> {selectedApplication.healthInsuranceProvider}</p>
-                  <p><strong>Is Claimed on Taxes:</strong> {selectedApplication.isClaimedOnTaxes ? 'Yes' : 'No'}</p>
+                  <p><strong>Health Insurance Provider:</strong> {selectedApplication.healthInsuranceProvider || 'N/A'}</p>
+                  <p><strong>Oscar:</strong> {selectedApplication.oscar || 'N/A'}</p>
+                  <p><strong>United Healthcare:</strong> {selectedApplication.unitedhealthcare || 'N/A'}</p>
+                  <p><strong>Wellcare:</strong> {selectedApplication.wellcare || 'N/A'}</p>
                 </Col>
                 <Col md={6}>
-                  <h6>Additional Information</h6>
-                  <p><strong>Is Married:</strong> {selectedApplication.isMarried ? 'Yes' : 'No'}</p>
-                  <p><strong>Has Children:</strong> {selectedApplication.hasChildren ? 'Yes' : 'No'}</p>
-                  <p><strong>Dependents:</strong> {selectedApplication.dependents?.length || 0}</p>
-                  <p><strong>IP Address:</strong> {selectedApplication.ipAddress}</p>
-                  <p><strong>User Agent:</strong> {selectedApplication.userAgent}</p>
+                  <p><strong>Dependents:</strong> {Array.isArray(selectedApplication.dependents) ? selectedApplication.dependents.length : 'N/A'}</p>
+                  <p><strong>Spouse Info:</strong> {selectedApplication.spouseinfo ? (
+                    <span>
+                      {selectedApplication.spouseinfo.firstname || ''} {selectedApplication.spouseinfo.middlename || ''} {selectedApplication.spouseinfo.lastname || ''} {selectedApplication.spouseinfo.dateofbirth || ''} {selectedApplication.spouseinfo.ssn || ''}
+                    </span>
+                  ) : 'N/A'}</p>
+                </Col>
+              </Row>
+              <hr />
+              <h5 className="mb-3">Technical & Meta</h5>
+              <Row>
+                <Col md={6}>
+                  <p><strong>IP Address:</strong> {selectedApplication.ipAddress || 'N/A'}</p>
+                  <p><strong>User Agent:</strong> {selectedApplication.userAgent || 'N/A'}</p>
+                </Col>
+                <Col md={6}>
+                  <p><strong>Application ID:</strong> {selectedApplication.id || 'N/A'}</p>
+                </Col>
+              </Row>
+              <hr />
+              <h5 className="mb-3">E-Signature</h5>
+              <Row>
+                <Col md={12}>
+                  {selectedApplication.signatureurl ? (
+                    <img src={selectedApplication.signatureurl} alt="E-Signature" style={{ maxWidth: '100%', maxHeight: 200, border: '1px solid #ccc', background: '#fff' }} />
+                  ) : (
+                    <span>No signature image provided.</span>
+                  )}
                 </Col>
               </Row>
             </div>

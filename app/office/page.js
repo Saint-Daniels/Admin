@@ -172,7 +172,7 @@ export default function Office() {
   const [chatSearchQuery, setChatSearchQuery] = useState('');
 
   // Add new state for search results dropdown
-  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(true);
   const [searchResults, setSearchResults] = useState([]);
 
   const [showChatModal, setShowChatModal] = useState(false);
@@ -313,7 +313,8 @@ const [formData, setFormData] = useState({
   policystatus: '',
   spousessn: '',
   ssn: '',
-  willbeclaimedontaxes: ''
+  willbeclaimedontaxes: '',
+  // Add all other fields you use in the form, with default values
 });
 
 // Form validation
@@ -1421,18 +1422,6 @@ const handleSave = async (type) => {
 
   const [dispositionCompleted, setDispositionCompleted] = useState(false);
 
-  // Add points state
-  const [applicantPoints, setApplicantPoints] = useState({
-    totalPoints: 2500,
-    lastUpdated: new Date(),
-    breakdown: {
-      referrals: 500,
-      healthyLifestyle: 750,
-      preventiveCare: 750,
-      loyaltyBonus: 500
-    }
-  });
-
   // Add state for points history modal
   const [showPointsHistoryModal, setShowPointsHistoryModal] = useState(false);
 
@@ -2101,6 +2090,149 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
     }
+  };
+
+  // --- ENROLLMENT APPLICANT SEARCH STATE ---
+  const [enrollmentApplicants, setEnrollmentApplicants] = useState([]);
+  const [enrollmentSearch, setEnrollmentSearch] = useState('');
+  const [filteredEnrollmentApplicants, setFilteredEnrollmentApplicants] = useState([]);
+
+  useEffect(() => {
+    // Fetch applications for enrollment search
+    const fetchEnrollmentApplicants = async () => {
+      try {
+        const applicationsRef = collection(db, 'applications');
+        const q = query(applicationsRef, orderBy('timestamp', 'desc'));
+        const snapshot = await getDocs(q);
+        const applicants = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            firstName: data.firstname || data.firstName || '',
+            lastName: data.lastname || data.lastName || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            status: data.status || '',
+            ...data
+          };
+        });
+        setEnrollmentApplicants(applicants);
+        setFilteredEnrollmentApplicants(applicants);
+      } catch (error) {
+        setEnrollmentApplicants([]);
+        setFilteredEnrollmentApplicants([]);
+      }
+    };
+    fetchEnrollmentApplicants();
+  }, []);
+
+  useEffect(() => {
+    // Filter applicants by search
+    const search = enrollmentSearch.toLowerCase().trim();
+    if (!search) {
+      setFilteredEnrollmentApplicants(enrollmentApplicants);
+    } else {
+      setFilteredEnrollmentApplicants(
+        enrollmentApplicants.filter(app =>
+          (app.firstName + ' ' + app.lastName).toLowerCase().includes(search) ||
+          app.email.toLowerCase().includes(search) ||
+          app.phone.toLowerCase().includes(search)
+        )
+      );
+    }
+  }, [enrollmentSearch, enrollmentApplicants]);
+
+  // Add this function before the return statement
+  const handleApplicantSelect = (app) => {
+    setFormData(prev => ({
+      ...prev,
+      firstName: app.firstName || app.firstname || '',
+      middleName: app.middleName || app.middlename || '',
+      lastName: app.lastName || app.lastname || '',
+      email: app.email || '',
+      phone: app.phone || '',
+      dateOfBirth: app.dateOfBirth || app.dateofbirth || '',
+      address: app.streetaddress || app.address || '',
+      city: app.city || '',
+      state: app.state || '',
+      zipCode: app.zipcode || app.zipCode || '',
+      ssn: app.ssn || '',
+      occupation: app.occupation || '',
+      annualSalary: app.annualSalary || app.expectedSalary || ''
+    }));
+    setShowSearchResults(false);
+    setEnrollmentSearch('');
+  };
+
+  // Coverage duration state
+  const getCoverageDays = () => {
+    if (activeCoverage.isActive && activeCoverage.enrollmentDate) {
+      const start = new Date(activeCoverage.enrollmentDate);
+      const now = new Date();
+      const diff = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+      return diff >= 0 ? diff : 0;
+    }
+    return 0;
+  };
+
+  // Rewards state and logic
+  const rewardMilestones = [
+    { days: 7, label: '1 Week Enrolled', reward: 'Welcome Gift' },
+    { days: 30, label: '1 Month Enrolled', reward: 'Bronze Badge' },
+    { days: 90, label: '3 Months Enrolled', reward: 'Silver Badge' },
+    { days: 180, label: '6 Months Enrolled', reward: 'Gold Badge' },
+    { days: 365, label: '1 Year Enrolled', reward: 'Platinum Badge' },
+  ];
+  const [showRewardsHistoryModal, setShowRewardsHistoryModal] = useState(false);
+  const coverageDays = getCoverageDays();
+  const earnedRewards = rewardMilestones.filter(r => coverageDays >= r.days);
+  const lockedRewards = rewardMilestones.filter(r => coverageDays < r.days);
+  const rewardHistory = earnedRewards.map(r => ({
+    ...r,
+    date: activeCoverage.enrollmentDate ? new Date(new Date(activeCoverage.enrollmentDate).getTime() + r.days * 24 * 60 * 60 * 1000) : null
+  }));
+
+  // Add address autocomplete state
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+
+  // Add address autocomplete function
+  const handleAddressInput = async (value) => {
+    if (!value || value.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    setIsLoadingAddress(true);
+    try {
+      const response = await fetch(`https://api.geocod.io/v1.7/geocode?q=${encodeURIComponent(value)}&api_key=${process.env.NEXT_PUBLIC_GEOCODIO_API_KEY}`);
+      const data = await response.json();
+      
+      if (data.results) {
+        setAddressSuggestions(data.results.map(result => ({
+          address: result.formatted_address,
+          city: result.address_components.city,
+          state: result.address_components.state,
+          zipcode: result.address_components.zip
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching address suggestions:', error);
+    } finally {
+      setIsLoadingAddress(false);
+    }
+  };
+
+  // Add address selection handler
+  const handleAddressSelect = (suggestion) => {
+    setFormData(prev => ({
+      ...prev,
+      address: suggestion.address,
+      city: suggestion.city,
+      state: suggestion.state,
+      zipCode: suggestion.zipcode
+    }));
+    setAddressSuggestions([]);
   };
 
   return (
@@ -2940,28 +3072,40 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                         onClick={() => {
                           // Reset form data
                           setFormData({
-                            firstName: '',
-                            lastName: '',
+                            firstname: '',
+                            middlename: '',
+                            lastname: '',
+                            dateofbirth: '',
                             email: '',
                             phone: '',
+                            taxfilingstatus: '',
+                            maritalstatus: '',
                             address: '',
                             city: '',
                             state: '',
-                            zipCode: '',
-                            dateOfBirth: '',
-                            ssn: '',
+                            zipcode: '',
+                            mailingaddress: '',
+                            mailingcity: '',
+                            mailingstate: '',
+                            mailingzipcode: '',
+                            countryoforigin: '',
+                            stateoforigin: '',
                             occupation: '',
-                            annualSalary: '',
-                            planName: '',
+                            annualsalary: '',
+                            planname: '',
                             deductible: '',
                             premium: '',
-                            coverageType: '',
-                            spouseFirstName: '',
-                            spouseLastName: '',
-                            spouseDateOfBirth: '',
-                            hasVoiceRecording: false,
-                            effectiveDate: '',
-                            policyStatus: ''
+                            coveragetype: '',
+                            spousefirstname: '',
+                            spouselastname: '',
+                            spousedateofbirth: '',
+                            hasvoicerecording: false,
+                            effectivedate: '',
+                            policystatus: '',
+                            spousessn: '',
+                            ssn: '',
+                            willbeclaimedontaxes: '',
+                            // Add all other fields you use in the form, with default values
                           });
                           setEnrollmentTitle('Untitled Enrollment');
                         }}
@@ -2979,6 +3123,8 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                             type="text"
                             placeholder="Search applicants by name, phone, or email..."
                             className="form-control-lg"
+                            value={enrollmentSearch}
+                            onChange={e => setEnrollmentSearch(e.target.value)}
                           />
                           <Button variant="primary">
                             <FaSearch className="me-2" />
@@ -2986,6 +3132,32 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                           </Button>
                         </div>
                       </Form.Group>
+                    </div>
+                    {/* Applicants Results */}
+                    <div className="mb-4">
+                      {enrollmentSearch.trim() !== '' && showSearchResults && (
+                        <div className="search-results mt-2">
+                          {filteredEnrollmentApplicants.length === 0 ? (
+                            <div className="text-muted">No applicants found.</div>
+                          ) : (
+                            <ListGroup>
+                              {filteredEnrollmentApplicants.map(app => (
+                                <ListGroup.Item 
+                                  key={app.id} 
+                                  className="d-flex justify-content-between align-items-center"
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() => handleApplicantSelect(app)}
+                                >
+                                  <div>
+                                    <strong>{app.firstName} {app.lastName}</strong> <span className="text-muted">({app.email}, {app.phone})</span>
+                                  </div>
+                                  <Badge bg={app.status === 'Confirmed' ? 'success' : 'secondary'}>{app.status || 'Pending'}</Badge>
+                                </ListGroup.Item>
+                              ))}
+                            </ListGroup>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Enrollment Form */}
@@ -3342,11 +3514,33 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                                 type="text"
                                 name="address"
                                 value={formData.address}
-                                onChange={handleInputChange}
+                                onChange={(e) => {
+                                  handleInputChange(e);
+                                  handleAddressInput(e.target.value);
+                                }}
                                 placeholder="Enter street address"
-                                isInvalid={!!validationErrors.address}
-                                className={validationErrors.address ? 'border-danger' : ''}
                               />
+                              {isLoadingAddress && (
+                                <div className="position-absolute top-50 end-0 translate-middle-y me-2">
+                                  <Spinner animation="border" size="sm" />
+                                </div>
+                              )}
+                              {addressSuggestions.length > 0 && (
+                                <div className="position-absolute w-100 mt-1 border rounded bg-white shadow-sm" style={{ zIndex: 1000 }}>
+                                  <ListGroup variant="flush">
+                                    {addressSuggestions.map((suggestion, index) => (
+                                      <ListGroup.Item 
+                                        key={index}
+                                        action
+                                        onClick={() => handleAddressSelect(suggestion)}
+                                        style={{ cursor: 'pointer' }}
+                                      >
+                                        {suggestion.address}
+                                      </ListGroup.Item>
+                                    ))}
+                                  </ListGroup>
+                                </div>
+                              )}
                               {validationErrors.address && (
                                 <Form.Text className="text-danger">{validationErrors.address}</Form.Text>
                               )}
@@ -3585,7 +3779,8 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                                       ...prev,
                                       ssn: formattedSSN
                                     }));
-                                    setSsnValid(validateSSN(formattedSSN));
+                                    // Simple 9-digit check
+                                    setSsnValid(formattedSSN.replace(/\D/g, '').length === 9);
                                   }}
                                   placeholder="###-##-####"
                                   maxLength="11"
@@ -3846,76 +4041,18 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                         </div>
                       </div>
 
-                      {/* Points Status Section */}
+                      {/* Coverage Duration Section */}
                       <div className="section mb-4">
                         <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h6 className="mb-0">Rewards Points Status</h6>
-                          {isAdmin && (
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              onClick={() => {
-                                // Admin functionality to update points
-                                // This would typically open a modal for point adjustment
-                              }}
-                            >
-                              <FaEdit className="me-1" /> Adjust Points
-                            </Button>
-                          )}
+                          <h6 className="mb-0">Coverage Duration</h6>
                         </div>
-                        <div className="points-status-indicator p-3 border rounded">
-                          <div className="d-flex justify-content-between align-items-center mb-3">
-                            <div className="d-flex align-items-center gap-2">
-                              <FaStar className="text-warning" size={24} />
-                              <div>
-                                <h4 className="mb-0 fw-bold text-primary">{applicantPoints.totalPoints.toLocaleString()} Points</h4>
-                                <small className="text-muted">Last Updated: {new Date(applicantPoints.lastUpdated).toLocaleDateString()}</small>
-                              </div>
+                        <div className="coverage-duration-indicator p-3 border rounded">
+                          <div className="d-flex align-items-center gap-3">
+                            <FaClock className="text-primary" size={24} />
+                            <div>
+                              <h4 className="mb-0 fw-bold text-primary">{getCoverageDays()} Days</h4>
+                              <small className="text-muted">Since coverage started</small>
                             </div>
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              onClick={() => setShowPointsHistoryModal(true)}
-                            >
-                              <FaHistory className="me-1" /> View History
-                            </Button>
-                          </div>
-                          <Button
-                            variant="info"
-                            className="transfer-button w-100 mt-2"
-                            onClick={() => window.location.href = 'tel:+18005555555'}
-                            disabled={!isCallActive}
-                          >
-                            <FaExchangeAlt className="icon" /> Transfer to Support
-                          </Button>
-                          <div className="points-breakdown mt-3 pt-3 border-top">
-                            <h6 className="mb-3">Points Breakdown</h6>
-                            <Row>
-                              <Col md={3}>
-                                <div className="points-category">
-                                  <small className="text-muted d-block">Referrals</small>
-                                  <span className="fw-semibold">{applicantPoints.breakdown.referrals.toLocaleString()} pts</span>
-                                </div>
-                              </Col>
-                              <Col md={3}>
-                                <div className="points-category">
-                                  <small className="text-muted d-block">Healthy Lifestyle</small>
-                                  <span className="fw-semibold">{applicantPoints.breakdown.healthyLifestyle.toLocaleString()} pts</span>
-                                </div>
-                              </Col>
-                              <Col md={3}>
-                                <div className="points-category">
-                                  <small className="text-muted d-block">Preventive Care</small>
-                                  <span className="fw-semibold">{applicantPoints.breakdown.preventiveCare.toLocaleString()} pts</span>
-                                </div>
-                              </Col>
-                              <Col md={3}>
-                                <div className="points-category">
-                                  <small className="text-muted d-block">Loyalty Bonus</small>
-                                  <span className="fw-semibold">{applicantPoints.breakdown.loyaltyBonus.toLocaleString()} pts</span>
-                                </div>
-                              </Col>
-                            </Row>
                           </div>
                         </div>
                       </div>
@@ -4022,6 +4159,30 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                           </Button>
                         </Modal.Footer>
                       </Modal>
+
+                      {/* Rewards section after coverage duration section */}
+                      <div className="section mb-4">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h6 className="mb-0">Available Rewards</h6>
+                          <Button variant="outline-primary" size="sm" onClick={() => setShowRewardsHistoryModal(true)}>
+                            <FaHistory className="me-1" /> Rewards History
+                          </Button>
+                        </div>
+                        <div className="rewards-status-indicator p-3 border rounded">
+                          <div className="d-flex flex-wrap gap-3">
+                            {rewardMilestones.map(r => (
+                              <div key={r.days} className="d-flex align-items-center gap-2">
+                                <Badge bg={coverageDays >= r.days ? 'success' : 'secondary'}>
+                                  {r.reward}
+                                </Badge>
+                                <span className={coverageDays >= r.days ? 'text-success' : 'text-muted'}>
+                                  {r.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </Form>
                   </Card.Body>
                 </Card>
@@ -4843,107 +5004,90 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
         {/* --- Admin Application Details Modal --- */}
         <Modal show={showAdminModal} onHide={() => setShowAdminModal(false)} size="lg">
         <Modal.Header closeButton>
-            <Modal.Title>Application Details - {selectedApplication?.clientName} ({selectedApplication?.id})</Modal.Title>
+            <Modal.Title>Application Details - {selectedApplication?.firstName || selectedApplication?.firstname} {selectedApplication?.lastName || selectedApplication?.lastname} ({selectedApplication?.id})</Modal.Title>
         </Modal.Header>
         <Modal.Body>
             {selectedApplication ? (
-              <Form>
-                {/* Display application details here - make editable later */}
-              <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Client Name</Form.Label>
-                      <Form.Control type="text" value={selectedApplication.clientName} readOnly />
-                    </Form.Group>
-                  </Col>
-                   <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Client ID</Form.Label>
-                      <Form.Control type="text" value={selectedApplication.clientId} readOnly />
-                    </Form.Group>
+              <div>
+                <h5 className="mb-3">Personal Information</h5>
+                <Row>
+                  <Col md={6}><strong>Full Name:</strong> {`${selectedApplication.firstName || selectedApplication.firstname || ''} ${selectedApplication.middleName || selectedApplication.middlename || ''} ${selectedApplication.lastName || selectedApplication.lastname || ''}`.trim()}</Col>
+                  <Col md={6}><strong>Date of Birth:</strong> {selectedApplication.dateOfBirth || selectedApplication.dateofbirth || 'N/A'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>Email:</strong> {selectedApplication.email || 'N/A'}</Col>
+                  <Col md={6}><strong>Phone:</strong> {selectedApplication.phone || 'N/A'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>SSN:</strong> {selectedApplication.ssn || 'N/A'}</Col>
+                  <Col md={6}><strong>Tax Filing Status:</strong> {selectedApplication.taxFilingStatus || 'N/A'}</Col>
+                </Row>
+                <hr />
+                <h5 className="mb-3">Residential Address</h5>
+                <Row>
+                  <Col md={6}><strong>Street:</strong> {selectedApplication.streetaddress || selectedApplication.address || 'N/A'}</Col>
+                  <Col md={6}><strong>City:</strong> {selectedApplication.city || 'N/A'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>State:</strong> {selectedApplication.state || 'N/A'}</Col>
+                  <Col md={6}><strong>Zip:</strong> {selectedApplication.zipcode || selectedApplication.zipCode || 'N/A'}</Col>
+                </Row>
+                <hr />
+                <h5 className="mb-3">Mailing Address</h5>
+                <Row>
+                  <Col md={6}><strong>Street:</strong> {selectedApplication.mailingStreet || selectedApplication.mailingAddress || 'N/A'}</Col>
+                  <Col md={6}><strong>City:</strong> {selectedApplication.mailingCity || 'N/A'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>State:</strong> {selectedApplication.mailingState || 'N/A'}</Col>
+                  <Col md={6}><strong>Zip:</strong> {selectedApplication.mailingZip || selectedApplication.mailingZipCode || 'N/A'}</Col>
+                </Row>
+                <hr />
+                <h5 className="mb-3">Application Details</h5>
+                <Row>
+                  <Col md={6}><strong>Status:</strong> {selectedApplication.status || 'N/A'}</Col>
+                  <Col md={6}><strong>Submitted:</strong> {selectedApplication.applicationDate ? new Date(selectedApplication.applicationDate).toLocaleString() : (selectedApplication.timestamp ? new Date(selectedApplication.timestamp).toLocaleString() : 'N/A')}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>Client ID:</strong> {selectedApplication.client_id || 'N/A'}</Col>
+                  <Col md={6}><strong>Agent ID:</strong> {selectedApplication.agentId || 'N/A'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>Lead ID:</strong> {selectedApplication.lead_id || 'N/A'}</Col>
+                  <Col md={6}><strong>Marketing ID:</strong> {selectedApplication.marketingID || 'N/A'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>Country of Origin:</strong> {selectedApplication.countryOfOrigin || selectedApplication.countryoforigin || 'N/A'}</Col>
+                  <Col md={6}><strong>State of Origin:</strong> {selectedApplication.stateoforigin || selectedApplication.stateOfOrigin || 'N/A'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>Occupation:</strong> {selectedApplication.occupation || 'N/A'}</Col>
+                  <Col md={6}><strong>Expected Salary:</strong> {selectedApplication.expectedSalary || 'N/A'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>Deductible:</strong> {selectedApplication.deductible || 'N/A'}</Col>
+                  <Col md={6}><strong>Health Insurance Provider:</strong> {selectedApplication.healthInsuranceProvider || selectedApplication.unitedhealthcare || 'N/A'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={6}><strong>Signature Consent:</strong> {selectedApplication.signatureConsent ? 'Yes' : 'No'}</Col>
+                  <Col md={6}><strong>Signature:</strong> {selectedApplication.signature ? 'Yes' : 'No'}</Col>
+                </Row>
+                <Row className="mt-2">
+                  <Col md={12}><strong>E-Signature Image:</strong><br />
+                    {selectedApplication.signatureurl ? (
+                      <img src={selectedApplication.signatureurl} alt="E-Signature" style={{ maxWidth: '300px', border: '1px solid #ccc', borderRadius: '8px', marginTop: '8px' }} />
+                    ) : (
+                      <span className="text-muted">No signature image available</span>
+                    )}
                   </Col>
                 </Row>
-                      <Row>
-                        <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Application ID</Form.Label>
-                      <Form.Control type="text" value={selectedApplication.id} readOnly />
-                    </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Agent ID</Form.Label>
-                      <Form.Control type="text" value={selectedApplication.agentId} readOnly />
-                    </Form.Group>
-                        </Col>
-                      </Row>
-                      <Row>
-                        <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Submission Date</Form.Label>
-                      <Form.Control type="text" value={selectedApplication.submissionDate} readOnly />
-                    </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                     <Form.Group className="mb-3">
-                       <Form.Label>Status</Form.Label>
-                       <Form.Select value={selectedApplication.status} onChange={(e) => setSelectedApplication({...selectedApplication, status: e.target.value})}>
-                         <option value="Pending">Pending</option>
-                         <option value="Confirmed">Confirmed</option>
-                         {/* Add other statuses if needed */}
-                       </Form.Select>
-                     </Form.Group>
-                        </Col>
-                      </Row>
-                 <Row>
-                    <Col md={6}>
-                        <Form.Check
-                            type="checkbox"
-                            label="Recording Attached"
-                            checked={selectedApplication.hasRecording}
-                            readOnly
-                            className="mb-3"
-                         />
-                    </Col>
-                    <Col md={6}>
-                        <Form.Check
-                            type="checkbox"
-                            label="E-Signature Attached"
-                            checked={selectedApplication.hasESignature}
-                            readOnly
-                            className="mb-3"
-                         />
-                    </Col>
-                 </Row>
-                 {/* Add more fields from selectedApplication.details as needed */}
-                 <Form.Group className="mb-3">
-                   <Form.Label>Full Application Data (Read Only)</Form.Label>
-                   <Form.Control
-                     as="textarea"
-                     rows={10}
-                     value={JSON.stringify(selectedApplication.details || { note: 'No detailed data available in mock.' }, null, 2)}
-                     readOnly
-                   />
-                 </Form.Group>
-
-                 {/* E-Signature Download Section */}
-                 {selectedApplication.hasESignature && (
-                   <div className="mt-4 p-3 border rounded bg-light">
-                     <div className="d-flex justify-content-between align-items-center">
-                       <div>
-                         <h6 className="mb-1">E-Signature Verification</h6>
-                         <p className="mb-0 text-muted">Download the e-signature cloud stamp for marketplace submission</p>
-                      </div>
-                       <Button 
-                         variant="primary" 
-                         onClick={() => downloadESignature(selectedApplication)}
-                       >
-                         <FaDownload className="me-1" /> Download E-Signature
-                       </Button>
-                     </div>
-                   </div>
-                 )}
-              </Form>
+                <hr />
+                <h5 className="mb-3">Other Details</h5>
+                <Row>
+                  <Col md={6}><strong>IP Address:</strong> {selectedApplication.ipAddress || 'N/A'}</Col>
+                  <Col md={6}><strong>User Agent:</strong> {selectedApplication.userAgent || 'N/A'}</Col>
+                </Row>
+              </div>
             ) : (
               <p>No application selected.</p>
             )}
@@ -4953,9 +5097,9 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
               Close
             </Button>
             {/* Enable Save button when editing is implemented */}
-             <Button variant="primary" onClick={handleSaveChanges} >
-               Save Changes
-             </Button>
+            <Button variant="primary" onClick={handleSaveChanges}>
+              Save Changes
+            </Button>
           </Modal.Footer>
         </Modal>
         {/* --- End Admin Modal --- */}
@@ -5884,6 +6028,45 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
           </Row>
         )}
         {/* --- End Google Drive Tab Content --- */}
+
+        {/* Add rewards history modal */}
+        <Modal show={showRewardsHistoryModal} onHide={() => setShowRewardsHistoryModal(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title>Rewards History</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <ul className="list-group">
+              {rewardMilestones.map(r => {
+                const earned = coverageDays >= r.days;
+                const date = activeCoverage.enrollmentDate && earned
+                  ? new Date(new Date(activeCoverage.enrollmentDate).getTime() + r.days * 24 * 60 * 60 * 1000)
+                  : null;
+                return (
+                  <li key={r.days} className={`list-group-item d-flex justify-content-between align-items-center ${earned ? 'list-group-item-success' : ''}`}>
+                    <span>
+                      <strong>{r.reward}</strong> <span className="text-muted">({r.label})</span>
+                    </span>
+                    <span>
+                      {earned ? (
+                        <span>
+                          <FaCheck className="text-success me-1" />
+                          {date ? date.toLocaleDateString() : 'Earned'}
+                        </span>
+                      ) : (
+                        <span className="text-muted">Locked</span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowRewardsHistoryModal(false)}>
+              Close
+            </Button>
+          </Modal.Footer>
+        </Modal>
         
       </Container>
     </div>
