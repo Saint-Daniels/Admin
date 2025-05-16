@@ -3474,3 +3474,8 @@ body {
 .points-history-item .text-success {
   font-size: 1.1rem;
 }
+
+/* Hide dropdown arrow */
+.dropdown-toggle-no-arrow::after {
+  display: none !important;
+}

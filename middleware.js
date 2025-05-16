@@ -1,17 +1,23 @@
-import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
+import { auth } from './app/firebase/config';
 
 export async function middleware(request) {
-  const token = await getToken({ req: request });
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api');
+  // Get the token from the request cookies
+  const token = request.cookies.get('firebase-token')?.value;
 
-  if (isApiRoute && !token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // If the user is not logged in and trying to access a protected route
+  if (!token && !request.nextUrl.pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // If the user is logged in and trying to access the login page
+  if (token && request.nextUrl.pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/office', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/api/google/:path*'],
+  matcher: ['/office/:path*', '/login']
 }; 

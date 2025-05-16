@@ -1,40 +1,45 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { collection } from 'firebase/firestore';
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDr7bC7uZCSllzpz0QF6DVnylrLprwYd84",
   authDomain: "saintdaniels-6144c.firebaseapp.com",
   projectId: "saintdaniels-6144c",
-  storageBucket: "saintdaniels-6144c.firebasestorage.app",
+  storageBucket: "saintdaniels-6144c.appspot.com",
   messagingSenderId: "99705276201",
-  appId: "1:99705276201:web:6695bbbc70012e92071938",
-  measurementId: "G-1CPD7FC0RZ"
+  appId: "1:99705276201:web:6695bbbc70012e92071938"
 };
 
+let app;
+let auth;
 let db;
 
 try {
   console.log('=== FIREBASE INITIALIZATION START ===');
-  console.log('Firebase config:', {
-    projectId: firebaseConfig.projectId,
-    authDomain: firebaseConfig.authDomain,
-    apiKey: firebaseConfig.apiKey ? '***' : undefined
-  });
-
+  
   // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
+  app = initializeApp(firebaseConfig);
   console.log('✅ Firebase app initialized successfully');
-  console.log('Firebase app instance:', app);
+
+  // Initialize Auth
+  auth = getAuth(app);
+  
+  // Enable persistence for auth
+  setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+      console.log('✅ Auth persistence enabled');
+    })
+    .catch((error) => {
+      console.error('❌ Auth persistence error:', error);
+    });
+  
+  console.log('✅ Auth initialized successfully');
 
   // Initialize Firestore
   db = getFirestore(app);
   console.log('✅ Firestore initialized successfully');
-  console.log('Firestore instance:', db);
-
-  // Test the connection
-  const testCollection = collection(db, 'applications');
-  console.log('✅ Test collection reference created:', testCollection);
   
   console.log('=== FIREBASE INITIALIZATION COMPLETE ===');
 } catch (error) {
@@ -61,4 +66,5 @@ export const verifyDatabaseConnection = async () => {
   }
 };
 
-export { db }; 
+export { db, auth };
+export default app; 

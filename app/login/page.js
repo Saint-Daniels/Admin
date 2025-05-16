@@ -1,21 +1,82 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Container, Form, Button, Row, Col, Alert } from 'react-bootstrap';
 import { useRouter } from 'next/navigation';
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase/config';
+import Cookies from 'js-cookie';
 
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is signed in
+        router.push('/office');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email === 'admin@office.com' && password === 'admin123') {
+    setLoading(true);
+    setError('');
+
+    try {
+      console.log('Attempting to sign in with:', { email });
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      console.log('Sign in successful:', user);
+      
+      // Get the ID token
+      const token = await user.getIdToken();
+      
+      // Store the token in cookies
+      Cookies.set('firebase-token', token, { expires: 7 }); // Expires in 7 days
+      
+      // Store user info in localStorage
+      localStorage.setItem('user', JSON.stringify({
+        email: user.email,
+        uid: user.uid
+      }));
+
       router.push('/office');
-    } else {
-      setError('Invalid credentials');
+    } catch (error) {
+      console.error('Login error:', error);
+      let errorMessage = 'Failed to sign in';
+      
+      switch (error.code) {
+        case 'auth/invalid-email':
+          errorMessage = 'Invalid email address';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'This account has been disabled';
+          break;
+        case 'auth/user-not-found':
+          errorMessage = 'No account found with this email';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Email/password accounts are not enabled. Please contact support.';
+          break;
+        default:
+          errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,6 +110,7 @@ export default function Login() {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         className="form-control-lg"
+                        disabled={loading}
                       />
                     </Form.Group>
 
@@ -62,6 +124,7 @@ export default function Login() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         className="form-control-lg"
+                        disabled={loading}
                       />
                     </Form.Group>
 
@@ -70,6 +133,7 @@ export default function Login() {
                         type="checkbox"
                         id="remember-me"
                         label="Remember me"
+                        disabled={loading}
                       />
                     </Form.Group>
 
@@ -77,8 +141,9 @@ export default function Login() {
                       variant="primary" 
                       type="submit" 
                       className="w-100"
+                      disabled={loading}
                     >
-                      Sign In
+                      {loading ? 'Signing in...' : 'Sign In'}
                     </Button>
                   </Form>
                 </div>
