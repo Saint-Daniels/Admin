@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card, Table, Button, Badge, Form, InputGroup, Modal, Spinner, Row, Col } from 'react-bootstrap';
-import { FaSearch, FaEdit, FaCheck, FaCheckCircle, FaTimesCircle, FaInbox } from 'react-icons/fa';
+import { FaSearch, FaEdit, FaCheck, FaCheckCircle, FaTimesCircle, FaInbox, FaSync } from 'react-icons/fa';
 import { collection, getDocs, query, orderBy, updateDoc, doc, addDoc, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -15,6 +15,7 @@ export default function ApplicationsTab() {
   const [applicationSearchTerm, setApplicationSearchTerm] = useState('');
   const [applicationTimeframe, setApplicationTimeframe] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const applicationsPerPage = 10;
 
   // Add logging for applications state changes
@@ -78,59 +79,61 @@ export default function ApplicationsTab() {
   const totalPages = Math.ceil(filteredApplications.length / applicationsPerPage);
 
   // Fetch applications from Firestore
-  useEffect(() => {
-    const fetchApplications = async () => {
-      try {
-        setIsLoadingApplications(true);
-        console.log('=== STARTING FIRESTORE FETCH ===');
-        
-        // Verify db instance
-        if (!db) {
-          console.error('❌ Firestore db instance is null or undefined');
-          throw new Error('Firestore database instance is not initialized');
-        }
-        
-        // Get the applications collection
-        const applicationsRef = collection(db, 'applications');
-        console.log('Fetching from applications collection...');
-        
-        // Create a query to order by timestamp
-        const q = query(applicationsRef, orderBy('timestamp', 'desc'));
-        
-        // Get documents with the query
-        const snapshot = await getDocs(q);
-        console.log('Total documents found:', snapshot.size);
-        
-        if (snapshot.empty) {
-          console.log('No documents found in applications collection');
-          setApplications([]);
-          return;
-        }
-        
-        // Process all documents and log their raw data
-        const applicationsData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          console.log('Document ID:', doc.id);
-          console.log('Raw Document Data:', data);
-          return {
-            id: doc.id,
-            ...data,
-            // Ensure we have a timestamp for sorting
-            timestamp: data.timestamp || data.applicationDate || new Date().toISOString()
-          };
-        });
-        
-        console.log('Successfully loaded', applicationsData.length, 'applications');
-        setApplications(applicationsData);
-        
-      } catch (error) {
-        console.error('Error fetching applications:', error);
-        setApplications([]);
-      } finally {
-        setIsLoadingApplications(false);
+  const fetchApplications = async () => {
+    try {
+      setIsLoadingApplications(true);
+      setIsRefreshing(true);
+      console.log('=== STARTING FIRESTORE FETCH ===');
+      
+      // Verify db instance
+      if (!db) {
+        console.error('❌ Firestore db instance is null or undefined');
+        throw new Error('Firestore database instance is not initialized');
       }
-    };
+      
+      // Get the applications collection
+      const applicationsRef = collection(db, 'applications');
+      console.log('Fetching from applications collection...');
+      
+      // Create a query to order by timestamp
+      const q = query(applicationsRef, orderBy('timestamp', 'desc'));
+      
+      // Get documents with the query
+      const snapshot = await getDocs(q);
+      console.log('Total documents found:', snapshot.size);
+      
+      if (snapshot.empty) {
+        console.log('No documents found in applications collection');
+        setApplications([]);
+        return;
+      }
+      
+      // Process all documents and log their raw data
+      const applicationsData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('Document ID:', doc.id);
+        console.log('Raw Document Data:', data);
+        return {
+          id: doc.id,
+          ...data,
+          // Ensure we have a timestamp for sorting
+          timestamp: data.timestamp || data.applicationDate || new Date().toISOString()
+        };
+      });
+      
+      console.log('Successfully loaded', applicationsData.length, 'applications');
+      setApplications(applicationsData);
+      
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+      setApplications([]);
+    } finally {
+      setIsLoadingApplications(false);
+      setIsRefreshing(false);
+    }
+  };
 
+  useEffect(() => {
     fetchApplications();
   }, []);
 
@@ -177,6 +180,13 @@ export default function ApplicationsTab() {
                     />
                     <Button variant="outline-secondary">
                       <FaSearch />
+                    </Button>
+                    <Button 
+                      variant="outline-primary" 
+                      onClick={fetchApplications}
+                      disabled={isRefreshing}
+                    >
+                      <FaSync className={isRefreshing ? 'fa-spin' : ''} />
                     </Button>
                   </InputGroup>
                 </Form.Group>

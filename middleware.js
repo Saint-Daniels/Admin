@@ -7,7 +7,7 @@ export async function middleware(request) {
 
   // If the user is not logged in and trying to access a protected route
   if (!token && !request.nextUrl.pathname.startsWith('/login')) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL('https://admin.saintdaniels.com', request.url));
   }
 
   // If the user is logged in and trying to access the login page
