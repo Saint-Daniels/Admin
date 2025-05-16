@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Container, Row, Col, Card, Button, Form, Table, Nav, Tab, Badge, Modal, Spinner, ListGroup, InputGroup, Alert, Dropdown } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Form, Table, Nav, Tab, Badge, Modal, Spinner, ListGroup, InputGroup, Alert, Dropdown, Pagination, ProgressBar } from 'react-bootstrap';
 import { 
   // Navigation and UI icons
   FaPhone, FaUser, FaEnvelope, FaCalendar, FaChartLine, FaUsers, 
@@ -2385,96 +2385,12 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
 
   // Add state for scheduled events
   const [scheduledEvents, setScheduledEvents] = useState([]);
-  const [accessToken, setAccessToken] = useState('');
 
   // Function to fetch events from Google Calendar API
   const fetchScheduledEvents = async () => {
-    try {
-      // If no access token, get a new one
-      if (!accessToken) {
-        console.log('No access token, refreshing...');
-        const newToken = await refreshAccessToken();
-        if (!newToken) {
-          console.error('Failed to get new access token');
+    // Calendar functionality removed
           setScheduledEvents([]);
-          return;
-        }
-      }
-
-      // First, get the list of calendars
-      console.log('Fetching calendar list...');
-      const calendarsResponse = await fetch(
-        'https://www.googleapis.com/calendar/v3/users/me/calendarList',
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-          },
-        }
-      );
-
-      if (!calendarsResponse.ok) {
-        console.error('Failed to fetch calendar list:', await calendarsResponse.text());
-        setScheduledEvents([]);
-        return;
-      }
-
-      const calendars = await calendarsResponse.json();
-      console.log('Available calendars:', calendars);
-
-      // Use the primary calendar or the first available calendar
-      const calendarId = 'primary';
-      
-      console.log('Fetching events from calendar:', calendarId);
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?maxResults=3&orderBy=startTime&singleEvents=true&timeMin=${new Date().toISOString()}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-          },
-        }
-      );
-
-      if (response.status === 401) {
-        console.log('Token expired, refreshing...');
-        const newToken = await refreshAccessToken();
-        if (!newToken) {
-          console.error('Failed to refresh token');
-          setScheduledEvents([]);
-          return;
-        }
-        // Retry the request with new token
-        return fetchScheduledEvents();
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Calendar API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText
-        });
-        throw new Error(`Calendar API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('Events fetched successfully:', data);
-      setScheduledEvents(data.items || []);
-    } catch (error) {
-      console.error('Error in fetchScheduledEvents:', error);
-      setScheduledEvents([]);
-    }
   };
-
-  // Set up periodic token refresh
-  useEffect(() => {
-    const refreshInterval = setInterval(async () => {
-      await refreshAccessToken();
-    }, 45 * 60 * 1000); // Refresh every 45 minutes
-
-    return () => clearInterval(refreshInterval);
-  }, []);
 
   // Fetch events on component mount and daily
   useEffect(() => {
@@ -2483,48 +2399,234 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
     return () => clearInterval(interval);
   }, []);
 
-  const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
-  const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-  const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+  const [auditFilter, setAuditFilter] = useState('all');
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditPage, setAuditPage] = useState(1);
+  const itemsPerPage = 5;
 
-  const refreshAccessToken = async () => {
-    try {
-      console.log('Attempting to refresh token...');
-      const response = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
-          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
-          refresh_token: process.env.GOOGLE_REFRESH_TOKEN || '',
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('Token refresh failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: data
-        });
-        throw new Error(`Failed to refresh token: ${data.error_description || data.error || 'Unknown error'}`);
-      }
-
-      console.log('Token refreshed successfully');
-      setAccessToken(data.access_token);
-      return data.access_token;
-    } catch (error) {
-      console.error('Error in refreshAccessToken:', {
-        message: error.message,
-        stack: error.stack
-      });
-      return null;
+  // Sample data arrays
+  const allActivities = [
+    {
+      timestamp: '2024-03-15 14:30:22',
+      user: 'John Smith',
+      action: 'Login',
+      transactionId: '-',
+      details: 'Successful login from IP 192.168.1.1',
+      status: 'Success'
+    },
+    {
+      timestamp: '2024-03-15 14:35:45',
+      user: 'John Smith',
+      action: 'Reward Claimed',
+      transactionId: 'REW-2024-03-15-001',
+      details: 'Claimed $50 Amazon Gift Card',
+      status: 'Success'
+    },
+    {
+      timestamp: '2024-03-15 14:40:12',
+      user: 'John Smith',
+      action: 'Application Processed',
+      transactionId: 'APP-2024-03-15-002',
+      details: 'Processed application for Jane Doe',
+      status: 'Info'
     }
+  ];
+
+  const loginEvents = [
+    {
+      timestamp: '2024-03-15 14:30:22',
+      user: 'John Smith',
+      ipAddress: '192.168.1.1',
+      device: 'Chrome / Windows',
+      status: 'Success'
+    },
+    {
+      timestamp: '2024-03-15 13:15:10',
+      user: 'John Smith',
+      ipAddress: '192.168.1.1',
+      device: 'Chrome / Windows',
+      status: 'Success'
+    },
+    {
+      timestamp: '2024-03-15 12:45:33',
+      user: 'John Smith',
+      ipAddress: '192.168.1.1',
+      device: 'Chrome / Windows',
+      status: 'Failed'
+    }
+  ];
+
+  const rewardsTransactions = [
+    {
+      timestamp: '2024-03-15 14:35:45',
+      user: 'John Smith',
+      transactionId: 'REW-2024-03-15-001',
+      type: 'Gift Card',
+      amount: '$50.00',
+      status: 'Completed'
+    },
+    {
+      timestamp: '2024-03-15 14:50:15',
+      user: 'John Smith',
+      transactionId: 'REW-2024-03-15-004',
+      type: 'Points',
+      amount: '100 pts',
+      status: 'Completed'
+    },
+    {
+      timestamp: '2024-03-14 16:20:30',
+      user: 'John Smith',
+      transactionId: 'REW-2024-03-14-003',
+      type: 'Gift Card',
+      amount: '$25.00',
+      status: 'Completed'
+    }
+  ];
+
+  const dataChanges = [
+    {
+      timestamp: '2024-03-15 15:20:33',
+      user: 'John Smith',
+      action: 'Update',
+      recordId: 'CLI-2024-001',
+      changes: 'Updated contact information',
+      status: 'Success'
+    },
+    {
+      timestamp: '2024-03-15 15:15:22',
+      user: 'John Smith',
+      action: 'Create',
+      recordId: 'CLI-2024-002',
+      changes: 'Created new client record',
+      status: 'Success'
+    },
+    {
+      timestamp: '2024-03-15 15:10:15',
+      user: 'John Smith',
+      action: 'Delete',
+      recordId: 'CLI-2024-003',
+      changes: 'Deleted duplicate record',
+      status: 'Warning'
+    }
+  ];
+
+  const settingsChanges = [
+    {
+      timestamp: '2024-03-15 14:55:00',
+      user: 'John Smith',
+      setting: 'Notifications',
+      oldValue: 'Email Only',
+      newValue: 'Email & SMS',
+      status: 'Success'
+    },
+    {
+      timestamp: '2024-03-15 14:52:30',
+      user: 'John Smith',
+      setting: 'Theme',
+      oldValue: 'Light',
+      newValue: 'Dark',
+      status: 'Success'
+    },
+    {
+      timestamp: '2024-03-15 14:50:15',
+      user: 'John Smith',
+      setting: 'Language',
+      oldValue: 'English',
+      newValue: 'Spanish',
+      status: 'Warning'
+    }
+  ];
+
+  const applicationEvents = [
+    {
+      timestamp: '2024-03-15 14:40:12',
+      user: 'John Smith',
+      applicationId: 'APP-2024-03-15-002',
+      action: 'Processed',
+      client: 'Jane Doe',
+      status: 'Success'
+    },
+    {
+      timestamp: '2024-03-15 14:35:30',
+      user: 'John Smith',
+      applicationId: 'APP-2024-03-15-001',
+      action: 'Submitted',
+      client: 'John Johnson',
+      status: 'Pending'
+    },
+    {
+      timestamp: '2024-03-15 14:30:15',
+      user: 'John Smith',
+      applicationId: 'APP-2024-03-15-000',
+      action: 'Rejected',
+      client: 'Sarah Smith',
+      status: 'Failed'
+    }
+  ];
+
+  const callEvents = [
+    {
+      timestamp: '2024-03-15 14:45:30',
+      user: 'John Smith',
+      callId: 'CALL-2024-03-15-003',
+      duration: '15:30',
+      client: 'Mike Brown',
+      status: 'Completed'
+    },
+    {
+      timestamp: '2024-03-15 14:30:15',
+      user: 'John Smith',
+      callId: 'CALL-2024-03-15-002',
+      duration: '08:45',
+      client: 'Lisa White',
+      status: 'Completed'
+    },
+    {
+      timestamp: '2024-03-15 14:15:00',
+      user: 'John Smith',
+      callId: 'CALL-2024-03-15-001',
+      duration: '00:00',
+      client: 'Tom Black',
+      status: 'Missed'
+    }
+  ];
+
+  // Calculate filtered count based on current filter
+  const getFilteredCount = () => {
+    let data;
+    switch (auditFilter) {
+      case 'all':
+        data = allActivities;
+        break;
+      case 'login':
+        data = loginEvents;
+        break;
+      case 'rewards':
+        data = rewardsTransactions;
+        break;
+      case 'data':
+        data = dataChanges;
+        break;
+      case 'settings':
+        data = settingsChanges;
+        break;
+      case 'applications':
+        data = applicationEvents;
+        break;
+      case 'calls':
+        data = callEvents;
+        break;
+      default:
+        data = allActivities;
+    }
+    return data.filter(item => 
+      Object.values(item).some(value => 
+        value.toString().toLowerCase().includes(auditSearch.toLowerCase())
+      )
+    ).length;
   };
+
+  const filteredCount = getFilteredCount();
 
   return (
     <div className="office-container">
@@ -2880,6 +2982,11 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
           <Nav.Item>
             <Nav.Link active={activeTab === 'drive'} onClick={() => setActiveTab('drive')}>
               <FaGoogleDrive className="me-2" /> Drive
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'audit'} onClick={() => setActiveTab('audit')}>
+              <FaShieldAlt className="me-2" /> Audit
             </Nav.Link>
           </Nav.Item>
         </Nav>
@@ -4538,22 +4645,20 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                       <div className="section mb-4">
                         <div className="d-flex justify-content-between align-items-center mb-3">
                           <h6 className="mb-0">Available Rewards</h6>
-                          <Button variant="outline-primary" size="sm" onClick={() => setShowRewardsHistoryModal(true)}>
-                            <FaHistory className="me-1" /> Rewards History
-                          </Button>
                         </div>
-                        <div className="rewards-status-indicator p-3 border rounded">
-                          <div className="d-flex flex-wrap gap-3">
-                            {rewardMilestones.map(r => (
-                              <div key={r.days} className="d-flex align-items-center gap-2">
-                                <Badge bg={coverageDays >= r.days ? 'success' : 'secondary'}>
-                                  {r.reward}
-                                </Badge>
-                                <span className={coverageDays >= r.days ? 'text-success' : 'text-muted'}>
-                                  {r.label}
-                                </span>
-                              </div>
-                            ))}
+                        <div className="rewards-status-indicator p-4 border rounded text-center" style={{ 
+                          background: 'linear-gradient(145deg, #f8f9fa 0%, #ffffff 100%)',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                        }}>
+                          <div className="d-flex flex-column align-items-center justify-content-center" style={{ minHeight: '100px' }}>
+                            <FaGift className="mb-3" style={{ fontSize: '2rem', color: '#6c757d' }} />
+                            <p className="text-muted mb-0" style={{ 
+                              fontSize: '1.1rem',
+                              fontWeight: '500',
+                              letterSpacing: '0.5px'
+                            }}>
+                              Rewards Will Appear Here If Approved By Admin
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -6737,20 +6842,247 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
             <h5 className="mb-0">Scheduled Events</h5>
           </Card.Header>
           <Card.Body>
-            <p>View and manage your upcoming scheduled events.</p>
-            <ul className="list-group">
-              {scheduledEvents.length > 0 ? (
-                scheduledEvents.slice(0, 3).map((event, index) => (
-                  <li key={index} className="list-group-item">
-                    {event.summary} - {new Date(event.start.dateTime).toLocaleString()}
-                  </li>
-                ))
-              ) : (
-                <li className="list-group-item">No upcoming events scheduled.</li>
-              )}
-            </ul>
+            <p>Calendar functionality has been removed.</p>
           </Card.Body>
         </Card>
+      )}
+
+      {activeTab === 'audit' && (
+        <div className="audit-container">
+          <Card className="dashboard-card mb-4">
+            <Card.Header>
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">
+                  <FaShieldAlt className="me-2" /> Audit Log
+                </h5>
+                <div className="d-flex gap-2">
+                  <Form.Select 
+                    size="sm" 
+                    className="w-auto"
+                    value={auditFilter}
+                    onChange={(e) => {
+                      setAuditFilter(e.target.value);
+                      setAuditPage(1);
+                      setAuditSearch('');
+                    }}
+                  >
+                    <option value="all">All Activities</option>
+                    <option value="login">Login Events</option>
+                    <option value="rewards">Rewards & Transactions</option>
+                    <option value="data">Data Changes</option>
+                    <option value="settings">Settings Changes</option>
+                    <option value="applications">Application Events</option>
+                    <option value="calls">Call Events</option>
+                  </Form.Select>
+                  <Button variant="outline-primary" size="sm">
+                    <FaDownload className="me-1" /> Export
+                  </Button>
+                </div>
+              </div>
+            </Card.Header>
+            <Card.Body>
+              <div className="mb-3">
+                <Form.Control
+                  type="text"
+                  placeholder="Search..."
+                  value={auditSearch}
+                  onChange={(e) => {
+                    setAuditSearch(e.target.value);
+                    setAuditPage(1);
+                  }}
+                  className="w-25"
+                />
+              </div>
+
+              {auditFilter === 'all' && (
+                <div className="audit-log">
+                  <Table hover responsive>
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Transaction ID</th>
+                        <th>Details</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Filter and paginate the data */}
+                      {allActivities
+                        .filter(activity => 
+                          Object.values(activity).some(value => 
+                            value.toString().toLowerCase().includes(auditSearch.toLowerCase())
+                          )
+                        )
+                        .slice((auditPage - 1) * itemsPerPage, auditPage * itemsPerPage)
+                        .map((activity, index) => (
+                          <tr key={index}>
+                            <td>{activity.timestamp}</td>
+                            <td>{activity.user}</td>
+                            <td>{activity.action}</td>
+                            <td>{activity.transactionId}</td>
+                            <td>{activity.details}</td>
+                            <td><Badge bg={activity.status.toLowerCase()}>{activity.status}</Badge></td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </Table>
+                  <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                      Showing {Math.min((auditPage - 1) * itemsPerPage + 1, filteredCount)} to {Math.min(auditPage * itemsPerPage, filteredCount)} of {filteredCount} entries
+                    </div>
+                    <Pagination>
+                      <Pagination.Prev 
+                        onClick={() => setAuditPage(prev => Math.max(prev - 1, 1))}
+                        disabled={auditPage === 1}
+                      />
+                      {[...Array(Math.ceil(filteredCount / itemsPerPage))].map((_, i) => (
+                        <Pagination.Item
+                          key={i + 1}
+                          active={i + 1 === auditPage}
+                          onClick={() => setAuditPage(i + 1)}
+                        >
+                          {i + 1}
+                        </Pagination.Item>
+                      ))}
+                      <Pagination.Next 
+                        onClick={() => setAuditPage(prev => Math.min(prev + 1, Math.ceil(filteredCount / itemsPerPage)))}
+                        disabled={auditPage === Math.ceil(filteredCount / itemsPerPage)}
+                      />
+                    </Pagination>
+                  </div>
+                </div>
+              )}
+
+              {auditFilter === 'login' && (
+                <div className="audit-log">
+                  <Table hover responsive>
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>IP Address</th>
+                        <th>Device</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loginEvents
+                        .filter(event => 
+                          Object.values(event).some(value => 
+                            value.toString().toLowerCase().includes(auditSearch.toLowerCase())
+                          )
+                        )
+                        .slice((auditPage - 1) * itemsPerPage, auditPage * itemsPerPage)
+                        .map((event, index) => (
+                          <tr key={index}>
+                            <td>{event.timestamp}</td>
+                            <td>{event.user}</td>
+                            <td>{event.ipAddress}</td>
+                            <td>{event.device}</td>
+                            <td><Badge bg={event.status.toLowerCase()}>{event.status}</Badge></td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </Table>
+                  <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                      Showing {Math.min((auditPage - 1) * itemsPerPage + 1, filteredCount)} to {Math.min(auditPage * itemsPerPage, filteredCount)} of {filteredCount} entries
+                    </div>
+                    <Pagination>
+                      <Pagination.Prev 
+                        onClick={() => setAuditPage(prev => Math.max(prev - 1, 1))}
+                        disabled={auditPage === 1}
+                      />
+                      {[...Array(Math.ceil(filteredCount / itemsPerPage))].map((_, i) => (
+                        <Pagination.Item
+                          key={i + 1}
+                          active={i + 1 === auditPage}
+                          onClick={() => setAuditPage(i + 1)}
+                        >
+                          {i + 1}
+                        </Pagination.Item>
+                      ))}
+                      <Pagination.Next 
+                        onClick={() => setAuditPage(prev => Math.min(prev + 1, Math.ceil(filteredCount / itemsPerPage)))}
+                        disabled={auditPage === Math.ceil(filteredCount / itemsPerPage)}
+                      />
+                    </Pagination>
+                  </div>
+                </div>
+              )}
+
+              {/* Similar structure for other filters */}
+              {auditFilter === 'rewards' && (
+                <div className="audit-log">
+                  <Table hover responsive>
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>Transaction ID</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rewardsTransactions
+                        .filter(transaction => 
+                          Object.values(transaction).some(value => 
+                            value.toString().toLowerCase().includes(auditSearch.toLowerCase())
+                          )
+                        )
+                        .slice((auditPage - 1) * itemsPerPage, auditPage * itemsPerPage)
+                        .map((transaction, index) => (
+                          <tr key={index}>
+                            <td>{transaction.timestamp}</td>
+                            <td>{transaction.user}</td>
+                            <td>{transaction.transactionId}</td>
+                            <td>{transaction.type}</td>
+                            <td>{transaction.amount}</td>
+                            <td><Badge bg={transaction.status.toLowerCase()}>{transaction.status}</Badge></td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </Table>
+                  <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                      Showing {Math.min((auditPage - 1) * itemsPerPage + 1, filteredCount)} to {Math.min(auditPage * itemsPerPage, filteredCount)} of {filteredCount} entries
+                    </div>
+                    <Pagination>
+                      <Pagination.Prev 
+                        onClick={() => setAuditPage(prev => Math.max(prev - 1, 1))}
+                        disabled={auditPage === 1}
+                      />
+                      {[...Array(Math.ceil(filteredCount / itemsPerPage))].map((_, i) => (
+                        <Pagination.Item
+                          key={i + 1}
+                          active={i + 1 === auditPage}
+                          onClick={() => setAuditPage(i + 1)}
+                        >
+                          {i + 1}
+                        </Pagination.Item>
+                      ))}
+                      <Pagination.Next 
+                        onClick={() => setAuditPage(prev => Math.min(prev + 1, Math.ceil(filteredCount / itemsPerPage)))}
+                        disabled={auditPage === Math.ceil(filteredCount / itemsPerPage)}
+                      />
+                    </Pagination>
+                  </div>
+                </div>
+              )}
+
+              {/* Add similar structure for other filters (data, settings, applications, calls) */}
+          </Card.Body>
+        </Card>
+
+          {/* Keep the Activity Summary card as is */}
+          <Card className="dashboard-card mb-4">
+            {/* ... existing Activity Summary card content ... */}
+          </Card>
+        </div>
       )}
     </div>
   );
