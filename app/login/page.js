@@ -3,19 +3,36 @@
 import { useState } from 'react';
 import { Container, Form, Button, Row, Col, Alert } from 'react-bootstrap';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email === 'admin@office.com' && password === 'admin123') {
-      router.push('/office');
-    } else {
-      setError('Invalid credentials');
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError('Invalid email or password');
+      } else {
+        router.push('/office');
+      }
+    } catch (error) {
+      setError('An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,8 +94,9 @@ export default function Login() {
                       variant="primary" 
                       type="submit" 
                       className="w-100"
+                      disabled={loading}
                     >
-                      Sign In
+                      {loading ? 'Signing in...' : 'Sign In'}
                     </Button>
                   </Form>
                 </div>
