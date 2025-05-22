@@ -9,9 +9,10 @@ import {
 import { db } from '../../firebase/config';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth } from '../../firebase/config';
-import AgentStatusBar from '../../components/AgentStatusBar';
+import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState({
     firstName: '',
@@ -30,14 +31,27 @@ export default function SettingsPage() {
   });
   const [theme, setTheme] = useState('light');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchUserSettings();
-  }, []);
+    // Check if user is authenticated
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        fetchUserSettings(user.uid);
+      } else {
+        // Redirect to login if not authenticated
+        router.push('/login');
+      }
+      setLoading(false);
+    });
 
-  const fetchUserSettings = async () => {
+    // Cleanup subscription
+    return () => unsubscribe();
+  }, [router]);
+
+  const fetchUserSettings = async (userId) => {
     try {
-      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
         const data = userDoc.data();
         setProfile(data.profile || {});
@@ -69,6 +83,11 @@ export default function SettingsPage() {
   };
 
   const handleSave = async () => {
+    if (!auth.currentUser) {
+      router.push('/login');
+      return;
+    }
+
     setSaving(true);
     try {
       await updateDoc(doc(db, 'users', auth.currentUser.uid), {
@@ -84,9 +103,20 @@ export default function SettingsPage() {
     setSaving(false);
   };
 
+  if (loading) {
+    return (
+      <Container fluid>
+        <Row className="mb-4">
+          <Col>
+            <p>Loading...</p>
+          </Col>
+        </Row>
+      </Container>
+    );
+  }
+
   return (
     <Container fluid>
-      <AgentStatusBar />
       <Row className="mb-4">
         <Col>
           <h2>Settings</h2>

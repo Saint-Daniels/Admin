@@ -828,6 +828,22 @@ const handleSave = async (type) => {
   // Update handleEndCall function
   const handleEndCall = async () => {
     try {
+      // Stop call timer if running
+      if (callTimer) {
+        clearInterval(callTimer);
+        setCallTimer(null);
+      }
+      // Reset call state
+      setIsCallActive(false);
+      setIsDialing(false);
+      setCallStatus('idle');
+      setCallDuration(0);
+      setAgentStatus('available');
+      // Optionally disconnect WebRTC session if needed
+      if (webrtcSession) {
+        // Add your session cleanup logic here
+        setWebrtcSession(null);
+      }
       // Show disposition modal
       setShowDispositionModal(true);
     } catch (error) {
