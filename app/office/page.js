@@ -46,7 +46,7 @@ import {
   FaUserCheck, FaUserClock,
   FaSignature, FaIdCard,
   FaGlobe, FaSnapchat, FaTiktok, FaInstagram, FaFacebook,
-  FaGift,
+  FaGift, FaPaperclip,
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Chat from '@/components/Chat';
@@ -1835,13 +1835,7 @@ const handleSave = async (type) => {
   // --- End Support Tab Functions ---
 
   // State for Email Tab
-  const [emailsData, setEmailsData] = useState([
-    { id: 'email-001', from: 'John Smith', subject: 'Health Insurance Quote Follow-up', content: 'Hi, I wanted to follow up on our conversation about health insurance options. When would be a good time to continue our discussion?', time: '10:30 AM', read: true, starred: false, folder: 'inbox' },
-    { id: 'email-002', from: 'Marketing Team', subject: 'New Campaign Materials', content: 'Team, The new marketing materials for the summer campaign are now available. Please review and use these updated templates for all client communications.', time: '9:15 AM', read: false, starred: true, folder: 'inbox' },
-    { id: 'email-003', from: 'Sarah Johnson', subject: 'Question about my policy', content: 'Hello, I have a question about my current policy coverage. Can you please clarify if dental procedures are covered under my plan?', time: 'Yesterday', read: true, starred: false, folder: 'inbox' },
-    { id: 'email-004', from: 'IT Support', subject: 'System Maintenance Notice', content: 'Please be informed that system maintenance will be performed this weekend. The dialer system will be offline from Saturday 8pm to Sunday 2am.', time: '2 days ago', read: true, starred: false, folder: 'inbox' },
-    { id: 'email-005', from: 'Manager', subject: 'Monthly performance review', content: 'Your monthly performance report is ready for review. Please schedule a meeting this week to discuss your results and targets for next month.', time: '3 days ago', read: false, starred: true, folder: 'inbox' },
-  ]);
+  const [emailsData, setEmailsData] = useState([]); // Empty array instead of placeholder data
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [emailFolder, setEmailFolder] = useState('inbox');
   
@@ -2630,6 +2624,119 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
 
   const filteredCount = getFilteredCount();
 
+  // At the top of the Office component, with other useState calls:
+  const [inRoom, setInRoom] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('googleMeetsInRoom');
+      return stored === null ? false : stored === 'true';
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('googleMeetsInRoom', inRoom ? 'true' : 'false');
+    }
+  }, [inRoom]);
+
+  const [usersInRoom, setUsersInRoom] = useState([
+    { name: 'John Doe', initials: 'JD', color: 'primary' },
+    { name: 'Jane Smith', initials: 'JS', color: 'secondary' },
+    { name: 'Mike Johnson', initials: 'MJ', color: 'info' }
+  ]);
+  const [meetLink, setMeetLink] = useState('https://meet.google.com/abc-defg-hij');
+  const [editingLink, setEditingLink] = useState(false);
+
+  // Add these state variables near the other email-related state
+  const [showComposeModal, setShowComposeModal] = useState(false);
+  const [composeEmail, setComposeEmail] = useState({
+    to: '',
+    cc: '',
+    bcc: '',
+    subject: '',
+    content: '',
+    attachments: []
+  });
+
+  // Add these handlers near the other email-related handlers
+  const handleComposeEmailChange = (field, value) => {
+    setComposeEmail(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleComposeSubmit = async () => {
+    // This will be replaced with actual API call
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Add the sent email to the emailsData array
+      const newEmail = {
+        id: `email-${Date.now()}`,
+        from: 'You',
+        to: composeEmail.to,
+        subject: composeEmail.subject,
+        content: composeEmail.content,
+        time: 'Just now',
+        read: true,
+        starred: false,
+        folder: 'sent'
+      };
+      
+      setEmailsData(prev => [newEmail, ...prev]);
+      setShowComposeModal(false);
+      setComposeEmail({
+        to: '',
+        cc: '',
+        bcc: '',
+        subject: '',
+        content: '',
+        attachments: []
+      });
+    } catch (error) {
+      console.error('Error sending email:', error);
+      // Handle error (show error message, etc.)
+    }
+  };
+
+  // Add to the email state:
+  const [composeMode, setComposeMode] = useState('new'); // 'new' or 'reply'
+  const [replyToEmail, setReplyToEmail] = useState(null);
+
+  // Update handleComposeEmailChange and handleComposeSubmit as needed (no change needed for API readiness)
+
+  // Add a function to open the compose modal for reply
+  const handleReply = (email) => {
+    setComposeMode('reply');
+    setReplyToEmail(email);
+    setComposeEmail({
+      to: email.from,
+      cc: '',
+      bcc: '',
+      subject: email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`,
+      content: `\n\nOn ${email.time}, ${email.from} wrote:\n${email.content}`,
+      attachments: []
+    });
+    setShowComposeModal(true);
+  };
+
+  // When opening a new compose, reset mode
+  const handleNewCompose = () => {
+    setComposeMode('new');
+    setReplyToEmail(null);
+    setComposeEmail({
+      to: '',
+      cc: '',
+      bcc: '',
+      subject: '',
+      content: '',
+      attachments: []
+    });
+    setShowComposeModal(true);
+  };
+
   return (
     <div className="office-container">
       <style jsx>{`
@@ -2975,18 +3082,8 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link active={activeTab === 'applications'} onClick={() => setActiveTab('applications')}>
-              <FaUserShield className="me-2" /> Applications
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'rewards'} onClick={() => setActiveTab('rewards')}>
-              <FaGift className="me-2" /> Rewards
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'settings'} onClick={() => setActiveTab('settings')}>
-              <FaCog className="me-2" /> Settings
+            <Nav.Link active={activeTab === 'email'} onClick={() => setActiveTab('email')}>
+              <FaEnvelope className="me-2" /> Email
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
@@ -2995,31 +3092,286 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link active={activeTab === 'agents'} onClick={() => setActiveTab('agents')}>
-              <FaUsers className="me-2" /> Agents
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'support'} onClick={() => setActiveTab('support')}>
-              <FaHeadset className="me-2" /> Support
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'marketing'} onClick={() => setActiveTab('marketing')}>
-              <FaBullhorn className="me-2" /> Marketing
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
             <Nav.Link active={activeTab === 'drive'} onClick={() => setActiveTab('drive')}>
               <FaGoogleDrive className="me-2" /> Drive
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link active={activeTab === 'audit'} onClick={() => setActiveTab('audit')}>
-              <FaShieldAlt className="me-2" /> Audit
+            <Nav.Link active={activeTab === 'meets'} onClick={() => setActiveTab('meets')}>
+              <FaVideo className="me-2" /> Google Meets
             </Nav.Link>
           </Nav.Item>
         </Nav>
+
+        {activeTab === 'home' && (
+          <div>
+            <h3>Home</h3>
+            <p>Welcome to the office workspace home tab. Overview and dashboard content will appear here.</p>
+          </div>
+        )}
+        {activeTab === 'dialer' && (
+          <div>
+            <h3>Dialer</h3>
+            <p>This is the Dialer tab. Phone dialer functionality will appear here.</p>
+          </div>
+        )}
+        {activeTab === 'email' && (
+          <Row className="g-0 email-tab-row flex-wrap" style={{ minHeight: 600, background: '#f5f5f7', borderRadius: 18 }}>
+            {/* Sidebar */}
+            <Col xs={12} md={3} className="d-flex flex-column align-items-start p-4 email-sidebar" style={{ background: '#fff', borderTopLeftRadius: 18, borderBottomLeftRadius: 18, borderRight: '1px solid #ececec' }}>
+              <Button 
+                variant="danger" 
+                className="mb-4 w-100 py-2 rounded-3 shadow-sm" 
+                style={{ fontWeight: 500, fontSize: 16, letterSpacing: 0.5 }}
+                onClick={handleNewCompose}
+              >
+                + Compose
+              </Button>
+              <ListGroup variant="flush" className="w-100">
+                <ListGroup.Item 
+                  action 
+                  active={emailFolder === 'inbox'} 
+                  onClick={() => setEmailFolder('inbox')}
+                  className="d-flex align-items-center gap-2 rounded-3 mb-2 border-0" 
+                  style={{ fontWeight: 500, background: emailFolder === 'inbox' ? '#f5f5f7' : 'transparent' }}
+                >
+                  <FaUserCircle style={{ fontSize: 20, color: '#1a73e8' }} /> Inbox
+                </ListGroup.Item>
+                <ListGroup.Item 
+                  action 
+                  active={emailFolder === 'sent'} 
+                  onClick={() => setEmailFolder('sent')}
+                  className="d-flex align-items-center gap-2 rounded-3 mb-2 border-0"
+                  style={{ fontWeight: 500, background: emailFolder === 'sent' ? '#f5f5f7' : 'transparent' }}
+                >
+                  <FaPaperPlane style={{ fontSize: 20, color: '#5f6368' }} /> Sent
+                </ListGroup.Item>
+                <ListGroup.Item 
+                  action 
+                  active={emailFolder === 'starred'} 
+                  onClick={() => setEmailFolder('starred')}
+                  className="d-flex align-items-center gap-2 rounded-3 mb-2 border-0"
+                  style={{ fontWeight: 500, background: emailFolder === 'starred' ? '#f5f5f7' : 'transparent' }}
+                >
+                  <FaStar style={{ fontSize: 20, color: '#fbbc04' }} /> Starred
+                </ListGroup.Item>
+                <ListGroup.Item 
+                  action 
+                  active={emailFolder === 'trash'} 
+                  onClick={() => setEmailFolder('trash')}
+                  className="d-flex align-items-center gap-2 rounded-3 border-0"
+                  style={{ fontWeight: 500, background: emailFolder === 'trash' ? '#f5f5f7' : 'transparent' }}
+                >
+                  <FaTrash style={{ fontSize: 20, color: '#5f6368' }} /> Trash
+                </ListGroup.Item>
+              </ListGroup>
+            </Col>
+            {/* Main Email List and Reading Pane */}
+            <Col xs={12} md={9} className="p-0 email-main-col">
+              <div className="d-flex flex-column flex-md-row h-100" style={{ background: '#fff', borderTopRightRadius: 18, borderBottomRightRadius: 18 }}>
+                {/* Email List */}
+                <div className="flex-grow-1 email-list-col" style={{ minWidth: 0, borderRight: selectedEmail ? '1px solid #ececec' : 'none', maxWidth: selectedEmail ? '50%' : '100%' }}>
+                  <div className="d-flex align-items-center px-4 py-3 border-bottom" style={{ background: '#f8f9fa' }}>
+                    <Form.Control type="text" placeholder="Search mail" className="rounded-3 bg-light border-0 px-3 py-2" style={{ fontSize: 16, maxWidth: 340 }} />
+                  </div>
+                  <div className="overflow-auto" style={{ minHeight: 400, maxHeight: '60vh' }}>
+                    {emailsData.length === 0 ? (
+                      <div className="d-flex flex-column align-items-center justify-content-center h-100 text-center p-4">
+                        <FaEnvelope style={{ fontSize: 48, color: '#5f6368', marginBottom: 16 }} />
+                        <h4 style={{ color: '#202124', marginBottom: 8 }}>No emails available</h4>
+                        <p style={{ color: '#5f6368', maxWidth: 400 }}>
+                          {emailFolder === 'inbox' ? 'Your inbox is empty. Emails will appear here when the API is connected.' :
+                           emailFolder === 'sent' ? 'No sent emails yet. Sent emails will appear here when the API is connected.' :
+                           emailFolder === 'starred' ? 'No starred emails yet. Star important emails to see them here.' :
+                           'No emails in trash. Deleted emails will appear here.'}
+                        </p>
+                      </div>
+                    ) : (
+                      <ListGroup variant="flush">
+                        {emailsData
+                          .filter(email => email.folder === emailFolder || (emailFolder === 'starred' && email.starred))
+                          .map(email => (
+                            <ListGroup.Item 
+                              key={email.id}
+                              action 
+                              active={selectedEmail?.id === email.id}
+                              onClick={() => setSelectedEmail(email)}
+                              className={`d-flex align-items-center gap-3 border-0 px-4 py-3 ${!email.read ? 'email-row-unread' : 'email-row'}`} 
+                              style={{ 
+                                background: selectedEmail?.id === email.id ? '#e8f0fe' : 'transparent',
+                                borderRadius: 12, 
+                                cursor: 'pointer' 
+                              }}
+                            >
+                              <FaUserCircle style={{ color: email.read ? '#5f6368' : '#1a73e8', fontSize: 22 }} />
+                              <div className="flex-grow-1">
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <span style={{ fontWeight: 600, fontSize: 16 }}>{email.from}</span>
+                                  <span className="text-muted small">{email.time}</span>
+                                </div>
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <span style={{ fontWeight: 500 }}>{email.subject}</span>
+                                  {!email.read && (
+                                    <span className="badge bg-primary ms-2" style={{ fontSize: 10 }}>UNREAD</span>
+                                  )}
+                                </div>
+                                <div className="text-muted small text-truncate" style={{ maxWidth: 200 }}>{email.content}</div>
+                              </div>
+                            </ListGroup.Item>
+                          ))}
+                      </ListGroup>
+                    )}
+                  </div>
+                </div>
+                {/* Reading Pane (only on desktop/tablet, or as overlay on mobile) */}
+                {selectedEmail && (
+                  <div className="email-reading-pane flex-grow-1 p-4" style={{ minWidth: 0, maxWidth: '50%', background: '#f8f9fa', borderTopRightRadius: 18, borderBottomRightRadius: 18 }}>
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <div>
+                        <h5 className="mb-1">{selectedEmail.subject}</h5>
+                        <div className="text-muted small">From: {selectedEmail.from}</div>
+                        <div className="text-muted small">To: {selectedEmail.to || 'me'}</div>
+                        <div className="text-muted small">{selectedEmail.time}</div>
+                      </div>
+                      <Button variant="outline-secondary" size="sm" onClick={() => setSelectedEmail(null)}>
+                        <FaTimes />
+                      </Button>
+                    </div>
+                    <div className="mb-4" style={{ whiteSpace: 'pre-wrap' }}>{selectedEmail.content}</div>
+                    <div className="d-flex gap-2">
+                      <Button variant="primary" onClick={() => handleReply(selectedEmail)}>
+                        <FaReply className="me-2" /> Reply
+                      </Button>
+                      {/* Add more actions if needed */}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Col>
+          </Row>
+        )}
+        {activeTab === 'chat' && (
+          <Row style={{ height: '60vh' }}>
+            <Col md={4} className="border-end p-0">
+              <Card className="h-100 rounded-0">
+                <Card.Header>
+                  <Form.Control type="text" placeholder="Search chats..." />
+                </Card.Header>
+                <Card.Body className="p-0">
+                  <ListGroup variant="flush">
+                    <ListGroup.Item action active>
+                      <div className="d-flex align-items-center">
+                        <div className="avatar-circle me-3 bg-light d-flex align-items-center justify-content-center" style={{ width: 40, height: 40, borderRadius: '50%' }}>
+                          <span className="text-muted">JD</span>
+                        </div>
+                        <div>
+                          <strong>John Doe</strong>
+                          <div className="text-muted small">Hey, are you available?</div>
+                        </div>
+                        <Badge bg="primary" className="ms-auto">2</Badge>
+                      </div>
+                    </ListGroup.Item>
+                    <ListGroup.Item action>
+                      <div className="d-flex align-items-center">
+                        <div className="avatar-circle me-3 bg-light d-flex align-items-center justify-content-center" style={{ width: 40, height: 40, borderRadius: '50%' }}>
+                          <span className="text-muted">JS</span>
+                        </div>
+                        <div>
+                          <strong>Jane Smith</strong>
+                          <div className="text-muted small">Let's meet at 2pm</div>
+                        </div>
+                      </div>
+                    </ListGroup.Item>
+                  </ListGroup>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={8} className="p-0">
+              <Card className="h-100 rounded-0">
+                <Card.Header className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center">
+                    <div className="avatar-circle me-3 bg-light d-flex align-items-center justify-content-center" style={{ width: 40, height: 40, borderRadius: '50%' }}>
+                      <span className="text-muted">JD</span>
+                    </div>
+                    <div>
+                      <strong>John Doe</strong>
+                      <div className="text-muted small">Online</div>
+                    </div>
+                  </div>
+                </Card.Header>
+                <Card.Body style={{ overflowY: 'auto', height: '40vh' }}>
+                  <div className="mb-3">
+                    <div className="bg-light p-2 rounded mb-1" style={{ maxWidth: '70%' }}><strong>You:</strong> Hi John!</div>
+                    <div className="bg-primary text-white p-2 rounded mb-1 ms-auto" style={{ maxWidth: '70%' }}><strong>John:</strong> Hey, are you available?</div>
+                  </div>
+                </Card.Body>
+                <Card.Footer>
+                  <Form className="d-flex">
+                    <Form.Control type="text" placeholder="Type a message..." />
+                    <Button variant="primary" className="ms-2">Send</Button>
+                  </Form>
+                </Card.Footer>
+              </Card>
+            </Col>
+          </Row>
+        )}
+        {activeTab === 'drive' && (
+          <div>
+            <h3>Drive</h3>
+            <p>This is the Drive tab. Google Drive integration will appear here.</p>
+          </div>
+        )}
+        {activeTab === 'meets' && (
+          <Row className="g-0" style={{ minHeight: 600, background: '#23272f', borderRadius: 18 }}>
+            <Col md={12} className="d-flex flex-column align-items-center justify-content-center p-0" style={{ minHeight: 600 }}>
+              <div className="d-flex flex-column align-items-center justify-content-center w-100" style={{ maxWidth: 900 }}>
+                <div className="bg-dark rounded-4 shadow-lg mb-4 d-flex align-items-center justify-content-center position-relative" style={{ width: '100%', height: 340, background: 'linear-gradient(135deg, #23272f 80%, #2d313a 100%)' }}>
+                  {inRoom ? (
+                    <>
+                      {/* X button */}
+                      <Button
+                        variant="light"
+                        className="position-absolute"
+                        style={{ top: 18, right: 18, borderRadius: '50%', width: 36, height: 36, padding: 0, zIndex: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+                        onClick={() => setInRoom(false)}
+                        title="Close Room View"
+                      >
+                        <span style={{ fontSize: 22, fontWeight: 700, color: '#23272f', lineHeight: 1 }}>×</span>
+                      </Button>
+                      <div className="d-flex flex-column align-items-center justify-content-center w-100 h-100">
+                        <div className="mb-4 d-flex flex-row gap-4 justify-content-center">
+                          {usersInRoom.map((user, idx) => (
+                            <div key={idx} className={`rounded-circle bg-${user.color} d-flex align-items-center justify-content-center`} style={{ width: 64, height: 64, fontWeight: 700, color: '#fff', fontSize: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                              {user.initials}
+                            </div>
+                          ))}
+                        </div>
+                        <span className="text-white-50 mb-2" style={{ fontSize: 20, fontWeight: 500 }}>You are in the room</span>
+                        <div className="d-flex gap-3 mt-2">
+                          <Button variant="danger" className="rounded-3 px-4 py-2" style={{ fontWeight: 500, fontSize: 16 }} onClick={() => setInRoom(false)}>Leave Room</Button>
+                          <Button variant="success" className="rounded-3 px-4 py-2" style={{ fontWeight: 500, fontSize: 16 }} onClick={() => window.open(meetLink, '_blank')}>Go to Google Meet</Button>
+                          <Button variant="outline-light" className="rounded-3 px-4 py-2" style={{ fontWeight: 500, fontSize: 16 }} onClick={() => setEditingLink(true)}>Change Room</Button>
+                        </div>
+                        {editingLink && (
+                          <Form className="mt-3 d-flex gap-2 align-items-center" onSubmit={e => { e.preventDefault(); setEditingLink(false); }}>
+                            <Form.Control type="text" value={meetLink} onChange={e => setMeetLink(e.target.value)} style={{ minWidth: 320 }} />
+                            <Button type="submit" variant="primary">Save</Button>
+                            <Button variant="secondary" onClick={() => setEditingLink(false)}>Cancel</Button>
+                          </Form>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="d-flex flex-column align-items-center justify-content-center w-100 h-100">
+                      <span className="text-white-50 mb-3" style={{ fontSize: 22, fontWeight: 500 }}>You are not in the room</span>
+                      <Button variant="success" className="rounded-3 px-4 py-2" style={{ fontWeight: 500, fontSize: 16 }} onClick={() => setInRoom(true)}>Join Room</Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Col>
+          </Row>
+        )}
 
         {activeTab === 'home' && (
           <Container fluid className="px-0">
@@ -4726,1651 +5078,20 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                       </div>
         )}
 
-        {activeTab === 'analytics' && (
-          <div className="analytics-container">
-            <div className="analytics-sidebar">
-              {/* Sales Performance Analytics */}
-              <div className="analytics-section">
-                <h6 className="mb-3">Sales Performance</h6>
-                <div className="performance-stats">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Conversion Rate</span>
-                    <span className="text-success">32%</span>
-                          </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Avg Sale Value</span>
-                    <span className="text-primary">$450</span>
-                  </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Cost per Acquisition</span>
-                    <span className="text-info">$125</span>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <span>Revenue per Call</span>
-                    <span className="text-warning">$145</span>
-                  </div>
-                        </div>
-                      </div>
-
-              {/* Time Metrics */}
-              <div className="analytics-section">
-                <h6 className="mb-3">Time Metrics</h6>
-                <div className="time-stats">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Avg Call Duration</span>
-                    <span className="text-primary">8:30</span>
-                        </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Time to Close</span>
-                    <span className="text-success">12:45</span>
-                      </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>First Response</span>
-                    <span className="text-info">45s</span>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <span>Talk-to-Listen Ratio</span>
-                    <span className="text-warning">40:60</span>
-                  </div>
-              </div>
-            </div>
-
-              {/* Sales Funnel Analytics */}
-              <div className="analytics-section" style={{ padding: '1.5rem' }}>
-                <h6 className="mb-3">Sales Funnel Analytics</h6>
-                <div className="funnel-stats">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Lead to Opportunity</span>
-                    <span className="text-primary">45%</span>
-                            </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Opportunity to Quote</span>
-                    <span className="text-success">65%</span>
-                            </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Quote to Close</span>
-                    <span className="text-info">48%</span>
-                          </div>
-                  <div className="d-flex justify-content-between">
-                    <span>Overall Pipeline Velocity</span>
-                    <span className="text-warning">3.2 days</span>
-                        </div>
-                      </div>
-                  </div>
-
-              {/* Performance Trends */}
-              <div className="analytics-section">
-                <h6 className="mb-3">Performance Trends</h6>
-                <div className="trend-stats">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Peak Performance Hours</span>
-                    <span className="text-success">10AM - 2PM</span>
-            </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Best Performing Day</span>
-                    <span className="text-primary">Wednesday</span>
-          </div>
-                  <div className="d-flex justify-content-between mb-2">
-                    <span>Avg Deals per Day</span>
-                    <span className="text-info">3.5</span>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <span>Success Rate Trend</span>
-                    <span className="text-warning">↑ 12% MoM</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="analytics-main">
-            {/* Time Tracking Overview Card */}
-            <Card className="dashboard-card mb-4">
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaClock className="me-2" /> Time Tracking Overview
-                  </h5>
-                  <div className="d-flex gap-2">
-                    <Form.Select size="sm" className="w-auto">
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                    </Form.Select>
-                    <Button variant="outline-primary" size="sm">
-                      <FaDownload className="me-1" /> Export
-                    </Button>
-                  </div>
-                </div>
-              </Card.Header>
-              <Card.Body>
-                  <div className="time-tracking-metrics">
-                    <Row className="g-4">
-                      <Col md={3}>
-                        <div className="stat-card bg-primary bg-opacity-10 p-3 rounded">
-                          <h6 className="text-primary">Hours Today</h6>
-                          <h3>7:45</h3>
-                          <div className="d-flex align-items-center">
-                            <small className="text-success me-2">On Track</small>
-                            <small className="text-muted">15 min break</small>
-                          </div>
-                        </div>
-                      </Col>
-                      <Col md={3}>
-                        <div className="stat-card bg-success bg-opacity-10 p-3 rounded">
-                          <h6 className="text-success">Weekly Hours</h6>
-                          <h3>32:15</h3>
-                          <div className="d-flex align-items-center">
-                            <small className="text-success me-2">+2hrs</small>
-                            <small className="text-muted">vs target</small>
-                          </div>
-                        </div>
-                      </Col>
-                      <Col md={3}>
-                        <div className="stat-card bg-info bg-opacity-10 p-3 rounded">
-                          <h6 className="text-info">Productivity</h6>
-                          <h3>92%</h3>
-                          <div className="d-flex align-items-center">
-                            <small className="text-success me-2">+5%</small>
-                            <small className="text-muted">vs last week</small>
-                          </div>
-                        </div>
-                      </Col>
-                      <Col md={3}>
-                        <div className="stat-card bg-warning bg-opacity-10 p-3 rounded">
-                          <h6 className="text-warning">Break Time</h6>
-                          <h3>45min</h3>
-                          <div className="d-flex align-items-center">
-                            <small className="text-success me-2">Within limit</small>
-                            <small className="text-muted">15min left</small>
-                          </div>
-                        </div>
-                      </Col>
-                    </Row>
-                </div>
-
-                <div className="time-tracking-details mt-4">
-                  <Row>
-                    <Col md={6}>
-                        <div className="time-card p-3 border rounded">
-                        <h6 className="mb-3">Daily Activity</h6>
-                        <div className="activity-timeline">
-                          <div className="activity-item d-flex justify-content-between mb-2">
-                            <span>Clock In</span>
-                            <span className="text-success">8:00 AM</span>
-                          </div>
-                          <div className="activity-item d-flex justify-content-between mb-2">
-                            <span>Morning Break</span>
-                            <span className="text-warning">10:15 AM (15min)</span>
-                          </div>
-                          <div className="activity-item d-flex justify-content-between mb-2">
-                            <span>Lunch Break</span>
-                            <span className="text-warning">12:30 PM (30min)</span>
-                          </div>
-                          <div className="activity-item d-flex justify-content-between">
-                            <span>Current Status</span>
-                            <span className="text-primary">Active</span>
-                          </div>
-                        </div>
-                      </div>
-                    </Col>
-                    <Col md={6}>
-                        <div className="time-card weekly-hours p-3 border rounded">
-                        <h6 className="mb-3">Weekly Hours Distribution</h6>
-                        <div className="hours-distribution">
-                          <div className="d-flex justify-content-between mb-2">
-                            <span>Active Work</span>
-                            <span className="text-success">35h 15m (88%)</span>
-                          </div>
-                          <div className="d-flex justify-content-between mb-2">
-                            <span>Breaks</span>
-                            <span className="text-warning">3h 45m (9%)</span>
-                          </div>
-                          <div className="d-flex justify-content-between">
-                            <span>Training</span>
-                            <span className="text-info">1h 15m (3%)</span>
-                          </div>
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
-                </div>
-              </Card.Body>
-            </Card>
-
-              {/* Real-time Activity Indicators */}
-              <div className="real-time-activity">
-                <h6 className="mb-3">Today's Sales Performance</h6>
-                <div className="activity-indicators">
-                  <div className="d-flex flex-wrap gap-3">
-                    {/* Sales Counter */}
-                    <div className="indicator-item p-3 border rounded flex-grow-1" onClick={() => setShowSalesModal(true)}>
-                      <div className="d-flex align-items-center">
-                        <div className="status-dot bg-success me-2" style={{ backgroundColor: '#28a745' }}></div>
-                        <div>
-                          <h6 className="mb-1">Sales Today</h6>
-                          <div className="d-flex align-items-center">
-                            <h3 className="mb-0 me-2 text-success">3</h3>
-                            <span className="text-muted small">Sales</span>
-                  </div>
-                </div>
-                </div>
-                        </div>
-
-                    {/* Call Time */}
-                    <div className="indicator-item p-3 border rounded flex-grow-1">
-                      <div className="d-flex align-items-center">
-                        <div className="status-dot bg-primary me-2"></div>
-                        <div>
-                          <h6 className="mb-1">Total Call Time</h6>
-                          <div className="d-flex align-items-center">
-                            <h3 className="mb-0 me-2">4:15</h3>
-                            <span className="text-muted small">Hours</span>
-                        </div>
-                        </div>
-                        </div>
-                        </div>
-
-                    {/* Average Call Time */}
-                    <div className="indicator-item p-3 border rounded flex-grow-1">
-                            <div className="d-flex align-items-center">
-                        <div className="status-dot bg-info me-2"></div>
-                              <div>
-                          <h6 className="mb-1">Avg Time Per Sale</h6>
-                            <div className="d-flex align-items-center">
-                            <h3 className="mb-0 me-2">45</h3>
-                            <span className="text-muted small">Minutes</span>
-                              </div>
-                            </div>
-                          </div>
-                              </div>
-                            </div>
-
-                  {/* Sales Details */}
-                  <div className="mt-4">
-                    <h6 className="mb-3">Sales Details</h6>
-                    <div className="sales-details-section">
-                      <table className="table">
-                        <thead>
-                          <tr>
-                            <th>Time</th>
-                            <th>Client</th>
-                            <th>Plan</th>
-                            <th>Premium</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td>9:15 AM</td>
-                            <td>John Smith</td>
-                            <td>Gold Plan</td>
-                            <td>$450/mo</td>
-                            <td style={{ color: '#28a745', fontWeight: 'bold' }}>Confirmed</td>
-                          </tr>
-                          <tr>
-                            <td>11:30 AM</td>
-                            <td>Sarah Johnson</td>
-                            <td>Silver Plan</td>
-                            <td>$325/mo</td>
-                            <td style={{ color: '#28a745', fontWeight: 'bold' }}>Confirmed</td>
-                          </tr>
-                          <tr>
-                            <td>2:45 PM</td>
-                            <td>Michael Brown</td>
-                            <td>Gold Plan</td>
-                            <td>$450/mo</td>
-                            <td style={{ color: '#28a745', fontWeight: 'bold' }}>Confirmed</td>
-                          </tr>
-                          <tr>
-                            <td>3:20 PM</td>
-                            <td>Emily Davis</td>
-                            <td>Platinum Plan</td>
-                            <td>$575/mo</td>
-                            <td style={{ color: '#28a745', fontWeight: 'bold' }}>Confirmed</td>
-                          </tr>
-                          <tr>
-                            <td>4:10 PM</td>
-                            <td>Robert Wilson</td>
-                            <td>Gold Plan</td>
-                            <td>$450/mo</td>
-                            <td style={{ color: '#ff6347', fontWeight: 'bold' }}>Pending</td>
-                          </tr>
-                          <tr>
-                            <td>4:45 PM</td>
-                            <td>Lisa Anderson</td>
-                            <td>Silver Plan</td>
-                            <td>$325/mo</td>
-                            <td style={{ color: '#ff6347', fontWeight: 'bold' }}>Pending</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'settings' && (
-          <div className="dashboard-grid">
-            {/* Support & Help Card */}
-            <Card className="dashboard-card mb-4">
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaUserShield className="me-2" /> Support & Help
-                  </h5>
-                  <Button variant="outline-primary" size="sm">
-                    <FaPlus className="me-1" /> New Ticket
-                  </Button>
-                </div>
-              </Card.Header>
-              <Card.Body>
-                <div className="help-desk-container">
-                  <div className="search-section mb-4">
-                    <Form.Control
-                      type="search"
-                      placeholder="Search for help articles or technical issues..."
-                      className="form-control-lg"
-                    />
-                  </div>
-
-                  <div className="support-grid">
-                    <div className="support-section">
-                      <h6 className="mb-3">Quick Support Chat</h6>
-                      <div className="d-grid gap-2">
-                        <div className="region-card p-3 border rounded mb-3">
-                          <h6 className="mb-2">IT Support</h6>
-                          <p className="text-muted small mb-2">Technical issues, system access, equipment requests</p>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <Badge bg="success" className="rounded-pill">Online</Badge>
-                            <Button variant="outline-primary" size="sm">
-                              <FaComments className="me-1" /> Start Chat
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="region-card p-3 border rounded mb-3">
-                          <h6 className="mb-2">Manager Support</h6>
-                          <p className="text-muted small mb-2">Schedule changes, training requests, policy questions</p>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <Badge bg="success" className="rounded-pill">Online</Badge>
-                            <Button variant="outline-primary" size="sm">
-                              <FaComments className="me-1" /> Start Chat
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="support-section">
-                      <h6 className="mb-3">Request Status</h6>
-                      <div className="list-group list-group-flush">
-                        <div className="list-group-item">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span className="fw-bold">Schedule Change Request</span>
-                            <Badge bg="warning" className="rounded-pill">Pending Review</Badge>
-                          </div>
-                          <p className="text-muted small mb-2">Requested shift change for next week</p>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <small className="text-muted">Submitted 2h ago</small>
-                            <small className="text-info">Updates sent to your email</small>
-                          </div>
-                        </div>
-                        <div className="list-group-item">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span className="fw-bold">Training Approval</span>
-                            <Badge bg="success" className="rounded-pill">Approved</Badge>
-                          </div>
-                          <p className="text-muted small mb-2">Advanced sales techniques workshop</p>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <small className="text-muted">Updated 1d ago</small>
-                            <small className="text-success">Approval sent to your email</small>
-                          </div>
-                        </div>
-                        <div className="list-group-item">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span className="fw-bold">Equipment Request</span>
-                            <Badge bg="info" className="rounded-pill">In Review</Badge>
-                          </div>
-                          <p className="text-muted small mb-2">New headset replacement</p>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <small className="text-muted">Submitted 2d ago</small>
-                            <small className="text-info">Updates sent to your email</small>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card.Body>
-            </Card>
-
-            {/* Profile Settings Card */}
-            <Card className="dashboard-card mb-4">
-              <Card.Header>
-                <h5 className="mb-0">
-                  <FaUser className="me-2" /> Profile Settings
-                </h5>
-              </Card.Header>
-              <Card.Body>
-                <Form>
-                  <div className="text-center mb-4">
-                    <div className="profile-picture-container position-relative d-inline-block">
-                      {profilePicture ? (
-                        <img 
-                          src={profilePicture} 
-                          alt="Profile" 
-                          className="rounded-circle profile-picture"
-                        />
-                      ) : (
-                        <FaUserCircle size={120} className="text-muted" />
-                      )}
-                      <label className="profile-picture-upload">
-                        <FaCamera className="upload-icon" />
-                    <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setProfilePicture(reader.result);
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                          className="d-none"
-                        />
-                      </label>
-                  </div>
-                  </div>
-
-                  <Row>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>First Name</Form.Label>
-                        <Form.Control type="text" placeholder="Enter first name" />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Last Name</Form.Label>
-                        <Form.Control type="text" placeholder="Enter last name" />
-                      </Form.Group>
-                    </Col>
-                  </Row>
-
-                  <Form.Group className="mb-3">
-                    <Form.Label>Email</Form.Label>
-                    <Form.Control type="email" placeholder="Enter email" />
-                  </Form.Group>
-
-                  <Form.Group className="mb-3">
-                    <Form.Label>Phone</Form.Label>
-                    <Form.Control type="tel" placeholder="Enter phone number" />
-                  </Form.Group>
-
-                  <Form.Group className="mb-3">
-                    <Form.Label>Role</Form.Label>
-                    <Form.Control type="text" value="Sales Agent" readOnly />
-                  </Form.Group>
-
-                  <Form.Group className="mb-3">
-                    <Form.Label>Department</Form.Label>
-                    <Form.Control type="text" value="Sales" readOnly />
-                  </Form.Group>
-
-                  <h6 className="mt-4 mb-3">Security Settings</h6>
-                  <Form.Group className="mb-3">
-                    <Form.Check 
-                      type="switch"
-                      id="twoFactorAuth"
-                      label="Two-Factor Authentication"
-                    />
-                  </Form.Group>
-                  <Form.Group className="mb-3">
-                    <Form.Check 
-                      type="switch"
-                      id="loginNotifications"
-                      label="Login Notifications"
-                    />
-                  </Form.Group>
-
-                  <Button variant="primary" className="mt-3">
-                    Save Changes
-                      </Button>
-                </Form>
-              </Card.Body>
-            </Card>
-
-            {/* Licensing & Contracting Card */}
-            <Card className="dashboard-card">
-              <Card.Header>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
-                    <FaShieldAlt className="me-2" /> Licensing & Contracting
-                  </h5>
-                  <Button variant="outline-primary" size="sm">
-                    <FaPlus className="me-1" /> New Contract
-                  </Button>
-                  </div>
-              </Card.Header>
-              <Card.Body>
-                <div className="licensing-section">
-                  <div className="current-license-status mb-4">
-                    <h6 className="mb-3">General Lines License Status</h6>
-                    <div className="license-card p-3 border rounded">
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                          <h6 className="mb-1">General Lines License</h6>
-                          <Badge bg="success" className="rounded-pill">Active</Badge>
-                        </div>
-                        <div className="text-end">
-                          <small className="text-muted">Expires: Dec 31, 2024</small>
-                          <div className="mt-1">
-                            <Button variant="outline-primary" size="sm">
-                              <FaDownload className="me-1" /> Download
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="license-details">
-                        <div className="row">
-                          <div className="col-md-6">
-                            <p className="mb-1"><strong>License Number:</strong> GL-2024-12345</p>
-                            <p className="mb-1"><strong>Issue Date:</strong> Jan 1, 2024</p>
-                            <p className="mb-1"><strong>State:</strong> California</p>
-                          </div>
-                          <div className="col-md-6">
-                            <p className="mb-1"><strong>Type:</strong> General Lines</p>
-                            <p className="mb-1"><strong>Status:</strong> Active</p>
-                            <p className="mb-1"><strong>Agency:</strong> Aligned</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="contract-status mb-4">
-                    <h6 className="mb-3">Carrier Contract Status</h6>
-                    <div className="contract-card p-3 border rounded">
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                          <h6 className="mb-1">Insurance Carrier Contracts</h6>
-                          <Badge bg="success" className="rounded-pill">Active</Badge>
-                        </div>
-                        <div className="text-end">
-                          <small className="text-muted">Last Updated: Mar 15, 2024</small>
-                          <div className="mt-1">
-                            <Button variant="outline-primary" size="sm">
-                              <FaFileAlt className="me-1" /> View Details
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="contract-details">
-                        <div className="row">
-                          <div className="col-md-6">
-                            <p className="mb-1"><strong>Primary State:</strong> California</p>
-                            <p className="mb-1"><strong>Carriers:</strong> 8 Active</p>
-                            <p className="mb-1"><strong>Types:</strong> Health, Life, P&C</p>
-                          </div>
-                          <div className="col-md-6">
-                            <p className="mb-1"><strong>Status:</strong> Active</p>
-                            <p className="mb-1"><strong>Review Date:</strong> Dec 31, 2024</p>
-                            <p className="mb-1"><strong>Appointments:</strong> 12</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="compliance-section">
-                    <h6 className="mb-3">Compliance & Certifications</h6>
-                    <div className="compliance-list">
-                      <div className="compliance-item p-2 border rounded mb-2">
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div>
-                            <h6 className="mb-0 small">HIPAA Compliance</h6>
-                            <small className="text-muted">Last completed: Mar 1, 2024</small>
-                          </div>
-                          <Badge bg="success" className="rounded-pill">Certified</Badge>
-                        </div>
-                      </div>
-                      <div className="compliance-item p-2 border rounded mb-2">
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div>
-                            <h6 className="mb-0 small">Insurance Ethics</h6>
-                            <small className="text-muted">Last completed: Feb 15, 2024</small>
-                          </div>
-                          <Badge bg="success" className="rounded-pill">Certified</Badge>
-                        </div>
-                      </div>
-                      <div className="compliance-item p-2 border rounded">
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div>
-                            <h6 className="mb-0 small">Data Privacy</h6>
-                            <small className="text-muted">Last completed: Jan 30, 2024</small>
-                          </div>
-                          <Badge bg="success" className="rounded-pill">Certified</Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="admin-actions mt-3">
-                    <h6 className="mb-2">Administrative Actions</h6>
-                    <div className="d-flex gap-2">
-                      <Button variant="outline-primary" size="sm">
-                        <FaFileAlt className="me-1" /> Request License Update
-                      </Button>
-                      <Button variant="outline-primary" size="sm">
-                        <FaUserShield className="me-1" /> Contact Licensing Admin
-                      </Button>
-                      <Button variant="outline-primary" size="sm">
-                        <FaHistory className="me-1" /> View History
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Card.Body>
-            </Card>
-          </div>
-        )}
-        {activeTab === 'chat' && renderChatSection()}
-
-        {/* --- Admin Tab Content --- */}
-        {activeTab === 'applications' && (
-          <Card className="dashboard-card mb-4">
-            <Card.Header>
-              <h5 className="mb-0">
-                <FaUserShield className="me-2" /> Submitted Applications Review
-              </h5>
-            </Card.Header>
-            <Card.Body>
-              <div className="mb-3">
-                <Row>
-                  <Col md={6}>
-                    <Form.Group>
-                      <InputGroup>
-                        <Form.Control
-                          type="text"
-                          placeholder="Search by name, email, phone, or SSN..."
-                          value={applicationSearchTerm}
-                          onChange={(e) => setApplicationSearchTerm(e.target.value)}
-                        />
-                        <Button variant="outline-secondary">
-                          <FaSearch />
-                        </Button>
-                      </InputGroup>
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group>
-                      <Form.Select
-                        value={applicationTimeframe}
-                        onChange={(e) => setApplicationTimeframe(e.target.value)}
-                      >
-                        <option value="all">All Applications</option>
-                        <option value="daily">Today</option>
-                        <option value="weekly">This Week</option>
-                        <option value="monthly">This Month</option>
-                        <option value="yearly">This Year</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                </Row>
-              </div>
-
-              {isLoadingApplications ? (
-                <div className="text-center py-5">
-                  <Spinner animation="border" role="status" className="me-2">
-                    <span className="visually-hidden">Loading...</span>
-                  </Spinner>
-                  Loading applications...
-                </div>
-              ) : currentApplications.length > 0 ? (
-                <div className="applications-list">
-                  {currentApplications.map((app) => (
-                    <Card key={app.id} className="mb-3 application-card">
-                      <Card.Body>
-                        <Row>
-                          <Col md={8}>
-                            <h6 className="mb-3">
-                              {`${app.firstName || ''} ${app.middleName || ''} ${app.lastName || ''}`.trim() || 'N/A'}
-                            </h6>
-                            <div className="application-details">
-                              <p className="mb-1">
-                                <FaEnvelope className="me-2 text-muted" />
-                                {app.email || 'N/A'}
-                              </p>
-                              <p className="mb-1">
-                                <FaPhone className="me-2 text-muted" />
-                                {app.phone || 'N/A'}
-                              </p>
-                              <p className="mb-1">
-                                <FaCalendar className="me-2 text-muted" />
-                                DOB: {app.dateOfBirth || 'N/A'}
-                              </p>
-                              <p className="mb-1">
-                                <FaMapMarkerAlt className="me-2 text-muted" />
-                                {app.countryOfOrigin || 'N/A'}, {app.stateOfOrigin || 'N/A'}
-                              </p>
-                            </div>
-                          </Col>
-                          <Col md={4} className="text-end">
-                            <div className="mb-2">
-                              <Badge bg={app.status === 'Confirmed' ? 'success' : 'warning'}>
-                                {app.status || 'Pending'}
-                              </Badge>
-                            </div>
-                            <p className="text-muted mb-3">
-                              <small>
-                                Submitted: {new Date(app.applicationDate || app.timestamp).toLocaleDateString()}
-                              </small>
-                            </p>
-                            <div>
-                              <Button
-                                variant="outline-primary"
-                                size="sm"
-                                className="me-2"
-                                onClick={() => handleViewApplication(app)}
-                              >
-                                <FaEdit /> View
-                              </Button>
-                              {(!app.status || app.status === 'Pending') && (
-                                <Button
-                                  variant="outline-success"
-                                  size="sm"
-                                  onClick={() => handleConfirmApplication(app.id)}
-                                >
-                                  <FaCheck /> Confirm
-                                </Button>
-                              )}
-                            </div>
-                          </Col>
-                        </Row>
-                      </Card.Body>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-5">
-                  <div className="d-flex flex-column align-items-center">
-                    <FaInbox size={24} className="text-muted mb-2" />
-                    No applications found in database.
-                  </div>
-                </div>
-              )}
-
-              {filteredApplications.length > 0 && (
-                <div className="d-flex justify-content-between align-items-center mt-3">
-                  <div>
-                    Showing {indexOfFirstApplication + 1} to {Math.min(indexOfLastApplication, filteredApplications.length)} of {filteredApplications.length} applications
-              </div>
-                  <div>
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="me-2"
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </Card.Body>
-          </Card>
-        )}
-        {/* --- End Admin Tab Content --- */}
-
-        {/* --- Admin Application Details Modal --- */}
-        <Modal show={showAdminModal} onHide={() => setShowAdminModal(false)} size="lg">
-        <Modal.Header closeButton>
-            <Modal.Title>Application Details - {selectedApplication?.firstName || selectedApplication?.firstname} {selectedApplication?.lastName || selectedApplication?.lastname} ({selectedApplication?.id})</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-            {selectedApplication ? (
-              <div>
-                <h5 className="mb-3">Personal Information</h5>
-                <Row>
-                  <Col md={6}><strong>Full Name:</strong> {`${selectedApplication.firstName || selectedApplication.firstname || ''} ${selectedApplication.middleName || selectedApplication.middlename || ''} ${selectedApplication.lastName || selectedApplication.lastname || ''}`.trim()}</Col>
-                  <Col md={6}><strong>Date of Birth:</strong> {selectedApplication.dateOfBirth || selectedApplication.dateofbirth || 'N/A'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>Email:</strong> {selectedApplication.email || 'N/A'}</Col>
-                  <Col md={6}><strong>Phone:</strong> {selectedApplication.phone || 'N/A'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>SSN:</strong> {selectedApplication.ssn || 'N/A'}</Col>
-                  <Col md={6}><strong>Tax Filing Status:</strong> {selectedApplication.taxFilingStatus || 'N/A'}</Col>
-                </Row>
-                <hr />
-                <h5 className="mb-3">Residential Address</h5>
-                <Row>
-                  <Col md={6}><strong>Street:</strong> {selectedApplication.streetaddress || selectedApplication.address || 'N/A'}</Col>
-                  <Col md={6}><strong>City:</strong> {selectedApplication.city || 'N/A'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>State:</strong> {selectedApplication.state || 'N/A'}</Col>
-                  <Col md={6}><strong>Zip:</strong> {selectedApplication.zipcode || selectedApplication.zipCode || 'N/A'}</Col>
-                </Row>
-                <hr />
-                <h5 className="mb-3">Mailing Address</h5>
-                <Row>
-                  <Col md={6}><strong>Street:</strong> {selectedApplication.mailingStreet || selectedApplication.mailingAddress || 'N/A'}</Col>
-                  <Col md={6}><strong>City:</strong> {selectedApplication.mailingCity || 'N/A'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>State:</strong> {selectedApplication.mailingState || 'N/A'}</Col>
-                  <Col md={6}><strong>Zip:</strong> {selectedApplication.mailingZip || selectedApplication.mailingZipCode || 'N/A'}</Col>
-                </Row>
-                <hr />
-                <h5 className="mb-3">Application Details</h5>
-                <Row>
-                  <Col md={6}><strong>Status:</strong> {selectedApplication.status || 'N/A'}</Col>
-                  <Col md={6}><strong>Submitted:</strong> {selectedApplication.applicationDate ? new Date(selectedApplication.applicationDate).toLocaleString() : (selectedApplication.timestamp ? new Date(selectedApplication.timestamp).toLocaleString() : 'N/A')}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>Client ID:</strong> {selectedApplication.client_id || 'N/A'}</Col>
-                  <Col md={6}><strong>Agent ID:</strong> {selectedApplication.agentId || 'N/A'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>Lead ID:</strong> {selectedApplication.lead_id || 'N/A'}</Col>
-                  <Col md={6}><strong>Marketing ID:</strong> {selectedApplication.marketingID || 'N/A'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>Country of Origin:</strong> {selectedApplication.countryOfOrigin || selectedApplication.countryoforigin || 'N/A'}</Col>
-                  <Col md={6}><strong>State of Origin:</strong> {selectedApplication.stateoforigin || selectedApplication.stateOfOrigin || 'N/A'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>Occupation:</strong> {selectedApplication.occupation || 'N/A'}</Col>
-                  <Col md={6}><strong>Expected Salary:</strong> {selectedApplication.expectedSalary || 'N/A'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>Deductible:</strong> {selectedApplication.deductible || 'N/A'}</Col>
-                  <Col md={6}><strong>Health Insurance Provider:</strong> {selectedApplication.healthInsuranceProvider || selectedApplication.unitedhealthcare || 'N/A'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={6}><strong>Signature Consent:</strong> {selectedApplication.signatureConsent ? 'Yes' : 'No'}</Col>
-                  <Col md={6}><strong>Signature:</strong> {selectedApplication.signature ? 'Yes' : 'No'}</Col>
-                </Row>
-                <Row className="mt-2">
-                  <Col md={12}><strong>E-Signature Image:</strong><br />
-                    {selectedApplication.signatureurl ? (
-                      <img src={selectedApplication.signatureurl} alt="E-Signature" style={{ maxWidth: '300px', border: '1px solid #ccc', borderRadius: '8px', marginTop: '8px' }} />
-                    ) : (
-                      <span className="text-muted">No signature image available</span>
-                    )}
-                  </Col>
-                </Row>
-                <hr />
-                <h5 className="mb-3">Other Details</h5>
-                <Row>
-                  <Col md={6}><strong>IP Address:</strong> {selectedApplication.ipAddress || 'N/A'}</Col>
-                  <Col md={6}><strong>User Agent:</strong> {selectedApplication.userAgent || 'N/A'}</Col>
-                </Row>
-              </div>
-            ) : (
-              <p>No application selected.</p>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowAdminModal(false)}>
-              Close
-            </Button>
-            {/* Enable Save button when editing is implemented */}
-            <Button variant="primary" onClick={handleSaveChanges}>
-              Save Changes
-            </Button>
-          </Modal.Footer>
-        </Modal>
-        {/* --- End Admin Modal --- */}
-
-        {/* --- Agents Tab Content --- */}
-        {activeTab === 'agents' && (
-          <div>
-            <Card className="dashboard-card mb-4">
-                    <Card.Header>
-                <h5 className="mb-0">
-                  <FaUserTie className="me-2" /> Agent Management
-                </h5>
-                    </Card.Header>
-                    <Card.Body>
-                <Row className="mb-3">
-                  <Col md={6}>
-                    <InputGroup>
-                      <Form.Control 
-                        placeholder="Search agents..."
-                      />
-                      <Button variant="outline-secondary">
-                        <FaSearch />
-                      </Button>
-                    </InputGroup>
-                  </Col>
-                  <Col md={6} className="text-end">
-                    <Button variant="primary" className="me-2">
-                      <FaPlus className="me-1" /> Add Agent
-                    </Button>
-                    <Button variant="outline-primary">
-                      <FaFilter className="me-1" /> Filter
-                    </Button>
-                  </Col>
-                </Row>
-                
-                <Table striped bordered hover responsive>
-                  <thead>
-                    <tr>
-                      <th>Agent ID</th>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Status</th>
-                      <th>Applications</th>
-                      <th>Conversion Rate</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { id: 'AGT-501', name: 'John Smith', email: 'john.smith@example.com', status: 'Active', applications: 42, conversionRate: '28%' },
-                      { id: 'AGT-502', name: 'Sarah Johnson', email: 'sarah.johnson@example.com', status: 'Active', applications: 38, conversionRate: '31%' },
-                      { id: 'AGT-503', name: 'Michael Brown', email: 'michael.brown@example.com', status: 'On Leave', applications: 27, conversionRate: '22%' },
-                      { id: 'AGT-504', name: 'Emily Davis', email: 'emily.davis@example.com', status: 'Active', applications: 45, conversionRate: '35%' },
-                      { id: 'AGT-505', name: 'Robert Wilson', email: 'robert.wilson@example.com', status: 'Inactive', applications: 15, conversionRate: '18%' }
-                    ].map((agent, index) => (
-                      <tr key={index}>
-                        <td>{agent.id}</td>
-                        <td>{agent.name}</td>
-                        <td>{agent.email}</td>
-                        <td>
-                          <Badge bg={agent.status === 'Active' ? 'success' : agent.status === 'On Leave' ? 'warning' : 'secondary'}>
-                            {agent.status}
-                                </Badge>
-                        </td>
-                        <td>{agent.applications}</td>
-                        <td>{agent.conversionRate}</td>
-                        <td>
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
-                            className="me-1"
-                            onClick={() => setSelectedAgent(agent)}
-                          >
-                            <FaEye /> View
-                          </Button>
-                          <Button variant="outline-secondary" size="sm">
-                            <FaEdit />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-                    </Card.Body>
-                  </Card>
-
-            {/* Agent Details Section with Analytics - Will show when an agent is selected */}
-            {selectedAgent && (
-              <Row>
-                <Col md={4}>
-                  <Card className="dashboard-card mb-4">
-                    <Card.Header>
-                      <h5 className="mb-0">Agent Profile</h5>
-                    </Card.Header>
-                    <Card.Body>
-                      <div className="text-center mb-4">
-                        <div className="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: '120px', height: '120px' }}>
-                          <FaUserCircle size={80} className="text-secondary" />
-                      </div>
-                        <h4>{selectedAgent.name}</h4>
-                        <p className="text-muted mb-2">{selectedAgent.id}</p>
-                        <Badge bg={selectedAgent.status === 'Active' ? 'success' : selectedAgent.status === 'On Leave' ? 'warning' : 'secondary'} className="mb-3">
-                          {selectedAgent.status}
-                        </Badge>
-                      </div>
-                      
-                      <ListGroup variant="flush">
-                        <ListGroup.Item className="d-flex justify-content-between align-items-center">
-                          <span>Email</span>
-                          <span className="text-muted">{selectedAgent.email}</span>
-                        </ListGroup.Item>
-                        <ListGroup.Item className="d-flex justify-content-between align-items-center">
-                          <span>Phone</span>
-                          <span className="text-muted">(555) 123-4567</span>
-                        </ListGroup.Item>
-                        <ListGroup.Item className="d-flex justify-content-between align-items-center">
-                          <span>Hire Date</span>
-                          <span className="text-muted">Jan 15, 2023</span>
-                        </ListGroup.Item>
-                        <ListGroup.Item className="d-flex justify-content-between align-items-center">
-                          <span>Supervisor</span>
-                          <span className="text-muted">Jennifer Thomas</span>
-                        </ListGroup.Item>
-                      </ListGroup>
-                    </Card.Body>
-                    <Card.Footer className="text-center">
-                      <Button variant="outline-primary" size="sm" className="me-2">
-                        <FaEdit className="me-1" /> Edit Profile
-                      </Button>
-                      <Button variant="outline-secondary" size="sm">
-                        <FaKey className="me-1" /> Reset Password
-                      </Button>
-                    </Card.Footer>
-                  </Card>
-                </Col>
-
-                <Col md={8}>
-                  <Card className="dashboard-card mb-4">
-                    <Card.Header>
-                      <h5 className="mb-0">Performance Analytics</h5>
-                    </Card.Header>
-                    <Card.Body>
-                      <Row className="mb-4">
-                        <Col md={3}>
-                          <div className="analytics-card text-center p-3 border rounded">
-                            <h3 className="text-primary mb-1">{selectedAgent.applications}</h3>
-                            <p className="text-muted mb-0">Total Applications</p>
-                          </div>
-                        </Col>
-                        <Col md={3}>
-                          <div className="analytics-card text-center p-3 border rounded">
-                            <h3 className="text-success mb-1">{selectedAgent.conversionRate}</h3>
-                            <p className="text-muted mb-0">Conversion Rate</p>
-                          </div>
-                        </Col>
-                        <Col md={3}>
-                          <div className="analytics-card text-center p-3 border rounded">
-                            <h3 className="text-info mb-1">18.5</h3>
-                            <p className="text-muted mb-0">Avg. Call Time (min)</p>
-                          </div>
-                        </Col>
-                        <Col md={3}>
-                          <div className="analytics-card text-center p-3 border rounded">
-                            <h3 className="text-warning mb-1">4.8</h3>
-                            <p className="text-muted mb-0">Customer Rating</p>
-                          </div>
-                        </Col>
-                      </Row>
-                      
-                      <h6 className="mb-3">Monthly Performance</h6>
-                      <div className="performance-chart mb-4" style={{ height: '250px', background: '#f8f9fa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <p className="text-muted">Performance chart visualization would be here</p>
-                      </div>
-                      
-                      <h6 className="mb-3">Recent Applications</h6>
-                      <Table striped hover responsive>
-                        <thead>
-                          <tr>
-                            <th>Application ID</th>
-                            <th>Client Name</th>
-                            <th>Submission Date</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[
-                            { id: 'APP-001', clientName: 'Alice Wonderland', date: '2024-07-28', status: 'Approved' },
-                            { id: 'APP-008', clientName: 'Bob Builder', date: '2024-07-25', status: 'Pending' },
-                            { id: 'APP-015', clientName: 'Charlie Brown', date: '2024-07-22', status: 'Approved' },
-                            { id: 'APP-023', clientName: 'Diana Prince', date: '2024-07-20', status: 'Declined' }
-                          ].map((app, index) => (
-                            <tr key={index}>
-                              <td>{app.id}</td>
-                              <td>{app.clientName}</td>
-                              <td>{app.date}</td>
-                              <td>
-                                <Badge bg={app.status === 'Approved' ? 'success' : app.status === 'Pending' ? 'warning' : 'danger'}>
-                                  {app.status}
-                                </Badge>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              </Row>
-            )}
-          </div>
-        )}
-        {/* --- End Agents Tab Content --- */}
-
-        {/* --- Support Tab Content --- */}
-        {activeTab === 'support' && (
-          <Card className="dashboard-card mb-4">
-                    <Card.Header>
-              <h5 className="mb-0">
-                <FaHeadset className="me-2" /> Agent Support Requests
-              </h5>
-                    </Card.Header>
-                    <Card.Body>
-              {/* Add Filtering/Sorting Options Here Later if needed */}
-              <div className="mb-3">
-                <Row>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label>Filter by Status</Form.Label>
-                      <Form.Select size="sm">
-                        <option value="all">All Statuses</option>
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Resolved">Resolved</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label>Filter by Category</Form.Label>
-                      <Form.Select size="sm">
-                        <option value="all">All Categories</option>
-                        <option value="IT">IT</option>
-                        <option value="Management">Management</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                     <Form.Group>
-                      <Form.Label>Search Requests</Form.Label>
-                      <Form.Control size="sm" type="search" placeholder="Search by agent or keyword..." />
-                    </Form.Group>
-                  </Col>
-                </Row>
-                      </div>
-
-              {/* Support Request Table */}
-              <Table striped bordered hover responsive size="sm">
-                <thead>
-                  <tr>
-                    <th>Agent</th>
-                    <th>Category</th>
-                    <th>Request Summary</th>
-                    <th>Date Submitted</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {supportRequestsData.map((req) => (
-                    <tr key={req.id}>
-                      <td><FaUserTie className="me-1 text-muted" /> {req.agentName} ({req.agentId})</td>
-                      <td>
-                        <Badge bg={req.category === 'IT' ? 'info' : 'primary'} pill>
-                          {req.category === 'IT' ? <FaUserCog className="me-1"/> : <FaBriefcase className="me-1"/>}
-                          {req.category}
-                          </Badge>
-                      </td>
-                      <td style={{ maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{req.request}</td>
-                      <td>{new Date(req.dateSubmitted).toLocaleString()}</td>
-                      <td>
-                        <Badge bg={
-                          req.status === 'Pending' ? 'warning' :
-                          req.status === 'In Progress' ? 'info' :
-                          req.status === 'Resolved' ? 'success' :
-                          'secondary'
-                        }>
-                          {req.status}
-                        </Badge>
-                      </td>
-                      <td>
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={() => handleViewSupportRequest(req)}
-                          title="View Details & Update"
-                        >
-                          <FaEye /> View / Update
-                    </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-              </Card.Body>
-            </Card>
-        )}
-        {/* --- End Support Tab Content --- */}
-
-        {/* --- Support Request Details Modal --- */}
-        <Modal show={showSupportRequestModal} onHide={() => setShowSupportRequestModal(false)} size="lg">
-          <Modal.Header closeButton>
-            <Modal.Title>Support Request Details - {selectedSupportRequest?.id}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {selectedSupportRequest ? (
-                      <Form>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Agent Name</Form.Label>
-                      <Form.Control type="text" value={selectedSupportRequest.agentName} readOnly />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Agent ID</Form.Label>
-                      <Form.Control type="text" value={selectedSupportRequest.agentId} readOnly />
-                    </Form.Group>
-          </Col>
-        </Row>
-                <Row>
-                   <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Category</Form.Label>
-                      <Form.Control type="text" value={selectedSupportRequest.category} readOnly />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3">
-                      <Form.Label>Date Submitted</Form.Label>
-                      <Form.Control type="text" value={new Date(selectedSupportRequest.dateSubmitted).toLocaleString()} readOnly />
-                    </Form.Group>
-                  </Col>
-                </Row>
-                <Form.Group className="mb-3">
-                  <Form.Label>Full Request</Form.Label>
-                  <Form.Control as="textarea" rows={3} value={selectedSupportRequest.request} readOnly />
-                </Form.Group>
-                <hr />
-                 <Row>
-                  <Col md={6}>
-                     <Form.Group className="mb-3">
-                       <Form.Label>Update Status</Form.Label>
-                       <Form.Select 
-                         value={selectedSupportRequest.status} 
-                         onChange={(e) => handleSupportRequestChange('status', e.target.value)}
-                       >
-                         <option value="Pending">Pending</option>
-                         <option value="In Progress">In Progress</option>
-                         <option value="Resolved">Resolved</option>
-                         <option value="Closed">Closed</option> {/* Added Closed status */}
-                       </Form.Select>
-                     </Form.Group>
-                   </Col>
-                 </Row>
-                 <Form.Group className="mb-3">
-                   <Form.Label>Resolution / Notes</Form.Label>
-                          <Form.Control
-                            as="textarea"
-                            rows={4}
-                     placeholder="Add resolution details or notes here..."
-                     value={selectedSupportRequest.resolution || ''} 
-                     onChange={(e) => handleSupportRequestChange('resolution', e.target.value)}
-                          />
-                        </Form.Group>
-                      </Form>
-            ) : (
-              <p>No support request selected.</p>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowSupportRequestModal(false)}>
-              Cancel
-          </Button>
-             <Button variant="primary" onClick={handleSaveSupportRequest} disabled={!selectedSupportRequest}>
-            Save Changes
-          </Button>
-        </Modal.Footer>
-      </Modal>
-        {/* --- End Support Request Details Modal --- */}
-
-        {/* --- Email Tab Content --- */}
         {activeTab === 'email' && (
-          <Row>
-            <Col md={3}>
-              <Card className="mb-3">
-                <Card.Body className="p-0">
-                  <ListGroup variant="flush">
-                    <ListGroup.Item 
-                      action 
-                      active={emailFolder === 'inbox'}
-                      onClick={() => setEmailFolder('inbox')}
-                      className="d-flex justify-content-between align-items-center"
-                    >
-                      <span><FaInbox className="me-2" /> Inbox</span>
-                      <Badge bg="primary" pill>
-                        {emailsData.filter(email => !email.read && email.folder === 'inbox').length}
-                      </Badge>
-                    </ListGroup.Item>
-                    <ListGroup.Item 
-                      action 
-                      active={emailFolder === 'sent'}
-                      onClick={() => setEmailFolder('sent')}
-                    >
-                      <FaPaperPlane className="me-2" /> Sent
-                    </ListGroup.Item>
-                    <ListGroup.Item 
-                      action 
-                      active={emailFolder === 'drafts'}
-                      onClick={() => setEmailFolder('drafts')}
-                    >
-                      <FaEdit className="me-2" /> Drafts
-                    </ListGroup.Item>
-                    <ListGroup.Item 
-                      action 
-                      active={emailFolder === 'starred'}
-                      onClick={() => setEmailFolder('starred')}
-                    >
-                      <FaStar className="me-2" /> Starred
-                    </ListGroup.Item>
-                    <ListGroup.Item 
-                      action 
-                      active={emailFolder === 'trash'}
-                      onClick={() => setEmailFolder('trash')}
-                    >
-                      <FaTrash className="me-2" /> Trash
-                    </ListGroup.Item>
-                  </ListGroup>
-                </Card.Body>
-              </Card>
-              <Button variant="primary" className="w-100 mb-3">
-                <FaPlus className="me-2" /> Compose
-              </Button>
-            </Col>
-            
-            <Col md={9}>
-              <Card>
-                <Card.Header className="bg-white">
-                  <div className="d-flex justify-content-between align-items-center">
-            <div className="d-flex align-items-center">
-              <Form.Control
-                        type="search" 
-                        placeholder="Search emails..." 
-                        className="me-2"
-                        style={{ maxWidth: '300px' }}
-                      />
-                      <Button variant="outline-secondary" size="sm">
-                        <FaSearch />
-              </Button>
-              </div>
-                    <div>
-                      <Button variant="outline-secondary" size="sm" className="me-2">
-                        <FaFilter /> Filter
-                      </Button>
-                      <Button variant="outline-secondary" size="sm">
-                        <FaSync /> Refresh
-                      </Button>
-            </div>
-                </div>
-                </Card.Header>
-                
-                <Card.Body className="p-0">
-                  {selectedEmail ? (
-                    <div className="email-detail p-3">
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h5>{selectedEmail.subject}</h5>
-                        <div>
-                          <Button variant="outline-secondary" size="sm" className="me-1" onClick={() => setSelectedEmail(null)}>
-                            <FaArrowLeft /> Back
-                          </Button>
-                          <Button variant="outline-secondary" size="sm" className="me-1">
-                            <FaReply /> Reply
-                          </Button>
-                          <Button variant="outline-secondary" size="sm" className="me-1">
-                            <FaForward /> Forward
-                          </Button>
-                          <Button variant="outline-danger" size="sm" onClick={(e) => handleDeleteEmail(selectedEmail.id, e)}>
-                            <FaTrash />
-                          </Button>
-              </div>
+          <div>
+            {/* Email tab content goes here */}
+            <p>This is the Email tab. Email functionality will appear here.</p>
           </div>
-
-                      <div className="email-header d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
-                  <div>
-                          <strong>From:</strong> {selectedEmail.from}
-            </div>
-                        <div>
-                          <small className="text-muted">{selectedEmail.time}</small>
-          </div>
-                  </div>
-                      
-                      <div className="email-content p-2">
-                        <p>{selectedEmail.content}</p>
-                      </div>
-                      </div>
-                  ) : (
-                    <div className="email-list">
-                      <ListGroup variant="flush">
-                        {emailsData
-                          .filter(email => {
-                            if (emailFolder === 'inbox') return email.folder === 'inbox';
-                            if (emailFolder === 'starred') return email.starred;
-                            return email.folder === emailFolder;
-                          })
-                          .map(email => (
-                            <ListGroup.Item 
-                              key={email.id}
-                              className={`d-flex justify-content-between align-items-center py-3 ${!email.read ? 'fw-bold' : ''}`}
-                            >
-                              <div 
-                                className="d-flex align-items-center w-100"
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => handleEmailSelect(email)}
-                              >
-                                <div 
-                                  className="me-2" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStarEmail(email.id, e);
-                                  }}
-                                >
-                                  {email.starred ? <FaStar className="text-warning" /> : <FaRegStar />}
-                                </div>
-                                <div>
-                                  <div className="sender">{email.from}</div>
-                                  <div className="subject">{email.subject}</div>
-                                </div>
-                              </div>
-              <div className="d-flex align-items-center">
-                                <div className="time me-3 text-muted small">
-                                  {email.time}
-                </div>
-                                <div 
-                                  className="text-danger" 
-                                  style={{ cursor: 'pointer' }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteEmail(email.id, e);
-                                  }}
-                                >
-                                  <FaTrash />
-              </div>
-            </div>
-                            </ListGroup.Item>
-                          ))}
-                      </ListGroup>
-          </div>
-                )}
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
         )}
-        {/* --- End Email Tab Content --- */}
 
-        {/* --- Marketing Tab Content --- */}
-        {activeTab === 'marketing' && (
-                  <div>
-            <Card className="dashboard-card mb-4">
-              <Card.Header>
-                <h5 className="mb-0">
-                  <FaBullhorn className="me-2" /> Campaign Management
-                </h5>
-              </Card.Header>
-              <Card.Body>
-                <div className="d-flex justify-content-between mb-3">
-                  <h6>Current Campaigns</h6>
-                  <Button variant="primary" size="sm">
-                    <FaPlus className="me-1" /> New Campaign
-                  </Button>
-              </div>
-                
-                <Table striped hover responsive>
-                  <thead>
-                    <tr>
-                      <th>Campaign Name</th>
-                      <th>Status</th>
-                      <th>Timeframe</th>
-                      <th>Target Audience</th>
-                      <th>Engagement</th>
-                      <th>Leads</th>
-                      <th>Conversions</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {marketingCampaigns.map(campaign => (
-                      <tr key={campaign.id}>
-                        <td>{campaign.name}</td>
-                        <td>
-                      <Badge bg={
-                            campaign.status === 'Active' ? 'success' :
-                            campaign.status === 'Scheduled' ? 'info' :
-                            campaign.status === 'Completed' ? 'secondary' : 'warning'
-                      }>
-                            {campaign.status}
-                      </Badge>
-                        </td>
-                        <td>{campaign.startDate} - {campaign.endDate}</td>
-                        <td>{campaign.audience}</td>
-                        <td>{campaign.engagement}</td>
-                        <td>{campaign.leads}</td>
-                        <td>{campaign.conversions}</td>
-                        <td>
-                          <Button variant="outline-primary" size="sm" className="me-1">
-                            <FaEdit /> Edit
-                          </Button>
-                          <Button variant="outline-secondary" size="sm">
-                            <FaChartBar /> Analytics
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </Card.Body>
-            </Card>
-            
-            <Row>
-              <Col md={6}>
-                <Card className="dashboard-card mb-4">
-                  <Card.Header>
-                    <h5 className="mb-0">
-                      <FaFileAlt className="me-2" /> Marketing Templates
-                    </h5>
-                  </Card.Header>
-                  <Card.Body>
-                    <div className="d-flex justify-content-between mb-3">
-                      <Form.Control type="search" placeholder="Search templates..." className="w-50" />
-                      <Button variant="primary" size="sm">
-                        <FaPlus className="me-1" /> New Template
-          </Button>
-                    </div>
-                    
-                    <ListGroup>
-                      {marketingTemplates.map(template => (
-                        <ListGroup.Item key={template.id} className="d-flex justify-content-between align-items-center">
-                          <div>
-                            <h6 className="mb-0">{template.name}</h6>
-                            <small className="text-muted">{template.type} • Modified: {template.lastModified}</small>
-                    </div>
-                          <div className="d-flex align-items-center">
-                            <Badge bg="secondary" className="me-2">Used {template.usageCount} times</Badge>
-                            <Button variant="outline-secondary" size="sm" className="me-1">
-                              <FaEdit />
-            </Button>
-                            <Button variant="outline-primary" size="sm">
-                              <FaEye />
-          </Button>
-                  </div>
-                        </ListGroup.Item>
-                      ))}
-                    </ListGroup>
-                  </Card.Body>
-                </Card>
-              </Col>
-              
-              <Col md={6}>
-                <Card className="dashboard-card mb-4">
-                  <Card.Header>
-                    <h5 className="mb-0">
-                      <FaChartPie className="me-2" /> Campaign Performance
-                    </h5>
-                  </Card.Header>
-                  <Card.Body>
-                    <div className="d-flex justify-content-between mb-3">
-                      <h6>Performance Overview</h6>
-                      <Form.Select size="sm" style={{ width: 'auto' }}>
-                        <option>Last 30 Days</option>
-                        <option>Last Quarter</option>
-                        <option>Year to Date</option>
-                      </Form.Select>
-                </div>
-                    
-                    <Row className="text-center g-3 mb-3">
-                      <Col md={4}>
-                        <Card className="bg-light">
-                          <Card.Body>
-                            <h2 className="text-primary">28%</h2>
-                            <p className="mb-0">Average Engagement</p>
-                          </Card.Body>
-                        </Card>
-                      </Col>
-                      <Col md={4}>
-                        <Card className="bg-light">
-                          <Card.Body>
-                            <h2 className="text-success">743</h2>
-                            <p className="mb-0">Total Leads</p>
-                          </Card.Body>
-                        </Card>
-                      </Col>
-                      <Col md={4}>
-                        <Card className="bg-light">
-                          <Card.Body>
-                            <h2 className="text-info">151</h2>
-                            <p className="mb-0">Conversions</p>
-                          </Card.Body>
-                        </Card>
-                      </Col>
-                    </Row>
-                    
-                    <div className="d-flex justify-content-between mb-3">
-                      <h6>Upcoming Scheduled Activities</h6>
-                      <Button variant="outline-primary" size="sm">
-                        <FaCalendarCheck className="me-1" /> Schedule
-          </Button>
-                      </div>
-                    
-                    <ListGroup>
-                      <ListGroup.Item className="text-center text-muted py-3">
-                        <p className="mb-0">No upcoming events scheduled</p>
-                        <small>Use the + button in the calendar above to add new events</small>
-                      </ListGroup.Item>
-                    </ListGroup>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-                  </div>
+        {activeTab === 'chat' && (
+          <div>
+            {/* Chat tab content goes here */}
+            <p>This is the Chat tab. Chat functionality will appear here.</p>
+          </div>
         )}
-        {/* --- End Marketing Tab Content --- */}
 
-        {/* --- Gemini Tab Content --- */}
-        {/* Removed Gemini Tab Content */}
-
-        {/* --- Google Drive Tab Content --- */}
         {activeTab === 'drive' && (
           <Row>
             <Col md={8}>
@@ -6545,7 +5266,6 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
             </Col>
           </Row>
         )}
-        {/* --- End Google Drive Tab Content --- */}
 
         {/* Add rewards history modal */}
         <Modal show={showRewardsHistoryModal} onHide={() => setShowRewardsHistoryModal(false)}>
@@ -7114,6 +5834,110 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
           </Card>
         </div>
       )}
+
+      {/* Add this near the other modals in the JSX */}
+      <Modal 
+        show={showComposeModal} 
+        onHide={() => setShowComposeModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>{composeMode === 'reply' ? 'Reply' : 'New Message'}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label>To</Form.Label>
+              <Form.Control
+                type="email"
+                value={composeEmail.to}
+                onChange={(e) => handleComposeEmailChange('to', e.target.value)}
+                placeholder="recipient@example.com"
+                disabled={composeMode === 'reply'}
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>CC</Form.Label>
+              <Form.Control
+                type="email"
+                value={composeEmail.cc}
+                onChange={(e) => handleComposeEmailChange('cc', e.target.value)}
+                placeholder="cc@example.com"
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>BCC</Form.Label>
+              <Form.Control
+                type="email"
+                value={composeEmail.bcc}
+                onChange={(e) => handleComposeEmailChange('bcc', e.target.value)}
+                placeholder="bcc@example.com"
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Subject</Form.Label>
+              <Form.Control
+                type="text"
+                value={composeEmail.subject}
+                onChange={(e) => handleComposeEmailChange('subject', e.target.value)}
+                placeholder="Subject"
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Message</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={10}
+                value={composeEmail.content}
+                onChange={(e) => handleComposeEmailChange('content', e.target.value)}
+                placeholder="Write your message here..."
+                style={{ resize: 'none' }}
+              />
+            </Form.Group>
+            {composeEmail.attachments.length > 0 && (
+              <div className="mb-3">
+                <Form.Label>Attachments</Form.Label>
+                <div className="d-flex flex-wrap gap-2">
+                  {composeEmail.attachments.map((file, index) => (
+                    <div 
+                      key={index}
+                      className="d-flex align-items-center gap-2 bg-light rounded p-2"
+                    >
+                      <FaPaperclip />
+                      <span className="small">{file.name}</span>
+                      <Button
+                        variant="link"
+                        className="p-0 text-danger"
+                        onClick={() => {
+                          setComposeEmail(prev => ({
+                            ...prev,
+                            attachments: prev.attachments.filter((_, i) => i !== index)
+                          }));
+                        }}
+                      >
+                        <FaTimes />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowComposeModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="primary" 
+            onClick={handleComposeSubmit}
+            disabled={!composeEmail.to || !composeEmail.subject || !composeEmail.content}
+          >
+            {composeMode === 'reply' ? 'Send Reply' : 'Send'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 } 
