@@ -3043,46 +3043,6 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
                 )}
               </Button>
             </div>
-            
-            {/* Profile Icon */}
-            <div className="profile-section">
-              <Dropdown>
-                <Dropdown.Toggle 
-                  variant="light" 
-                  className="rounded-circle p-1" 
-                  style={{ width: '40px', height: '40px' }}
-                  title="User Profile"
-                  bsPrefix="dropdown-toggle-no-arrow"
-                >
-                  <FaUserCircle size={24} />
-                </Dropdown.Toggle>
-
-                <Dropdown.Menu align="end">
-                  <Dropdown.Item onClick={() => setActiveTab('settings')}>
-                    <FaUserCog className="me-2" /> Profile Settings
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setActiveTab('settings')}>
-                    <FaKey className="me-2" /> Change Password
-                  </Dropdown.Item>
-                  <Dropdown.Divider />
-                  <Dropdown.Item 
-                    onClick={async () => {
-                      try {
-                        await auth.signOut();
-                        Cookies.remove('firebase-token');
-                        localStorage.removeItem('user');
-                        router.push('/');
-                      } catch (error) {
-                        console.error('Logout error:', error);
-                      }
-                    }}
-                    className="text-danger"
-                  >
-                    <FaSignOutAlt className="me-2" /> Logout
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown>
-            </div>
           </div>
         </div>
 
@@ -3115,11 +3075,6 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
           <Nav.Item>
             <Nav.Link active={activeTab === 'meets'} onClick={() => setActiveTab('meets')}>
               <FaVideo className="me-2" /> Google Meets
-            </Nav.Link>
-          </Nav.Item>
-          <Nav.Item>
-            <Nav.Link active={activeTab === 'agency'} onClick={() => setActiveTab('agency')}>
-              <FaUsers className="me-2" /> Agency
             </Nav.Link>
           </Nav.Item>
         </Nav>
@@ -3392,12 +3347,6 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
               </div>
             </Col>
           </Row>
-        )}
-        {activeTab === 'agency' && (
-          <div>
-            <h3>Agency</h3>
-            <p>This is the Agency tab. Agency management functionality will appear here.</p>
-          </div>
         )}
 
         {activeTab === 'home' && (
