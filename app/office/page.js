@@ -3101,6 +3101,11 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
               <FaVideo className="me-2" /> Google Meets
             </Nav.Link>
           </Nav.Item>
+          <Nav.Item>
+            <Nav.Link active={activeTab === 'agency'} onClick={() => setActiveTab('agency')}>
+              <FaUsers className="me-2" /> Agency
+            </Nav.Link>
+          </Nav.Item>
         </Nav>
 
         {activeTab === 'home' && (
@@ -3371,6 +3376,12 @@ Electronic Signatures in Global and National Commerce Act (E-SIGN Act).
               </div>
             </Col>
           </Row>
+        )}
+        {activeTab === 'agency' && (
+          <div>
+            <h3>Agency</h3>
+            <p>This is the Agency tab. Agency management functionality will appear here.</p>
+          </div>
         )}
 
         {activeTab === 'home' && (
