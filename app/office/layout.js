@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fa';
 import { DialerStatusProvider } from '../components/DialerStatusContext';
 import { auth } from '../firebase/config';
+import Cookies from 'js-cookie';
 
 export default function OfficeLayout({ children }) {
   const pathname = usePathname();
@@ -41,7 +42,16 @@ export default function OfficeLayout({ children }) {
       // Clear any session storage items
       sessionStorage.clear();
       
-      // Force a hard reload to clear all state
+      // Remove all cookies (including firebase-token)
+      Cookies.remove('firebase-token');
+      // Remove all other cookies if needed
+      document.cookie.split(';').forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, '')
+          .replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/');
+      });
+      
+      // Force a hard reload to clear all state and go to login
       window.location.href = '/login';
     } catch (error) {
       console.error('Error signing out:', error);
