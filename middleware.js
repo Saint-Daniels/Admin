@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { auth } from './app/firebase/config';
+import { createClient } from '@supabase/supabase-js';
 
 export async function middleware(request) {
   // Get the token from the request cookies
-  const token = request.cookies.get('firebase-token')?.value;
+  const token = request.cookies.get('supabase-token')?.value;
 
   // If the user is not logged in and trying to access a protected route
   if (!token && !request.nextUrl.pathname.startsWith('/login')) {

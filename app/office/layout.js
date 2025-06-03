@@ -8,7 +8,7 @@ import {
   FaUsers, FaBullhorn, FaHeadset, FaCog, FaGift, FaUserShield, FaShieldAlt, FaSignOutAlt 
 } from 'react-icons/fa';
 import { DialerStatusProvider } from '../components/DialerStatusContext';
-import { auth } from '../firebase/config';
+import { supabase } from '../supabase/config';
 import Cookies from 'js-cookie';
 
 export default function OfficeLayout({ children }) {
@@ -32,8 +32,8 @@ export default function OfficeLayout({ children }) {
 
   const handleLogoutConfirm = async () => {
     try {
-      // Sign out from Firebase
-      await auth.signOut();
+      // Sign out from Supabase
+      await supabase.auth.signOut();
       
       // Clear any local storage items
       localStorage.removeItem('user');
@@ -42,8 +42,8 @@ export default function OfficeLayout({ children }) {
       // Clear any session storage items
       sessionStorage.clear();
       
-      // Remove all cookies (including firebase-token)
-      Cookies.remove('firebase-token');
+      // Remove all cookies (including supabase-token)
+      Cookies.remove('supabase-token');
       // Remove all other cookies if needed
       document.cookie.split(';').forEach((c) => {
         document.cookie = c

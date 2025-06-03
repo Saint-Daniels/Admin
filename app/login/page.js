@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Container, Form, Button, Row, Col, Alert } from 'react-bootstrap';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase/config';
 import Cookies from 'js-cookie';
 
 export default function Login() {
@@ -15,14 +13,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // User is signed in
-        router.push('/office');
-      }
-    });
-
-    return () => unsubscribe();
+    // Check if user is already logged in
+    const user = localStorage.getItem('user');
+    if (user) {
+      router.push('/office');
+    }
   }, [router]);
 
   const handleSubmit = async (e) => {
@@ -31,50 +26,22 @@ export default function Login() {
     setError('');
 
     try {
-      console.log('Attempting to sign in with:', { email });
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      console.log('Sign in successful:', user);
-      
-      // Get the ID token
-      const token = await user.getIdToken();
-      
-      // Store the token in cookies
-      Cookies.set('firebase-token', token, { expires: 7 }); // Expires in 7 days
-      
-      // Store user info in localStorage
+      // Simulate login delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Store dummy user info in localStorage
       localStorage.setItem('user', JSON.stringify({
-        email: user.email,
-        uid: user.uid
+        email: email,
+        id: 'temp-user-id'
       }));
+
+      // Set a dummy token
+      Cookies.set('supabase-token', 'dummy-token', { expires: 7 });
 
       router.push('/office');
     } catch (error) {
       console.error('Login error:', error);
-      let errorMessage = 'Failed to sign in';
-      
-      switch (error.code) {
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address';
-          break;
-        case 'auth/user-disabled':
-          errorMessage = 'This account has been disabled';
-          break;
-        case 'auth/user-not-found':
-          errorMessage = 'No account found with this email';
-          break;
-        case 'auth/wrong-password':
-          errorMessage = 'Incorrect password';
-          break;
-        case 'auth/operation-not-allowed':
-          errorMessage = 'Email/password accounts are not enabled. Please contact support.';
-          break;
-        default:
-          errorMessage = error.message;
-      }
-      
-      setError(errorMessage);
+      setError('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
