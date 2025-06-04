@@ -5,7 +5,7 @@ import { Container, Nav, Navbar, Button, Modal } from 'react-bootstrap';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  FaUsers, FaBullhorn, FaHeadset, FaCog, FaGift, FaUserShield, FaShieldAlt, FaSignOutAlt 
+  FaUsers, FaBullhorn, FaHeadset, FaCog, FaGift, FaUserShield, FaChartLine, FaSignOutAlt 
 } from 'react-icons/fa';
 import { DialerStatusProvider } from '../components/DialerStatusContext';
 import { supabase } from '../supabase/config';
@@ -22,7 +22,7 @@ export default function OfficeLayout({ children }) {
     { path: '/office/support', icon: FaHeadset, label: 'Support' },
     { path: '/office/applications', icon: FaUserShield, label: 'Applications' },
     { path: '/office/rewards', icon: FaGift, label: 'Rewards' },
-    { path: '/office/audit', icon: FaShieldAlt, label: 'Audit' },
+    { path: '/office/performance', icon: FaChartLine, label: 'Performance' },
     { path: '/office/settings', icon: FaCog, label: 'Settings' }
   ];
 

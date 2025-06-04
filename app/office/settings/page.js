@@ -1,18 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, Nav, Tab } from 'react-bootstrap';
+import { useState } from 'react';
+import { Container, Row, Col, Card, Form, Button, Nav } from 'react-bootstrap';
 import { 
   FaUser, FaBell, FaLock, FaPalette, 
   FaDesktop, FaMobile, FaTablet 
 } from 'react-icons/fa';
-import { db } from '../../firebase/config';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth } from '../../firebase/config';
-import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState({
     firstName: '',
@@ -31,37 +26,6 @@ export default function SettingsPage() {
   });
   const [theme, setTheme] = useState('light');
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check if user is authenticated
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        fetchUserSettings(user.uid);
-      } else {
-        // Redirect to login if not authenticated
-        router.push('/login');
-      }
-      setLoading(false);
-    });
-
-    // Cleanup subscription
-    return () => unsubscribe();
-  }, [router]);
-
-  const fetchUserSettings = async (userId) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        setProfile(data.profile || {});
-        setNotifications(data.notifications || {});
-        setTheme(data.theme || 'light');
-      }
-    } catch (error) {
-      console.error('Error fetching user settings:', error);
-    }
-  };
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
@@ -82,38 +46,14 @@ export default function SettingsPage() {
     setTheme(newTheme);
   };
 
-  const handleSave = async () => {
-    if (!auth.currentUser) {
-      router.push('/login');
-      return;
-    }
-
+  const handleSave = () => {
     setSaving(true);
-    try {
-      await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-        profile,
-        notifications,
-        theme
-      });
-      // Show success message
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      // Show error message
-    }
-    setSaving(false);
+    // Simulate save delay
+    setTimeout(() => {
+      setSaving(false);
+      // You can add a success message here if needed
+    }, 1000);
   };
-
-  if (loading) {
-    return (
-      <Container fluid>
-        <Row className="mb-4">
-          <Col>
-            <p>Loading...</p>
-          </Col>
-        </Row>
-      </Container>
-    );
-  }
 
   return (
     <Container fluid>
